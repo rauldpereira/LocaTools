@@ -5,12 +5,14 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       Equipamento.belongsTo(models.Categoria, {
         foreignKey: 'id_categoria',
+        as: 'Categoria',
+        targetKey: 'id'
       });
 
       Equipamento.hasMany(models.ItensEquipamento, {
         foreignKey: 'id_equipamento',
       });
-
+      
       Equipamento.hasMany(models.Reserva, {
         foreignKey: 'id_equipamento',
       });
@@ -41,6 +43,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'Equipamento',
+    tableName: 'Equipamentos',
   });
   return Equipamento;
 };

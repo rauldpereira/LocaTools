@@ -4,7 +4,8 @@ module.exports = (sequelize, DataTypes) => {
   class Categoria extends Model {
     static associate(models) {
       Categoria.hasMany(models.Equipamento, {
-        foreignKey: 'id_categoria'
+        foreignKey: 'id_categoria',
+        as: 'Equipamentos'
       });
     }
   }
@@ -17,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'Categoria',
+    tableName: 'Categorias',
   });
   return Categoria;
 };
