@@ -6,6 +6,7 @@ const {
   updateOrderStatus,
   deleteOrder,
   generateContract,
+  getOrderById
 } = require('../controllers/reservationController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -18,5 +19,6 @@ router.delete('/:id', protect, deleteOrder);
 
 router.put('/:id', protect, updateOrderStatus);
 router.get('/all', protect, getAllOrders);
+router.get('/:id', protect, getOrderById);
 
 module.exports = router;

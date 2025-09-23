@@ -5,10 +5,7 @@ const equipmentRoutes = require('./routes/equipmentRoutes');
 const reservationRoutes = require('./routes/reservationRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const categoriesRoutes = require('./routes/categoriesRoutes');
-<<<<<<< HEAD
-=======
 const unitRoutes = require('./routes/unitRoutes');
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
 const cors = require('cors');
 
 
@@ -26,10 +23,7 @@ app.use('/api/equipment', equipmentRoutes);
 app.use('/api/reservations', reservationRoutes); 
 app.use('/api/payments', paymentRoutes)
 app.use('/api/categories', categoriesRoutes);
-<<<<<<< HEAD
-=======
 app.use('/api/units', unitRoutes);
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
 
 app.get('/', (req, res) => {
   res.send('API do LocaTools está rodando!');

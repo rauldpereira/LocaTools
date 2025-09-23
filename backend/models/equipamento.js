@@ -39,11 +39,7 @@ module.exports = (sequelize, DataTypes) => {
         key: 'id',
       },
     },
-<<<<<<< HEAD
-    total_quantidade: { // <-- Coluna que foi adicionada
-=======
     total_quantidade: {
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 1,

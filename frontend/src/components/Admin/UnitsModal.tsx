@@ -53,11 +53,12 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
 
   return (
     <div style={modalOverlayStyle} onClick={onClose}>
+  
       <div style={modalContentStyle} onClick={handleContentClick}>
         <h2>Gerenciar Unidades do Equipamento #{equipmentId}</h2>
         
         <button onClick={onClose} style={{ position: 'absolute', top: 15, right: 15, cursor: 'pointer' }}>
-           X
+          Fechar (X)
         </button>
 
         <hr />

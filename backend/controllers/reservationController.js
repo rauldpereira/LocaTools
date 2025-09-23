@@ -11,6 +11,7 @@ const PDFDocument = require('pdfkit');
 const createOrder = async (req, res) => {
     const { itens } = req.body;
     const id_usuario = req.user.id;
+    const CUSTO_FRETE_PADRAO = 15.00;
 
     if (!itens || itens.length === 0) {
         return res.status(400).json({ error: 'Nenhum item fornecido para a ordem de serviço.' });
@@ -18,9 +19,9 @@ const createOrder = async (req, res) => {
 
     try {
         const resultado = await sequelize.transaction(async (t) => {
-            let valor_total = 0;
             let data_inicio_geral = new Date(itens[0].data_inicio);
             let data_fim_geral = new Date(itens[0].data_fim);
+            let subtotal_itens = 0;
 
             for (const item of itens) {
                 const equipamento = await Equipamento.findByPk(item.id_equipamento, { transaction: t });
@@ -48,13 +49,20 @@ const createOrder = async (req, res) => {
                 if (endDate > data_fim_geral) data_fim_geral = endDate;
             }
 
-            // ETAPA 2: SE TUDO ESTIVER DISPONÍVEL, CRIAR A ORDEM DE SERVIÇO
+            const custo_frete = tipo_entrega === 'entrega' ? CUSTO_FRETE_PADRAO : 0;
+            const valor_total = subtotal_itens + custo_frete;
+            const valor_sinal = valor_total * 0.5;
+
             const ordemDeServico = await OrdemDeServico.create({
                 id_usuario,
                 status: 'pendente',
                 data_inicio: data_inicio_geral,
                 data_fim: data_fim_geral,
-                valor_total: valor_total
+                valor_total,
+                tipo_entrega,
+                endereco_entrega: tipo_entrega === 'entrega' ? endereco_entrega : null,
+                custo_frete,
+                valor_sinal
             }, { transaction: t });
 
             // ETAPA 3: CRIAR OS ITENS DA RESERVA
@@ -301,8 +309,6 @@ const generateContract = async (req, res) => {
     }
 };
 
-<<<<<<< HEAD
-=======
 // @desc    Buscar todas as reservas de uma unidade específica
 // @route   GET /api/units/:id/reservations
 // @access  Privado/Admin
@@ -322,17 +328,29 @@ const getReservationsByUnit = async (req, res) => {
     }
 };
 
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
+const getOrderById = async (req, res) => {
+    try {
+        const order = await OrdemDeServico.findByPk(req.params.id);
+       
+        if (order && order.id_usuario !== req.user.id) {
+             return res.status(403).json({ error: 'Acesso negado.' });
+        }
+        if (!order) {
+            return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
+        }
+        res.status(200).json(order);
+    } catch (error) {
+         res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+}
+
 module.exports = {
     createOrder,
     getMyOrders,
     getAllOrders,
     updateOrderStatus,
     deleteOrder,
-<<<<<<< HEAD
-    generateContract
-=======
     generateContract,
-    getReservationsByUnit
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
+    getReservationsByUnit,
+    getOrderById
 };

@@ -1,10 +1,6 @@
 // backend/controllers/unitController.js
 
-<<<<<<< HEAD
-const { Unidade, Equipamento } = require('../models');
-=======
 const { Unidade, Equipamento, ItemReserva, OrdemDeServico } = require('../models');
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
 
 // @desc    Adicionar múltiplas unidades a um equipamento
 // @route   POST /api/equipment/:id/units
@@ -45,10 +41,6 @@ const addUnitsToEquipment = async (req, res) => {
     }
 };
 
-<<<<<<< HEAD
-module.exports = { addUnitsToEquipment };
-console.log('[DEBUG] Exportando de unitController:', module.exports);
-=======
 const getUnitsByEquipment = async (req, res) => {
     try {
         const units = await Unidade.findAll({
@@ -85,4 +77,3 @@ module.exports = {
     getUnitsByEquipment,
     updateUnitStatus
 };
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)

@@ -51,6 +51,22 @@ module.exports = (sequelize, DataTypes) => {
     valor_total: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false
+    },
+    tipo_entrega: {
+      type: DataTypes.ENUM('retirada', 'entrega'),
+      allowNull: false,
+    },
+    endereco_entrega: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    custo_frete: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+    },
+    valor_sinal: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
     }
   }, {
     sequelize,

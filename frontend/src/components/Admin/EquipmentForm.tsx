@@ -16,10 +16,7 @@ const EquipmentForm: React.FC = () => {
   const [urlImagem, setUrlImagem] = useState('');
   const [mensagem, setMensagem] = useState('');
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-<<<<<<< HEAD
-=======
   const [quantidadeInicial, setQuantidadeInicial] = useState('1');
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -53,10 +50,7 @@ const EquipmentForm: React.FC = () => {
         preco_diaria: parseFloat(precoDiaria),
         id_categoria: parseInt(idCategoria),
         url_imagem: urlImagem,
-<<<<<<< HEAD
-=======
         quantidade_inicial: parseInt(quantidadeInicial)
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -86,19 +80,12 @@ const EquipmentForm: React.FC = () => {
         <input type="text" placeholder="Nome" value={nome} onChange={(e) => setNome(e.target.value)} required />
         <textarea placeholder="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} required />
         <input type="number" placeholder="Preço Diária" value={precoDiaria} onChange={(e) => setPrecoDiaria(e.target.value)} required />
-<<<<<<< HEAD
-        
-=======
-
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
         <select value={idCategoria} onChange={(e) => setIdCategoria(e.target.value)} required>
           <option value="">Selecione a Categoria</option>
           {categorias.map(cat => (
             <option key={cat.id} value={cat.id}>{cat.nome}</option>
           ))}
         </select>
-<<<<<<< HEAD
-=======
           
         <input
           type="number"
@@ -108,7 +95,6 @@ const EquipmentForm: React.FC = () => {
           min="0"
           required
         />
->>>>>>> 2d9d9a8 (feat: add calendario, modal e consertado o bug de uma unidade fantasma)
 
         <input type="text" placeholder="URL da Imagem" value={urlImagem} onChange={(e) => setUrlImagem(e.target.value)} required />
         <button type="submit">Adicionar Equipamento</button>
