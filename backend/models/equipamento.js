@@ -9,13 +9,11 @@ module.exports = (sequelize, DataTypes) => {
         targetKey: 'id'
       });
 
-      // Equipamento tem muitos ItensEquipamento (ainda usado na vistoria, por isso mantenha)
       Equipamento.hasMany(models.ItensEquipamento, {
         foreignKey: 'id_equipamento',
         as: 'ItensEquipamento'
       });
       
-      // Equipamento tem muitas Unidades
       Equipamento.hasMany(models.Unidade, {
         foreignKey: 'id_equipamento',
         as: 'Unidades'

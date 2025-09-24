@@ -137,7 +137,6 @@ const EquipmentDetailsPage: React.FC = () => {
         <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem', flexWrap: 'wrap' }}>
           <img src={equipment.url_imagem} alt={equipment.nome} style={{ width: '400px', height: 'auto', objectFit: 'cover' }} />
           <div>
-            {/* DETALHES DO EQUIPAMENTO QUE ESTAVAM FALTANDO */}
             <p><strong>Descrição:</strong> {equipment.descricao}</p>
             <p><strong>Preço Diário:</strong> R$ {equipment.preco_diaria.toFixed(2)}</p>
             <p><strong>Categoria:</strong> {equipment.Categoria?.nome}</p>

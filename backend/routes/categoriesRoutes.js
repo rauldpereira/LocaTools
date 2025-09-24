@@ -1,11 +1,9 @@
-// backend/routes/categoriesRoutes.js
 const express = require('express');
 const { Categoria } = require('../models');
 const { protect } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-// Rota pública para listar todas as categorias
 router.get('/', async (req, res) => {
     try {
         const categorias = await Categoria.findAll();
@@ -16,7 +14,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Rota para criar uma nova categoria (privada, somente admin)
 router.post('/', protect, async (req, res) => {
     const { nome } = req.body;
     try {

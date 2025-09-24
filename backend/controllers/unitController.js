@@ -1,17 +1,10 @@
-// backend/controllers/unitController.js
-
 const { Unidade, Equipamento, ItemReserva, OrdemDeServico } = require('../models');
 
-// @desc    Adicionar múltiplas unidades a um equipamento
-// @route   POST /api/equipment/:id/units
-// @access  Privado/Admin
 const addUnitsToEquipment = async (req, res) => {
     const equipmentId = req.params.id;
-    // O frontend vai enviar um JSON como: { "quantityToAdd": 5 }
     const { quantityToAdd } = req.body; 
 
     try {
-        // Validação inicial
         const quantity = parseInt(quantityToAdd);
         if (isNaN(quantity) || quantity <= 0) {
             return res.status(400).json({ error: 'A quantidade a ser adicionada deve ser um número maior que zero.' });
@@ -22,15 +15,13 @@ const addUnitsToEquipment = async (req, res) => {
             return res.status(404).json({ error: 'Equipamento não encontrado.' });
         }
 
-        // Loop para criar a quantidade de unidades solicitada
         for (let i = 0; i < quantity; i++) {
             await Unidade.create({
                 id_equipamento: equipmentId,
-                status: 'disponivel' // Define o status inicial como 'disponivel'
+                status: 'disponivel'
             });
         }
         
-        // ATUALIZA a contagem total no equipamento principal
         await equipment.increment('total_quantidade', { by: quantity });
 
         res.status(201).json({ message: `${quantity} unidades foram adicionadas com sucesso ao equipamento "${equipment.nome}".` });
@@ -53,11 +44,8 @@ const getUnitsByEquipment = async (req, res) => {
     }
 };
 
-// @desc    Atualizar o status de UMA unidade específica
-// @route   PUT /api/units/:id
-// @access  Privado/Admin
 const updateUnitStatus = async (req, res) => {
-    const { status } = req.body; // Espera um body como { "status": "em manutenção" }
+    const { status } = req.body;
     try {
         const unit = await Unidade.findByPk(req.params.id);
         if (!unit) {

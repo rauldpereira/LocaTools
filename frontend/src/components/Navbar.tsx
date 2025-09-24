@@ -26,6 +26,9 @@ const Navbar: React.FC = () => {
                             <li>
                                 <Link to="/profile">Olá, {user?.nome}</Link>
                             </li>
+                            <li>
+                                <Link to="/my-reservations">Minhas Reservas</Link>
+                            </li>
                             {user?.tipo_usuario === 'admin' && (
                                 <li>
                                     <Link to="/admin">Painel Admin</Link>
@@ -52,7 +55,6 @@ const Navbar: React.FC = () => {
                     )}
                 </ul>
             </div>
-
         </nav>
     );
 };

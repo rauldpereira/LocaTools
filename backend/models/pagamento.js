@@ -1,10 +1,9 @@
-// backend/models/pagamento.js
 'use strict';
 const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Pagamento extends Model {
     static associate(models) {
-      // Um Pagamento pertence a uma OrdemDeServico
+
       Pagamento.belongsTo(models.OrdemDeServico, {
         foreignKey: 'id_ordem_servico',
       });

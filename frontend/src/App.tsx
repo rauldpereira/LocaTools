@@ -12,6 +12,9 @@ import EquipmentDetailsPage from './pages/EquipmentDetailsPage';
 import CartPage from './pages/CartPage';
 import Layout from './pages/Layout';
 import PaymentPage from './pages/PaymentPage';
+import MyReservationsPage from './pages/MyReservationsPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import ReservationDetailsPage from './pages/ReservationDetailsPage';
 
 const stripePromise = loadStripe('pk_test_51RxzLsHUnTeu3by4toldZZMEswVFiFnrXc0eSI9PyNzEGnICbSvasFqoC0cmMgqkD3Ie6tQIEhKlhDvitfTbcwTT00qAldkZVx');
 
@@ -30,6 +33,9 @@ function App() {
                 <Route path="equipment/:id" element={<EquipmentDetailsPage />} />
                 <Route path="cart" element={<CartPage />} />
                 <Route path="payment/:orderId" element={<PaymentPage />} />
+                <Route path="my-reservations" element={<MyReservationsPage />} />
+                <Route path="payment/success/:orderId" element={<PaymentSuccessPage />} />
+                <Route path="my-reservations/:orderId" element={<ReservationDetailsPage />} />
               </Route>
             </Routes>
           </Router>

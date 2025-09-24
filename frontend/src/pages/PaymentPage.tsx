@@ -56,8 +56,7 @@ const CheckoutForm = () => {
                     token: stripeToken.id,
                 }, config);
 
-                alert('Pagamento aprovado com sucesso!');
-                navigate('/my-reservations');
+                navigate(`/payment/success/${orderId}`);
             } catch (err: any) {
                 setError(err.response?.data?.error || 'Falha ao processar o pagamento no servidor.');
                 setProcessing(false);

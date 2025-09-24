@@ -7,7 +7,7 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'id_equipamento',
         as: 'Equipamento'
       });
-      // Uma Unidade tem muitos ItensReserva
+
       Unidade.hasMany(models.ItemReserva, {
         foreignKey: 'id_unidade',
         as: 'ItensReserva'
