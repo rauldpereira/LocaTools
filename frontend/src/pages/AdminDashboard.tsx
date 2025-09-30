@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import EquipmentForm from '../components/Admin/EquipmentForm';
 import AddCategoryForm from '../components/Admin/AddCategoryForm';
 import EquipmentList from '../components/Admin/EquipmentList';
+import AdminReservationsList from '../components/Admin/AdminReservationsList';
 
 const AdminDashboard: React.FC = () => {
   const { isLoggedIn, user } = useAuth();
@@ -17,8 +18,14 @@ const AdminDashboard: React.FC = () => {
               <EquipmentForm />
               <AddCategoryForm />
             </div>
-            <hr style={{ margin: '2rem 0' }} /> 
-            <EquipmentList /> 
+            
+            <hr style={{ margin: '2rem 0' }} />
+            
+            <AdminReservationsList />
+
+            <hr style={{ margin: '2rem 0' }} />
+            
+            <EquipmentList />
           </>
         ) : (
           <p>Acesso negado. Esta área é restrita a administradores.</p>

@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, sequelize } = require('../models');
+const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria } = require('../models');
 const PDFDocument = require('pdfkit');
 
 const verificarDisponibilidade = async (item, options) => {
@@ -137,13 +137,13 @@ const getMyOrders = async (req, res) => {
 const getAllOrders = async (req, res) => {
     try {
         if (req.user.tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem ver todas as ordens de serviço.' });
+            return res.status(403).json({ error: 'Acesso negado.' });
         }
 
         const orders = await OrdemDeServico.findAll({
             include: [{
                 model: ItemReserva,
-                as: 'ItensReserva',
+                as: 'ItemReservas',
                 include: [{
                     model: Unidade,
                     as: 'Unidade',
@@ -155,6 +155,7 @@ const getAllOrders = async (req, res) => {
             }, {
                 model: Usuario,
                 as: 'Usuario',
+                attributes: ['id', 'nome', 'email'] 
             }],
             order: [['data_criacao', 'DESC']]
         });
@@ -306,22 +307,35 @@ const getReservationsByUnit = async (req, res) => {
 const getOrderById = async (req, res) => {
     try {
         const order = await OrdemDeServico.findByPk(req.params.id, {
-            include: [{
-                model: ItemReserva,
-                as: 'ItemReservas',
-                include: [{
-                    model: Unidade,
-                    as: 'Unidade',
+
+            include: [
+                {
+                    model: ItemReserva,
+                    as: 'ItemReservas', 
                     include: [{
-                        model: Equipamento,
-                        as: 'Equipamento',
-                        attributes: ['nome', 'url_imagem']
+                        model: Unidade,
+                        as: 'Unidade',
+                        include: [{
+                            model: Equipamento,
+                            as: 'Equipamento',
+                            attributes: ['nome', 'url_imagem'] 
+                        }]
                     }]
-                }]
-            }]
+                },
+
+                {
+                    model: Vistoria,
+                    as: 'Vistorias',
+                    required: false, 
+                    include: [{
+                        model: DetalhesVistoria,
+                        as: 'detalhes' 
+                    }]
+                }
+            ]
         });
 
-        if (order && order.id_usuario !== req.user.id) {
+        if (order && order.id_usuario !== req.user.id && req.user.tipo_usuario !== 'admin') {
             return res.status(403).json({ error: 'Acesso negado.' });
         }
         if (!order) {

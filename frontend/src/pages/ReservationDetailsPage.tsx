@@ -1,107 +1,118 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-interface EquipmentItem {
+interface Equipamento {
     nome: string;
     url_imagem: string;
 }
-
-interface UnitItem {
-    Equipamento: EquipmentItem;
-}
-
-interface ReservedItem {
+interface Unidade {
     id: number;
-    Unidade: UnitItem;
+    Equipamento: Equipamento;
 }
-
+interface ItemReserva {
+    id: number;
+    Unidade: Unidade;
+}
+interface DetalheVistoria {
+    id: number;
+    id_item_equipamento: number;
+    condicao: string;
+    comentarios: string;
+    foto: string | null;
+}
+interface Vistoria {
+    id: number;
+    tipo_vistoria: 'entrega' | 'devolucao';
+    data: string;
+    detalhes: DetalheVistoria[];
+}
 interface OrderDetails {
     id: number;
     status: string;
-    data_inicio: string;
-    data_fim: string;
-    valor_total: string;
-    valor_sinal: string;
-    tipo_entrega: string;
-    endereco_entrega?: string;
-    custo_frete: string;
-    ItemReservas: ReservedItem[];
+    ItemReservas: ItemReserva[];
+    Vistorias: Vistoria[];
 }
 
 const ReservationDetailsPage: React.FC = () => {
     const { orderId } = useParams<{ orderId: string }>();
-    const navigate = useNavigate();
     const { token } = useAuth();
     const [order, setOrder] = useState<OrderDetails | null>(null);
     const [loading, setLoading] = useState(true);
+    const backendUrl = 'http://localhost:3001';
 
     useEffect(() => {
-        if (!orderId || !token) {
-            setLoading(false);
-            return;
-        }
-
         const fetchOrderDetails = async () => {
+            if (!token || !orderId) return;
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-    
-                const { data } = await axios.get(`http://localhost:3001/api/reservations/${orderId}`, config);
+                const { data } = await axios.get(`${backendUrl}/api/reservations/${orderId}`, config);
                 setOrder(data);
             } catch (error) {
-                console.error("Erro ao buscar detalhes da reserva:", error);
+                console.error("Erro ao buscar detalhes do pedido:", error);
             } finally {
                 setLoading(false);
             }
         };
-
         fetchOrderDetails();
     }, [orderId, token]);
 
-    if (loading) return <div style={{ textAlign: 'center', marginTop: '100px' }}>Carregando detalhes...</div>;
-    if (!order) return <div style={{ textAlign: 'center', marginTop: '100px' }}>Reserva não encontrada.</div>;
+    if (loading) return <div style={{ textAlign: 'center', marginTop: '100px' }}>A carregar detalhes do pedido...</div>;
+    if (!order) return <div style={{ textAlign: 'center', marginTop: '100px' }}>Pedido não encontrado.</div>;
 
-    const subtotal = Number(order.valor_total) - Number(order.custo_frete);
+    const vistoriaDeSaida = order.Vistorias.find(v => v.tipo_vistoria === 'entrega');
+
+    const getVistoriaDetailForItem = (unitId: number) => {
+        if (!vistoriaDeSaida) return null;
+        return vistoriaDeSaida.detalhes.find(d => d.id_item_equipamento === unitId);
+    };
 
     return (
         <div style={{ padding: '2rem', marginTop: '60px', maxWidth: '800px', margin: '80px auto' }}>
-            <button onClick={() => navigate('/my-reservations')} style={{ marginBottom: '1rem' }}>&larr; Voltar para Minhas Reservas</button>
             <h1>Detalhes do Pedido #{order.id}</h1>
-            
-            <div style={{ border: '1px solid #ddd', padding: '1.5rem', borderRadius: '8px' }}>
-                <h3>Informações Gerais</h3>
-                <p><strong>Status:</strong> {order.status}</p>
-                <p><strong>Período:</strong> {new Date(order.data_inicio).toLocaleDateString()} a {new Date(order.data_fim).toLocaleDateString()}</p>
-                
-                <hr style={{ margin: '1rem 0' }}/>
-                
-                <h3>Detalhes Financeiros</h3>
-                <p>Subtotal dos Itens: R$ {subtotal.toFixed(2)}</p>
-                <p>Custo do Frete: R$ {Number(order.custo_frete).toFixed(2)}</p>
-                <p><strong>Valor Total:</strong> R$ {Number(order.valor_total).toFixed(2)}</p>
-                <p><strong>Sinal Pago (50%):</strong> R$ {Number(order.valor_sinal).toFixed(2)}</p>
+            <p style={{ fontSize: '1.2rem' }}><strong>Estado do seu pedido:</strong> <span style={{ fontWeight: 'bold' }}>{order.status.replace('_', ' ')}</span></p>
 
-                <hr style={{ margin: '1rem 0' }}/>
+            <hr style={{ margin: '2rem 0' }} />
 
-                <h3>Entrega</h3>
-                <p><strong>Tipo:</strong> {order.tipo_entrega === 'entrega' ? 'Entrega em domicílio' : 'Retirada na loja'}</p>
-                {order.tipo_entrega === 'entrega' && <p><strong>Endereço:</strong> {order.endereco_entrega}</p>}
-                
-                <hr style={{ margin: '1rem 0' }}/>
-
-                <h3>Itens Alugados</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {order.ItemReservas.map(item => (
-                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
-                            <img src={item.Unidade.Equipamento.url_imagem} alt={item.Unidade.Equipamento.nome} style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '4px' }}/>
-                            <span>{item.Unidade.Equipamento.nome}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            <h2>Itens Alugados e Vistoria de Saída</h2>
+            {order.ItemReservas.map(item => {
+                const vistoriaDetail = getVistoriaDetailForItem(item.Unidade.id);
+                return (
+                    <div key={item.id} style={{ border: '1px solid #ddd', padding: '1.5rem', marginBottom: '1.5rem', borderRadius: '8px' }}>
+                        <h3>{item.Unidade.Equipamento.nome} (Unidade #{item.Unidade.id})</h3>
+                        
+                        {vistoriaDeSaida ? (
+                            vistoriaDetail ? (
+                                <div style={{ marginTop: '1rem' }}>
+                                    <h4>Relatório da Vistoria de Saída</h4>
+                                    <p><strong>Condição:</strong> {vistoriaDetail.condicao}</p>
+                                    <p><strong>Comentários:</strong> {vistoriaDetail.comentarios || 'Nenhum comentário.'}</p>
+                                    {vistoriaDetail.foto ? (
+                                        <div>
+                                            <strong>Foto:</strong><br />
+                                            <a href={`${backendUrl}${vistoriaDetail.foto}`} target="_blank" rel="noopener noreferrer">
+                                                <img 
+                                                  src={`${backendUrl}${vistoriaDetail.foto}`} 
+                                                  alt={`Foto da vistoria da unidade ${item.Unidade.id}`} 
+                                                  style={{ maxWidth: '300px', marginTop: '10px', borderRadius: '5px' }} 
+                                                />
+                                            </a>
+                                        </div>
+                                    ) : <p><strong>Foto:</strong> Nenhuma foto registada.</p>}
+                                </div>
+                            ) : (
+                                <p>Detalhes da vistoria para este item específico não encontrados.</p>
+                            )
+                        ) : (
+                            <p style={{ color: 'orange' }}>A aguardar vistoria de saída pela nossa equipa.</p>
+                        )}
+                    </div>
+                )
+            })}
         </div>
     );
 };
 
 export default ReservationDetailsPage;
+

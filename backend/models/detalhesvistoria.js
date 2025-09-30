@@ -6,23 +6,21 @@ module.exports = (sequelize, DataTypes) => {
       DetalhesVistoria.belongsTo(models.Vistoria, {
         foreignKey: 'id_vistoria',
       });
-      DetalhesVistoria.belongsTo(models.ItensEquipamento, {
-        foreignKey: 'id_item_equipamento',
+      DetalhesVistoria.belongsTo(models.Unidade, {
+        foreignKey: 'id_unidade',
       });
     }
   }
   DetalhesVistoria.init({
     id_vistoria: {
       type: DataTypes.INTEGER,
-      references: {
-        model: 'Vistorias',
-        key: 'id',
-      },
+      references: { model: 'Vistorias', key: 'id' },
     },
-    id_item_equipamento: {
+    id_unidade: {
       type: DataTypes.INTEGER,
+      field: 'id_item_equipamento', 
       references: {
-        model: 'ItensEquipamento',
+        model: 'Unidades', 
         key: 'id',
       },
     },
@@ -35,6 +33,8 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'DetalhesVistoria',
+    tableName: 'DetalhesVistoria'
   });
   return DetalhesVistoria;
 };
+
