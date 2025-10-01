@@ -18,9 +18,9 @@ module.exports = (sequelize, DataTypes) => {
     },
     id_unidade: {
       type: DataTypes.INTEGER,
-      field: 'id_item_equipamento', 
+      field: 'id_item_equipamento',
       references: {
-        model: 'Unidades', 
+        model: 'Unidades',
         key: 'id',
       },
     },
@@ -28,7 +28,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.ENUM('ok', 'danificado'),
       allowNull: false,
     },
-    foto: DataTypes.STRING,
+    foto: DataTypes.JSON,
     comentarios: DataTypes.TEXT,
   }, {
     sequelize,

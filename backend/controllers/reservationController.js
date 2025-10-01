@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria } = require('../models');
+const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, sequelize } = require('../models');
 const PDFDocument = require('pdfkit');
 
 const verificarDisponibilidade = async (item, options) => {
@@ -217,77 +217,6 @@ const deleteOrder = async (req, res) => {
     }
 };
 
-const generateContract = async (req, res) => {
-    const { id } = req.params;
-    const userId = req.user.id;
-    const tipoUsuario = req.user.tipo_usuario;
-
-    try {
-        const order = await OrdemDeServico.findByPk(id, {
-            include: [{
-                model: Usuario,
-                as: 'Usuario',
-            }, {
-                model: ItemReserva,
-                as: 'ItensReserva',
-                include: [{
-                    model: Unidade,
-                    as: 'Unidade',
-                    include: [{
-                        model: Equipamento,
-                        as: 'Equipamento',
-                    }]
-                }]
-            }]
-        });
-
-        if (!order) {
-            return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
-        }
-
-        if (order.id_usuario !== userId && tipoUsuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado. Você não tem permissão para visualizar este contrato.' });
-        }
-
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=contrato_ordem_servico_${id}.pdf`);
-
-        const doc = new PDFDocument();
-        doc.pipe(res);
-
-        doc.fontSize(25).text('Contrato de Aluguel de Equipamento', { align: 'center' });
-        doc.moveDown();
-
-        doc.fontSize(16).text(`Ordem de Serviço ID: ${order.id}`);
-        doc.moveDown();
-
-        doc.fontSize(14).text('Detalhes do Cliente:');
-        doc.fontSize(12).text(`Nome: ${order.Usuario.nome}`);
-        doc.fontSize(12).text(`Email: ${order.Usuario.email}`);
-        doc.moveDown();
-
-        doc.fontSize(14).text('Itens de Aluguel:');
-        order.ItensReserva.forEach((item, index) => {
-            doc.fontSize(12).text(`Item #${index + 1}: ${item.Unidade.Equipamento.nome}`);
-            doc.fontSize(10).text(`  - Unidade ID: ${item.id_unidade}`);
-            doc.fontSize(10).text(`  - Período: ${item.data_inicio.toISOString().split('T')[0]} a ${item.data_fim.toISOString().split('T')[0]}`);
-            doc.moveDown(0.5);
-        });
-
-        doc.moveDown();
-        doc.text('Termos e Condições...');
-        doc.moveDown();
-        doc.text('_________________________');
-        doc.text(`Assinatura do Cliente: ${order.Usuario.nome}`);
-
-        doc.end();
-
-    } catch (error) {
-        console.error('Erro ao gerar contrato:', error);
-        res.status(500).json({ error: 'Erro interno do servidor.' });
-    }
-};
-
 const getReservationsByUnit = async (req, res) => {
     try {
         const reservations = await ItemReserva.findAll({
@@ -307,29 +236,27 @@ const getReservationsByUnit = async (req, res) => {
 const getOrderById = async (req, res) => {
     try {
         const order = await OrdemDeServico.findByPk(req.params.id, {
-
             include: [
                 {
                     model: ItemReserva,
-                    as: 'ItemReservas', 
+                    as: 'ItemReservas',
                     include: [{
                         model: Unidade,
                         as: 'Unidade',
                         include: [{
                             model: Equipamento,
                             as: 'Equipamento',
-                            attributes: ['nome', 'url_imagem'] 
+                            attributes: ['nome', 'url_imagem']
                         }]
                     }]
                 },
-
                 {
                     model: Vistoria,
                     as: 'Vistorias',
-                    required: false, 
+                    required: false,
                     include: [{
                         model: DetalhesVistoria,
-                        as: 'detalhes' 
+                        as: 'detalhes'
                     }]
                 }
             ]
@@ -347,7 +274,107 @@ const getOrderById = async (req, res) => {
         console.error("Erro ao buscar detalhes da ordem:", error)
         res.status(500).json({ error: 'Erro interno do servidor.' });
     }
-}
+};
+
+const generateContract = async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const tipoUsuario = req.user.tipo_usuario;
+
+    try {
+        const order = await OrdemDeServico.findByPk(id, {
+            include: [{
+                model: Usuario,
+                as: 'Usuario',
+            }, {
+                model: ItemReserva,
+                as: 'ItemReservas', 
+                include: [{
+                    model: Unidade,
+                    as: 'Unidade',
+                    include: [{
+                        model: Equipamento,
+                        as: 'Equipamento',
+                    }]
+                }]
+            }]
+        });
+
+        if (!order) {
+            return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
+        }
+
+        if (order.id_usuario !== userId && tipoUsuario !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
+        
+        if (!order.ItemReservas || order.ItemReservas.length === 0) {
+            return res.status(500).json({ error: 'Não foi possível gerar o contrato: nenhum item encontrado na reserva.' });
+        }
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=contrato_ordem_servico_${id}.pdf`);
+
+        const doc = new PDFDocument();
+        doc.pipe(res);
+
+        doc.fontSize(25).text('Contrato de Aluguel de Equipamento', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(16).text(`Ordem de Serviço ID: ${order.id}`);
+        doc.moveDown();
+        doc.fontSize(14).text('Detalhes do Cliente:');
+        doc.fontSize(12).text(`Nome: ${order.Usuario.nome}`);
+        doc.fontSize(12).text(`Email: ${order.Usuario.email}`);
+        doc.moveDown();
+        doc.fontSize(14).text('Itens de Aluguel:');
+
+        order.ItemReservas.forEach((item, index) => {
+            doc.fontSize(12).text(`Item #${index + 1}: ${item.Unidade.Equipamento.nome}`);
+            doc.fontSize(10).text(`  - Unidade ID: ${item.id_unidade}`);
+            doc.fontSize(10).text(`  - Período: ${new Date(item.data_inicio).toLocaleDateString()} a ${new Date(item.data_fim).toLocaleDateString()}`);
+            doc.moveDown(0.5);
+        });
+
+        doc.moveDown();
+        doc.text('Termos e Condições...');
+        doc.moveDown();
+        doc.text('_________________________');
+        doc.text(`Assinatura do Cliente: ${order.Usuario.nome}`);
+
+        doc.end();
+
+    } catch (error) {
+        console.error('Erro ao gerar contrato:', error);
+       
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Erro interno do servidor ao gerar contrato.' });
+        }
+    }
+};
+
+const signContract = async (req, res) => {
+    try {
+        const order = await OrdemDeServico.findByPk(req.params.id);
+
+        if (!order) {
+            return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
+        }
+        if (order.id_usuario !== req.user.id) {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
+        if (order.status !== 'aguardando_assinatura') {
+            return res.status(400).json({ error: 'Esta reserva não está na etapa de assinatura.' });
+        }
+
+        await order.update({ status: 'em_andamento' });
+
+        res.status(200).json({ message: 'Contrato assinado e reserva confirmada com sucesso.', order });
+
+    } catch (error) {
+        console.error('Erro ao assinar contrato:', error);
+        res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+};
 
 module.exports = {
     createOrder,
@@ -357,5 +384,6 @@ module.exports = {
     deleteOrder,
     generateContract,
     getReservationsByUnit,
-    getOrderById
+    getOrderById,
+    signContract
 };

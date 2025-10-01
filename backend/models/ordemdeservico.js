@@ -6,22 +6,22 @@ module.exports = (sequelize, DataTypes) => {
       OrdemDeServico.belongsTo(models.Usuario, {
         foreignKey: 'id_usuario',
       });
-      
+
       OrdemDeServico.hasMany(models.ItemReserva, {
         foreignKey: 'id_ordem_servico',
         as: 'ItemReservas'
       });
-      
+
       OrdemDeServico.hasMany(models.Pagamento, {
         foreignKey: 'id_ordem_servico',
         as: 'Pagamentos'
       });
-      
+
       OrdemDeServico.hasMany(models.Entrega, {
         foreignKey: 'id_ordem_servico',
         as: 'Entregas'
       });
-      
+
       OrdemDeServico.hasMany(models.Vistoria, {
         foreignKey: 'id_reserva',
         as: 'Vistorias'
@@ -38,8 +38,19 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     status: {
-      type: DataTypes.ENUM('pendente', 'aprovada', 'cancelada', 'entregue', 'devolvida', 'finalizada', 'aguardando_assinatura', 'em_andamento'), // Adicionados os novos status
-      allowNull: false
+      type: DataTypes.ENUM(
+        'pendente',
+        'aprovada',
+        'cancelada',
+        'aguardando_assinatura',
+        'em_andamento',
+        'entregue',
+        'devolvida',
+        'finalizada',
+        'aguardando_pagamento_final'
+      ),
+      allowNull: false,
+      defaultValue: 'pendente' 
     },
     data_criacao: {
       type: DataTypes.DATE,

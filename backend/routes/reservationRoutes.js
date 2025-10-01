@@ -6,19 +6,22 @@ const {
   updateOrderStatus,
   deleteOrder,
   generateContract,
-  getOrderById
+  getOrderById,
+  signContract 
 } = require('../controllers/reservationController');
-const { protect } = require('../middlewares/authMiddleware');
+const { protect, admin } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-router.post('/', protect, createOrder);
+router.get('/all', protect, admin, getAllOrders); 
 router.get('/my', protect, getMyOrders);
 router.get('/contract/:id', protect, generateContract);
-router.delete('/:id', protect, deleteOrder);
 
-router.put('/:id', protect, updateOrderStatus);
-router.get('/all', protect, getAllOrders);
 router.get('/:id', protect, getOrderById);
+
+router.delete('/:id', protect, deleteOrder);
+router.put('/:id/sign', protect, signContract);
+router.put('/:id', protect, admin, updateOrderStatus); 
+router.post('/', protect, createOrder);
 
 module.exports = router;

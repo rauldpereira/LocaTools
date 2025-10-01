@@ -1,46 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-interface Unit {
-    id: number;
-    Equipamento: {
-        nome: string;
-    };
-}
-interface ReservedItem {
-    id: number;
-    Unidade: Unit;
-}
-interface OrderDetails {
-    id: number;
-    ItemReservas: ReservedItem[];
-}
-
-interface VistoriaDetailState {
-    condicao: string;
-    comentarios: string;
-    fotos: File[];
-}
+// --- Interfaces ---
+interface Equipamento { nome: string; }
+interface Unit { id: number; Equipamento: Equipamento; }
+interface ReservedItem { id: number; Unidade: Unit; }
+interface DetalheVistoriaSaida { condicao: string; comentarios: string; foto: string[] | null; }
+interface VistoriaSaida { detalhes: DetalheVistoriaSaida[]; }
+interface OrderDetails { id: number; ItemReservas: ReservedItem[]; Vistorias: VistoriaSaida[]; }
+interface VistoriaDetailState { condicao: string; comentarios: string; fotos: File[]; }
 
 const VistoriaPage: React.FC = () => {
     const { orderId } = useParams<{ orderId: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
     const { token } = useAuth();
     const [order, setOrder] = useState<OrderDetails | null>(null);
     const [vistoriaDetails, setVistoriaDetails] = useState<{ [key: number]: Partial<VistoriaDetailState> }>({});
 
-    const handleFileChange = (unitId: number, files: FileList | null) => {
-        if (!files) return;
-        setVistoriaDetails(prev => ({
-            ...prev,
-            [unitId]: {
-                ...prev[unitId],
-                fotos: Array.from(files)
-            }
-        }));
-    };
+    const params = new URLSearchParams(location.search);
+    const tipoVistoria = params.get('tipo') === 'devolucao' ? 'devolucao' : 'entrega';
+
+
+    const vistoriaDeSaida = order?.Vistorias.find(v => (v as any).tipo_vistoria === 'entrega');
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -56,6 +40,16 @@ const VistoriaPage: React.FC = () => {
         fetchOrder();
     }, [orderId, token]);
 
+    const handleFileChange = (unitId: number, files: FileList | null) => {
+        if (!files) return;
+        setVistoriaDetails(prev => ({
+            ...prev,
+            [unitId]: {
+                ...prev[unitId],
+                fotos: Array.from(files)
+            }
+        }));
+    };
     const handleDetailChange = (unitId: number, field: keyof VistoriaDetailState, value: string) => {
         setVistoriaDetails(prev => ({
             ...prev,
@@ -69,29 +63,22 @@ const VistoriaPage: React.FC = () => {
     const handleSubmit = async () => {
         if (!order) return;
 
-        const detalhesPayload = order.ItemReservas.map(item => ({
+        const formData = new FormData();
+        formData.append('id_ordem_servico', order.id.toString());
+        formData.append('tipo_vistoria', tipoVistoria); // Usa o tipo dinâmico
+
+        const detalhesParaJson = order.ItemReservas.map(item => ({
             id_unidade: item.Unidade.id,
             condicao: vistoriaDetails[item.Unidade.id]?.condicao || 'ok',
             comentarios: vistoriaDetails[item.Unidade.id]?.comentarios || '',
         }));
-        
-        const payload = {
-            id_ordem_servico: parseInt(orderId!),
-            tipo_vistoria: 'entrega', 
-            detalhes: JSON.stringify(detalhesPayload)
-        };
-
-        const formData = new FormData();
-        formData.append('id_ordem_servico', payload.id_ordem_servico.toString());
-        formData.append('tipo_vistoria', payload.tipo_vistoria);
-        formData.append('detalhes', payload.detalhes);
+        formData.append('detalhes', JSON.stringify(detalhesParaJson));
 
         order.ItemReservas.forEach(item => {
-            const unitId = item.Unidade.id;
-            const fotosDaUnidade = vistoriaDetails[unitId]?.fotos;
+            const fotosDaUnidade = vistoriaDetails[item.Unidade.id]?.fotos;
             if (fotosDaUnidade) {
                 fotosDaUnidade.forEach(file => {
-                    formData.append(`fotos[${unitId}]`, file);
+                    formData.append(`fotos[${item.Unidade.id}]`, file);
                 });
             }
         });
@@ -99,7 +86,7 @@ const VistoriaPage: React.FC = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             await axios.post('http://localhost:3001/api/vistorias', formData, config);
-            alert('Vistoria de saída registrada com sucesso!');
+            alert(`Vistoria de ${tipoVistoria === 'entrega' ? 'Saída' : 'Devolução'} registrada com sucesso!`);
             navigate('/admin');
         } catch (error) {
             console.error("Erro ao salvar vistoria:", error);
@@ -111,42 +98,56 @@ const VistoriaPage: React.FC = () => {
 
     return (
         <div style={{ padding: '2rem', marginTop: '60px' }}>
-            <h1>Vistoria de Saída - Pedido #{order.id}</h1>
-            {order.ItemReservas.map(item => (
-                <div key={item.id} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-                    <h3>{item.Unidade.Equipamento.nome} (Unidade ID: {item.Unidade.id})</h3>
-                    <div>
-                        <label>Condição: </label>
-                        <select
-                            value={vistoriaDetails[item.Unidade.id]?.condicao || 'ok'}
-                            onChange={e => handleDetailChange(item.Unidade.id, 'condicao', e.target.value)}
-                        >
-                            <option value="ok">OK</option>
-                            <option value="danificado">Danificado</option>
-                        </select>
+            <h1>{tipoVistoria === 'entrega' ? 'Vistoria de Saída' : 'Vistoria de Devolução'} - Pedido #{order.id}</h1>
+            {order.ItemReservas.map(item => {
+                const detalheVistoriaSaida = vistoriaDeSaida?.detalhes.find(d => (d as any).id_item_equipamento === item.Unidade.id);
+                return (
+                    <div key={item.id} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+                        <h3>{item.Unidade.Equipamento.nome} (Unidade ID: {item.Unidade.id})</h3>
+
+                        {tipoVistoria === 'devolucao' && detalheVistoriaSaida && (
+                            <div style={{ backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '5px', marginBottom: '1rem', border: '1px solid #ddd' }}>
+                                <h4>Dados da Vistoria de Saída (para comparação)</h4>
+                                <p><strong>Condição na Saída:</strong> {detalheVistoriaSaida.condicao}</p>
+                                <p><strong>Comentários na Saída:</strong> {detalheVistoriaSaida.comentarios || 'N/A'}</p>
+                                {/* Aqui você pode também mostrar as fotos da vistoria de saída */}
+                            </div>
+                        )}
+
+                        <h4>Registrar Condição de {tipoVistoria === 'entrega' ? 'Saída' : 'Devolução'}</h4>
+                        <div>
+                            <label>Condição: </label>
+                            <select
+                                value={vistoriaDetails[item.Unidade.id]?.condicao || 'ok'}
+                                onChange={e => handleDetailChange(item.Unidade.id, 'condicao', e.target.value)}
+                            >
+                                <option value="ok">OK</option>
+                                <option value="danificado">Danificado</option>
+                            </select>
+                        </div>
+                        <div style={{ marginTop: '0.5rem' }}>
+                            <label>Comentários:</label>
+                            <textarea
+                                style={{ width: '100%', minHeight: '60px' }}
+                                value={vistoriaDetails[item.Unidade.id]?.comentarios || ''}
+                                onChange={e => handleDetailChange(item.Unidade.id, 'comentarios', e.target.value)}
+                            />
+                        </div>
+                        <div style={{ marginTop: '0.5rem' }}>
+                            <label>Fotos da {tipoVistoria === 'entrega' ? 'Saída' : 'Devolução'}:</label>
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                style={{ width: '100%' }}
+                                onChange={e => handleFileChange(item.Unidade.id, e.target.files)}
+                            />
+                        </div>
                     </div>
-                    <div style={{ marginTop: '0.5rem' }}>
-                        <label>Comentários:</label>
-                        <textarea
-                            style={{ width: '100%', minHeight: '60px' }}
-                            value={vistoriaDetails[item.Unidade.id]?.comentarios || ''}
-                            onChange={e => handleDetailChange(item.Unidade.id, 'comentarios', e.target.value)}
-                        />
-                    </div>
-                    <div style={{ marginTop: '0.5rem' }}>
-                        <label>URLs das Fotos (separadas por vírgula):</label>
-                        <input
-                            type="file"
-                            multiple
-                            accept="image/*" 
-                            style={{ width: '100%' }}
-                            onChange={e => handleFileChange(item.Unidade.id, e.target.files)}
-                        />
-                    </div>
-                </div>
-            ))}
+                );
+            })}
             <button onClick={handleSubmit} style={{ width: '100%', padding: '1rem', fontSize: '1.2rem' }}>
-                Salvar Vistoria de Saída
+                Salvar Vistoria de {tipoVistoria === 'entrega' ? 'Saída' : 'Devolução'}
             </button>
         </div>
     );
