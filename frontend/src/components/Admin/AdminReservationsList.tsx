@@ -34,6 +34,8 @@ const AdminReservationsList: React.FC = () => {
     
     const ordersForReturnInspection = orders.filter(order => order.status === 'em_andamento');
 
+   const ordersAwaitingFinalPayment = orders.filter(order => order.status === 'aguardando_pagamento_final');
+   
     if (loading) return <p>Carregando reservas...</p>;
 
     return (
@@ -69,6 +71,29 @@ const AdminReservationsList: React.FC = () => {
             </div>
 
             <hr style={{ margin: '3rem 0' }} />
+
+            <div>
+                <h3>Reservas Aguardando Pagamento Final</h3>
+                {ordersAwaitingFinalPayment.length === 0 ? <p>Nenhuma reserva nesta etapa.</p> : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                       
+                        <tbody>
+                            {ordersAwaitingFinalPayment.map(order => (
+                                <tr key={order.id}>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>#{order.id}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{order.status}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                                        
+                                        <Link to={`/admin/finalize-payment/${order.id}`}>
+                                            <button>Finalizar e Cobrar</button>
+                                        </Link>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
 
             <div>
                 <h3>Equipamentos em Locação (Aguardando Devolução)</h3>

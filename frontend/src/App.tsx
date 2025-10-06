@@ -16,6 +16,7 @@ import MyReservationsPage from './pages/MyReservationsPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import ReservationDetailsPage from './pages/ReservationDetailsPage';
 import VistoriaPage from './pages/VistoriaPage';
+import FinalizePaymentPage from './pages/FinalizePaymentPage';
 
 const stripePromise = loadStripe('pk_test_51RxzLsHUnTeu3by4toldZZMEswVFiFnrXc0eSI9PyNzEGnICbSvasFqoC0cmMgqkD3Ie6tQIEhKlhDvitfTbcwTT00qAldkZVx');
 
@@ -38,6 +39,7 @@ function App() {
                 <Route path="payment/success/:orderId" element={<PaymentSuccessPage />} />
                 <Route path="my-reservations/:orderId" element={<ReservationDetailsPage />} />
                 <Route path="admin/vistoria/:orderId" element={<VistoriaPage />} />
+                <Route path="admin/finalize-payment/:orderId" element={<FinalizePaymentPage />} />
               </Route>
             </Routes>
           </Router>

@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, sequelize } = require('../models');
+const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize } = require('../models');
 const PDFDocument = require('pdfkit');
 
 const verificarDisponibilidade = async (item, options) => {
@@ -376,6 +376,32 @@ const signContract = async (req, res) => {
     }
 };
 
+const confirmManualPayment = async (req, res) => {
+    try {
+        const order = await OrdemDeServico.findByPk(req.params.id);
+        if (!order) {
+            return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
+        }
+        if (order.status !== 'aguardando_pagamento_final') {
+            return res.status(400).json({ error: 'Esta ordem não está na etapa de pagamento final.' });
+        }
+
+        await order.update({ status: 'finalizada' });
+
+        await Pagamento.create({
+            id_ordem_servico: order.id,
+            valor: Number(order.valor_total) - Number(order.valor_sinal),
+            status_pagamento: 'aprovado',
+            id_transacao_externa: `manual_${req.user.id}_${Date.now()}`
+        });
+
+        res.status(200).json({ message: 'Pagamento manual confirmado e ordem finalizada.' });
+    } catch (error) {
+        console.error('Erro ao confirmar pagamento manual:', error);
+        res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+};
+
 module.exports = {
     createOrder,
     getMyOrders,
@@ -385,5 +411,6 @@ module.exports = {
     generateContract,
     getReservationsByUnit,
     getOrderById,
-    signContract
+    signContract,
+    confirmManualPayment
 };
