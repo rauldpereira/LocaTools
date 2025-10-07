@@ -19,7 +19,6 @@ const PaymentSuccessPage: React.FC = () => {
     useEffect(() => {
         if (!orderId || !token) return;
 
-        // Busca os detalhes da ordem para mostrar um resumo
         const fetchOrder = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -49,7 +48,7 @@ const PaymentSuccessPage: React.FC = () => {
             <p>Sua reserva foi confirmada com sucesso.</p>
 
             {order && (
-                <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginTop: '1.5rem', backgroundColor: '#f9f9f9' }}>
+                <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginTop: '1.5rem', backgroundColor: '#f9f9f9', color: '#333' }}>
                     <p><strong>Resumo do Pedido #{order.id}</strong></p>
                     <p>Sinal pago: R$ {Number(order.valor_sinal).toFixed(2)}</p>
                     {order.tipo_entrega === 'entrega' ? (

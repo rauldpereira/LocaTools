@@ -6,6 +6,8 @@ import { Link } from 'react-router-dom';
 interface Order {
     id: number;
     status: string;
+    data_inicio: string;
+    data_fim: string;
 }
 
 const AdminReservationsList: React.FC = () => {
@@ -30,99 +32,87 @@ const AdminReservationsList: React.FC = () => {
     }, [token]);
 
     const ordersForExitInspection = orders.filter(order => order.status === 'aprovada');
-    
-    
+    const ordersAwaitingSignature = orders.filter(order => order.status === 'aguardando_assinatura');
     const ordersForReturnInspection = orders.filter(order => order.status === 'em_andamento');
+    const ordersAwaitingFinalPayment = orders.filter(order => order.status === 'aguardando_pagamento_final');
+    const finalizedOrders = orders.filter(order => order.status === 'finalizada');
+    const cancelledOrders = orders.filter(order => order.status === 'cancelada');
 
-   const ordersAwaitingFinalPayment = orders.filter(order => order.status === 'aguardando_pagamento_final');
-   
-    if (loading) return <p>Carregando reservas...</p>;
+    if (loading) return <p>A carregar reservas...</p>;
+
+
+    const renderOrderTable = (
+        title: string,
+        orderList: Order[],
+        headers: { key: keyof Order, label: string }[],
+        action: (order: Order) => React.ReactNode
+    ) => (
+        <div style={{ marginBottom: '2.5rem' }}>
+            <h3>{title}</h3>
+            {orderList.length === 0 ? (
+                <p>Nenhuma reserva nesta etapa.</p>
+            ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr>
+                            {headers.map(header => (
+                                <th key={header.key} style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>{header.label}</th>
+                            ))}
+                            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {orderList.map(order => (
+                            <tr key={order.id}>
+                                {headers.map(header => (
+                                    <td key={header.key} style={{ border: '1px solid #ddd', padding: '8px' }}>
+
+                                        {header.key.includes('data')
+                                            ? new Date(order[header.key]).toLocaleDateString()
+                                            : order[header.key]
+                                        }
+                                    </td>
+                                ))}
+                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{action(order)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+        </div>
+    );
 
     return (
         <div style={{ width: '100%' }}>
-            <div>
-                <h3>Reservas Aguardando Vistoria de Saída</h3>
-                {ordersForExitInspection.length === 0 ? (
-                    <p>Nenhuma reserva nesta etapa.</p>
-                ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr>
-                                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Pedido ID</th>
-                                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Status</th>
-                                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ordersForExitInspection.map(order => (
-                                <tr key={order.id}>
-                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>#{order.id}</td>
-                                    <td style={{ border: '1px solid #ddd', padding: '8px', color: 'orange' }}>{order.status}</td>
-                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                                        <Link to={`/admin/vistoria/${order.id}`}>
-                                            <button>Realizar Vistoria de Saída</button>
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
+            {renderOrderTable(
+                "Reservas Aguardando Vistoria de Saída",
+                ordersForExitInspection,
+                [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Data de Saída' }],
+                order => <Link to={`/admin/vistoria/${order.id}`}><button>Realizar Vistoria</button></Link>
+            )}
 
-            <hr style={{ margin: '3rem 0' }} />
+            {renderOrderTable(
+                "Aguardando Assinatura do Contrato",
+                ordersAwaitingSignature,
+                [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }],
+                order => <Link to={`/my-reservations/${order.id}`}><button>Ver Detalhes</button></Link>
+            )}
 
-            <div>
-                <h3>Reservas Aguardando Pagamento Final</h3>
-                {ordersAwaitingFinalPayment.length === 0 ? <p>Nenhuma reserva nesta etapa.</p> : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                       
-                        <tbody>
-                            {ordersAwaitingFinalPayment.map(order => (
-                                <tr key={order.id}>
-                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>#{order.id}</td>
-                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{order.status}</td>
-                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                                        
-                                        <Link to={`/admin/finalize-payment/${order.id}`}>
-                                            <button>Finalizar e Cobrar</button>
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
+            {renderOrderTable(
+                "Equipamentos em Locação (Aguardando Devolução)",
+                ordersForReturnInspection,
+                [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Devolução' }],
+                order => <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}><button>Registar Devolução</button></Link>
+            )}
 
-            <div>
-                <h3>Equipamentos em Locação (Aguardando Devolução)</h3>
-                {ordersForReturnInspection.length === 0 ? <p>Nenhum equipamento em locação no momento.</p> : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr>
-                                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Pedido ID</th>
-                                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Status</th>
-                                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ordersForReturnInspection.map(order => (
-                                <tr key={order.id}>
-                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>#{order.id}</td>
-                                    <td style={{ border: '1px solid #ddd', padding: '8px', color: 'blue' }}>{order.status}</td>
-                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                                        
-                                        <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
-                                            <button>Registrar Vistoria de Devolução</button>
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
+            {renderOrderTable(
+                "Reservas Aguardando Pagamento Final",
+                ordersAwaitingFinalPayment,
+                [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }],
+                order => <Link to={`/admin/finalize-payment/${order.id}`}><button>Finalizar e Cobrar</button></Link>
+            )}
+            {renderOrderTable("Histórico de Pedidos Finalizados", finalizedOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Finalização' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver pedido Completo</button></Link>))}
+            {renderOrderTable("Histórico de Pedidos Cancelados", cancelledOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver Detalhes</button></Link>))}
         </div>
     );
 };

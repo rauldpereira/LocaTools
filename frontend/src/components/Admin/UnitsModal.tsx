@@ -26,7 +26,7 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
           const { data } = await axios.get(`http://localhost:3001/api/equipment/${equipmentId}/units`, config);
           setUnits(data);
         } catch (error) {
-          console.error(`Erro ao buscar unidades para o equipamento ${equipmentId}:`, error);
+          console.error(`Erro ao buscar unidades:`, error);
         }
       };
       fetchUnits();
@@ -53,21 +53,23 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
 
   return (
     <div style={modalOverlayStyle} onClick={onClose}>
-  
       <div style={modalContentStyle} onClick={handleContentClick}>
-        <h2>Gerenciar Unidades do Equipamento #{equipmentId}</h2>
-        
-        <button onClick={onClose} style={{ position: 'absolute', top: 15, right: 15, cursor: 'pointer' }}>
-          Fechar (X)
-        </button>
+        <h2>Gerir Unidades do Equipamento #{equipmentId}</h2>
+        <button onClick={onClose} style={closeButtonStyle}>Fechar (X)</button>
+        <hr style={{ borderColor: 'var(--cor-borda)' }} />
 
-        <hr />
         {units.length > 0 ? units.map(unit => (
-          <div key={unit.id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem', borderRadius: '5px' }}>
+          <div key={unit.id} style={{
+              border: '1px solid var(--cor-borda)',
+              backgroundColor: 'var(--cor-fundo-item)', 
+              padding: '1rem', 
+              marginBottom: '1rem',
+              borderRadius: '8px'
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
               <h4>Unidade ID: {unit.id}</h4>
               <div>
-                  <label>Status: </label>
+                  <label>Estado: </label>
                   <select value={unit.status} onChange={e => handleStatusChange(unit.id, e.target.value)}>
                       <option value="disponivel">Disponível</option>
                       <option value="manutencao">Em Manutenção</option>
@@ -77,7 +79,7 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
             <h5>Agenda de Reservas:</h5>
             <UnitCalendar unitId={unit.id} token={token} />
           </div>
-        )) : <p>Nenhuma unidade cadastrada para este equipamento.</p>}
+        )) : <p>Nenhuma unidade registada para este equipamento.</p>}
       </div>
     </div>
   );
@@ -85,14 +87,32 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
 
 const modalOverlayStyle: React.CSSProperties = {
   position: 'fixed', zIndex: 1000, top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex',
+  backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex',
   justifyContent: 'center', alignItems: 'center'
 };
 
 const modalContentStyle: React.CSSProperties = {
-  backgroundColor: 'white', padding: '2rem', borderRadius: '5px',
-  width: '80%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto',
+  backgroundColor: 'var(--cor-fundo-modal)', 
+  color: 'var(--cor-texto-principal)',
+  padding: '2rem', 
+  borderRadius: '8px',
+  border: '1px solid var(--cor-borda)',
+  width: '80%', 
+  maxWidth: '800px', 
+  maxHeight: '90vh', 
+  overflowY: 'auto',
   position: 'relative'
+};
+
+const closeButtonStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '15px',
+    right: '15px',
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    fontSize: '1.5rem',
+    color: 'var(--cor-texto-principal)'
 };
 
 export default UnitsModal;

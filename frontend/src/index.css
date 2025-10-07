@@ -1,40 +1,49 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --cor-fundo: #FFFFFF;
+  --cor-texto-principal: #213547;
+  --cor-fundo-modal: #FFFFFF;
+  --cor-borda: #DDDDDD;
+  --cor-fundo-item: #f9f9f9;
+  --cor-destaque: #007bff;
+  --cor-dia-reservado-fundo: #FF4136;
+  --cor-dia-reservado-texto: #FFFFFF;
+  --cor-fundo-botao: #f0f0f0;
+  --cor-texto-botao: #213547;
+}
+
+/* Media query para detectar o tema escuro do sistema */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cor-fundo: #242424;
+    --cor-texto-principal: rgba(255, 255, 255, 0.87);
+    --cor-fundo-modal: #2E2E2E;
+    --cor-borda: #555555;
+    --cor-fundo-item: #3A3A3A;
+    --cor-destaque: #58a6ff;
+    --cor-dia-reservado-fundo: #a11a1a;
+    --cor-dia-reservado-texto: #FFFFFF;
+    --cor-fundo-botao: #444444;
+    --cor-texto-botao: rgba(255, 255, 255, 0.87);
+  }
+}
+
+/* Estilos base */
+html, body {
+  margin: 0;
+  padding: 0; 
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+  color-scheme: light dark; /* Permite que o navegador ajuste cores de inputs, etc. */
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  color: var(--cor-texto-principal);
+  background-color: var(--cor-fundo);
+  padding-top: 60px; /* Mantém o espaço para a Navbar */
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
+/* Estilo geral para botões, usando variáveis */
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -42,27 +51,70 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--cor-fundo-botao);
+  color: var(--cor-texto-botao);
   cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  border-color: var(--cor-destaque);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+@media (prefers-color-scheme: dark) {
+  /* Fundo principal do calendário */
+  .react-calendar {
+    background: var(--cor-fundo-modal) !important;
+    border-color: var(--cor-borda) !important;
   }
-  a:hover {
-    color: #747bff;
+
+  /* Botões de navegação (setas, mês) */
+  .react-calendar__navigation button {
+    color: var(--cor-texto-principal) !important;
+    background: none !important;
   }
-  button {
-    background-color: #f9f9f9;
+
+  .react-calendar__navigation button:hover,
+  .react-calendar__navigation button:focus {
+    background-color: var(--cor-borda) !important;
   }
+
+  /* Dias da semana (SEG, TER, QUA...) */
+  .react-calendar__month-view__weekdays__weekday abbr {
+    color: var(--cor-texto-principal) !important;
+    text-decoration: none;
+  }
+
+  /* Todos os dias do calendário */
+  .react-calendar__tile {
+    color: var(--cor-texto-principal) !important;
+    background: none !important;
+  }
+
+  /* Efeito hover nos dias */
+  .react-calendar__tile:enabled:hover,
+  .react-calendar__tile:enabled:focus {
+    background-color: var(--cor-borda) !important;
+  }
+
+  /* Dia atual (hoje) */
+  .react-calendar__tile--now {
+    background: #3a4a60 !important; /* Força o fundo azul escuro */
+    color: white !important;
+  }
+   .react-calendar__tile--now:enabled:hover,
+  .react-calendar__tile--now:enabled:focus {
+    background: #4a5a70 !important;
+  }
+
+  /* Dias de outros meses */
+  .react-calendar__month-view__days__day--neighboringMonth {
+    color: #757575 !important;
+  }
+}
+
+/* Classe para o dia reservado (funciona em ambos os temas) */
+.booked-day {
+  background-color: var(--cor-dia-reservado-fundo) !important;
+  color: var(--cor-dia-reservado-texto) !important;
+  border-radius: 8px;
 }
