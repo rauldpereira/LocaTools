@@ -18,20 +18,33 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
   const { token } = useAuth();
   const [units, setUnits] = useState<Unit[]>([]);
 
-  useEffect(() => {
-    if (isOpen) {
-      const fetchUnits = async () => {
-        try {
-          const config = { headers: { Authorization: `Bearer ${token}` } };
-          const { data } = await axios.get(`http://localhost:3001/api/equipment/${equipmentId}/units`, config);
-          setUnits(data);
-        } catch (error) {
-          console.error(`Erro ao buscar unidades:`, error);
-        }
-      };
-      fetchUnits();
+  const fetchUnits = async () => {
+    if (!isOpen) return;
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const { data } = await axios.get(`http://localhost:3001/api/equipment/${equipmentId}/units`, config);
+      setUnits(data);
+    } catch (error) {
+      console.error(`Erro ao buscar unidades:`, error);
     }
+  };
+
+  useEffect(() => {
+    fetchUnits();
   }, [equipmentId, isOpen, token]);
+
+  const handleDeleteUnit = async (unitId: number) => {
+    if (!window.confirm(`Tem certeza que deseja excluir a unidade ID #${unitId}?`)) return;
+    try {
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        await axios.delete(`http://localhost:3001/api/units/${unitId}`, config);
+        alert('Unidade excluída com sucesso!');
+        fetchUnits(); 
+    } catch (error) {
+        console.error('Erro ao excluir unidade:', error);
+        alert('Falha ao excluir unidade.');
+    }
+  };
 
   const handleStatusChange = async (unitId: number, newStatus: string) => {
     try {
@@ -44,6 +57,7 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
         console.error('Erro ao atualizar status da unidade:', error);
     }
   };
+  
 
   if (!isOpen) return null;
 
@@ -76,6 +90,12 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
                   </select>
               </div>
             </div>
+            <button 
+                    onClick={() => handleDeleteUnit(unit.id)} 
+                    style={{ backgroundColor: '#dc3545', color: 'white', marginLeft: 'auto' }}
+                  >
+                    Excluir
+                  </button>
             <h5>Agenda de Reservas:</h5>
             <UnitCalendar unitId={unit.id} token={token} />
           </div>

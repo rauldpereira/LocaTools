@@ -5,6 +5,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       Unidade.belongsTo(models.Equipamento, {
         foreignKey: 'id_equipamento',
+        onDelete: 'CASCADE',
         as: 'Equipamento'
       });
 

@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { updateUnitStatus } = require('../controllers/unitController');
+const { updateUnitStatus, deleteUnit } = require('../controllers/unitController');
 const { getReservationsByUnit } = require('../controllers/reservationController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
 
 router.put('/:id', protect, admin, updateUnitStatus);
 router.get('/:id/reservations', protect, admin, getReservationsByUnit);
-
+router.delete('/:id', protect, admin, deleteUnit);
 module.exports = router;

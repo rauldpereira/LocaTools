@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { Link } from 'react-router-dom';
 import UnitsModal from './UnitsModal';
 
 interface Equipamento {
@@ -64,6 +65,20 @@ const EquipmentList: React.FC = () => {
     }
   };
 
+  const handleDeleteEquipment = async (equipmentId: number) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o equipamento ID #${equipmentId} e TODAS as suas unidades?`)) return;
+
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      await axios.delete(`http://localhost:3001/api/equipment/${equipmentId}`, config);
+      alert('Equipamento excluído com sucesso!');
+      fetchEquipments();
+    } catch (error) {
+      console.error('Erro ao excluir equipamento:', error);
+      alert('Falha ao excluir.');
+    }
+  };
+
   if (loading) return <p>Carregando equipamentos...</p>;
 
   return (
@@ -92,12 +107,10 @@ const EquipmentList: React.FC = () => {
                   {eq.total_quantidade || 0}
                 </td>
                 <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
-                  <button onClick={() => openUnitsModal(eq.id)}>
-                    Gerenciar Unidades
-                  </button>
-                  <button onClick={() => handleAddUnits(eq.id)} style={{ marginLeft: '8px' }}>
-                    Adicionar Unidades
-                  </button>
+                  <button onClick={() => openUnitsModal(eq.id)}>Gerenciar Unidades</button>
+                  <button onClick={() => handleAddUnits(eq.id)} style={{ marginLeft: '8px' }}>Adicionar Unidades</button>
+                  <Link to={`/admin/equipment/${eq.id}/edit`}><button style={{ marginLeft: '8px' }}>Editar</button></Link>
+                  <button onClick={() => handleDeleteEquipment(eq.id)} style={{ marginLeft: '8px', backgroundColor: '#dc3545', color: 'white' }}>Excluir</button>
                 </td>
               </tr>
             ))}

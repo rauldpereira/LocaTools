@@ -59,9 +59,32 @@ const updateUnitStatus = async (req, res) => {
         res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 };
+const deleteUnit = async (req, res) => {
+    try {
+        const unit = await Unidade.findByPk(req.params.id);
+        if (!unit) {
+            return res.status(404).json({ error: 'Unidade não encontrada.' });
+        }
+
+        const equipment = await Equipamento.findByPk(unit.id_equipamento);
+
+        await unit.destroy();
+
+        if (equipment) {
+
+            await equipment.decrement('total_quantidade', { by: 1 });
+        }
+
+        res.status(200).json({ message: 'Unidade deletada com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao deletar unidade:', error);
+        res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+};
 
 module.exports = { 
     addUnitsToEquipment,
     getUnitsByEquipment,
-    updateUnitStatus
+    updateUnitStatus,
+    deleteUnit
 };
