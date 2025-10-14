@@ -50,7 +50,7 @@ module.exports = (sequelize, DataTypes) => {
         'aguardando_pagamento_final'
       ),
       allowNull: false,
-      defaultValue: 'pendente' 
+      defaultValue: 'pendente'
     },
     data_criacao: {
       type: DataTypes.DATE,
@@ -83,6 +83,20 @@ module.exports = (sequelize, DataTypes) => {
     valor_sinal: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
+    },
+    taxa_avaria: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0.00
+    },
+    taxa_cancelamento: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    valor_reembolsado: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    taxa_remarcacao: {
+      type: DataTypes.DECIMAL(10, 2)
     }
   }, {
     sequelize,

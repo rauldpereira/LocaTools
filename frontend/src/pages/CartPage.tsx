@@ -100,7 +100,7 @@ const CartPage: React.FC = () => {
                             {cartItems.map(item => (
                                 <li key={item.cartItemId} className="cart-item">
                                     <div className="item-details">
-                                        <h3>{item.nome}</h3>
+                                        <h3 style={{color: '#666'}}>{item.nome}</h3>
                                         <p>Quantidade: {item.quantidade}</p>
                                         <p>Preço unitário: R$ {item.preco.toFixed(2)}</p>
                                         <p>

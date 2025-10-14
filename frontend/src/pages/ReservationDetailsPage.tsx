@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios, { type AxiosRequestConfig } from 'axios';
 import { useAuth } from '../context/AuthContext';
+import RescheduleModal from '../components/RescheduleModal';
 
 interface Equipamento { nome: string; url_imagem: string; }
 interface Unidade { id: number; Equipamento: Equipamento; }
@@ -18,9 +19,19 @@ interface OrderDetails {
     tipo_entrega: string;
     endereco_entrega?: string;
     custo_frete: string;
+    taxa_avaria: string;
+    taxa_cancelamento?: string;
+    valor_reembolsado?: string;
+    taxa_remarcacao?: string;
     ItemReservas: ItemReserva[];
     Vistorias: Vistoria[];
 }
+
+const parseDateStringAsLocal = (dateString: string) => {
+    const dateOnly = dateString.split('T')[0];
+    const [year, month, day] = dateOnly.split('-').map(Number);
+    return new Date(year, month - 1, day);
+};
 
 const ReservationDetailsPage: React.FC = () => {
     const { orderId } = useParams<{ orderId: string }>();
@@ -32,6 +43,8 @@ const ReservationDetailsPage: React.FC = () => {
     const [signing, setSigning] = useState(false);
     const [contractLoading, setContractLoading] = useState(false);
     const backendUrl = 'http://localhost:3001';
+    const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+
 
     const fetchOrderDetails = async () => {
         if (!token || !orderId) return;
@@ -48,18 +61,6 @@ const ReservationDetailsPage: React.FC = () => {
     };
 
     useEffect(() => {
-        const fetchOrderDetails = async () => {
-            if (!token || !orderId) return;
-            try {
-                const config = { headers: { Authorization: `Bearer ${token}` } };
-                const { data } = await axios.get(`${backendUrl}/api/reservations/${orderId}`, config);
-                setOrder(data);
-            } catch (error) {
-                console.error("Erro ao buscar detalhes do pedido:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchOrderDetails();
     }, [orderId, token]);
 
@@ -117,6 +118,13 @@ const ReservationDetailsPage: React.FC = () => {
     const vistoriaDeSaida = order.Vistorias.find(v => v.tipo_vistoria === 'entrega');
     const vistoriaDeDevolucao = order.Vistorias.find(v => v.tipo_vistoria === 'devolucao');
     const subtotal = Number(order.valor_total) - Number(order.custo_frete);
+    const taxaAvariaNum = Number(order.taxa_avaria || 0);
+    const taxaRemarcacaoNum = Number(order.taxa_remarcacao || 0);
+    const taxaCancelamentoNum = Number(order.taxa_cancelamento || 0);
+    const valorReembolsadoNum = Number(order.valor_reembolsado || 0);
+    const valorTotal = Number(order.valor_total) + taxaAvariaNum + taxaRemarcacaoNum;
+    const canReschedule = ['aprovada', 'aguardando_assinatura'].includes(order.status);
+
 
     const VistoriaDetailDisplay = ({ title, detail }: { title: string, detail: DetalheVistoria | undefined }) => {
         if (!detail) return null;
@@ -156,6 +164,13 @@ const ReservationDetailsPage: React.FC = () => {
             <h1 style={{ marginTop: '1rem' }}>Detalhes do Pedido #{order.id}</h1>
             <p style={{ fontSize: '1.2rem' }}><strong>Status:</strong> <span style={{ fontWeight: 'bold' }}>{order.status.replace(/_/g, ' ')}</span></p>
 
+
+
+            {user?.tipo_usuario !== 'admin' && canReschedule && (
+                <button onClick={() => setIsRescheduleModalOpen(true)} style={{ backgroundColor: 'orange', color: 'white', marginRight: '1rem' }}>Remarcar</button>
+            )}
+
+
             {user?.tipo_usuario === 'admin' && (
                 <div style={{
                     border: '1px solid #007bff',
@@ -187,6 +202,18 @@ const ReservationDetailsPage: React.FC = () => {
                 </div>
             )}
 
+            {isRescheduleModalOpen && (
+                <RescheduleModal
+                    order={order}
+                    token={token}
+                    onClose={() => setIsRescheduleModalOpen(false)}
+                    onSuccess={() => {
+                        setIsRescheduleModalOpen(false);
+                        fetchOrderDetails();
+                    }}
+                />
+            )}
+
             {user?.tipo_usuario !== 'admin' && order.status === 'aguardando_assinatura' && (
                 <div style={{ border: '2px solid #007bff', padding: '1.5rem', margin: '2rem 0', borderRadius: '8px' }}>
                     <h3 style={{ marginTop: 0 }}>Ação Necessária: Assinatura do Contrato</h3>
@@ -208,14 +235,36 @@ const ReservationDetailsPage: React.FC = () => {
             <hr style={{ margin: '2rem 0' }} />
 
             <h3>Período do Aluguel</h3>
-            <p><strong>Data de Saída (Entrega/Retirada):</strong> {new Date(order.data_inicio).toLocaleDateString()}</p>
-            <p><strong>Data de Devolução:</strong> {new Date(order.data_fim).toLocaleDateString()}</p>
+            <p><strong>Data de Saída (Entrega/Retirada):</strong> {parseDateStringAsLocal(order.data_inicio).toLocaleDateString()}</p>
+            <p><strong>Data de Devolução:</strong> {parseDateStringAsLocal(order.data_fim).toLocaleDateString()}</p>
+
+            {order.status === 'cancelada' && (
+                <div style={{ border: '1px solid #dc3545', padding: '1.5rem', marginBottom: '1.5rem', borderRadius: '8px', backgroundColor: '#ffffffff' }}>
+                    <h3 style={{ marginTop: 0, color: '#721c24' }}>Detalhes do Cancelamento</h3>
+                    {taxaCancelamentoNum > 0 && (
+                        <p style={{ color: "#666" }}><strong>Taxa de Cancelamento Aplicada:</strong> R$ {taxaCancelamentoNum.toFixed(2)}</p>
+                    )}
+                    <p style={{ color: "#666" }}><strong>Valor Reembolsado:</strong> R$ {valorReembolsadoNum.toFixed(2)}</p>
+                </div>
+            )}
 
             <h3>Detalhes Financeiros</h3>
             <p>Subtotal dos Itens: R$ {subtotal.toFixed(2)}</p>
             <p>Custo do Frete: R$ {Number(order.custo_frete).toFixed(2)}</p>
-            <p><strong>Valor Total:</strong> R$ {Number(order.valor_total).toFixed(2)}</p>
-            <p><strong>Sinal Pago (50%):</strong> R$ {Number(order.valor_sinal).toFixed(2)}</p>
+
+            {taxaAvariaNum > 0 && (
+                <p style={{ color: 'red' }}><strong>Taxa por Avarias:</strong> R$ {taxaAvariaNum.toFixed(2)}</p>
+            )}
+
+            {taxaRemarcacaoNum > 0 && (
+                <p style={{ color: 'orange' }}><strong>Taxa de Remarcação:</strong> + R$ {taxaRemarcacaoNum.toFixed(2)}</p>
+            )}
+
+            <p style={{ borderTop: '1px solid #ccc', paddingTop: '10px', marginTop: '10px' }}>
+                <strong>Valor Total:</strong> R$ {valorTotal.toFixed(2)}
+            </p>
+            <p>Sinal Pago (50%): R$ {Number(order.valor_sinal).toFixed(2)}</p>
+            <p><strong>Valor Restante Pago:</strong> R$ {(Number(order.valor_total) - Number(order.valor_sinal) + taxaAvariaNum).toFixed(2)}</p>
 
             <hr style={{ margin: '1rem 0' }} />
 
@@ -229,22 +278,21 @@ const ReservationDetailsPage: React.FC = () => {
             {order.ItemReservas.map(item => {
                 const detalheSaida = vistoriaDeSaida?.detalhes.find(d => d.id_item_equipamento === item.Unidade.id);
                 const detalheDevolucao = vistoriaDeDevolucao?.detalhes.find(d => d.id_item_equipamento === item.Unidade.id);
-
                 return (
                     <div key={item.id} style={{ border: '1px solid #ddd', padding: '1.5rem', marginBottom: '1.5rem', borderRadius: '8px' }}>
                         <h3>{item.Unidade.Equipamento.nome} (Unidade #{item.Unidade.id})</h3>
-                        
-                        <div style={{ borderBottom: vistoriaDeDevolucao ? '1px dashed #ccc' : 'none', paddingBottom: '1rem', marginBottom: '1rem' }}>
-                            {vistoriaDeSaida ? (
-                                <VistoriaDetailDisplay title="Relatório da Vistoria de Saída" detail={detalheSaida} />
-                            ) : (
-                                <p style={{ color: 'orange' }}>Aguardando vistoria de saída.</p>
-                            )}
-                        </div>
-                        {vistoriaDeDevolucao ? (
-                            <VistoriaDetailDisplay title="Relatório da Vistoria de Devolução" detail={detalheDevolucao} />
+
+                        {vistoriaDeSaida ? (
+                            <VistoriaDetailDisplay title="Relatório da Vistoria de Saída" detail={detalheSaida} />
                         ) : (
-                            order.status === 'em_andamento' && <p style={{ color: 'blue' }}>Aguardando devolução e vistoria de retorno.</p>
+                            order.status === 'cancelada'
+                                ? <p style={{ color: 'red' }}>O pedido foi cancelado.</p>
+                                : <p style={{ color: 'orange' }}>Aguardando vistoria de saída pela nossa equipe.</p>
+                        )}
+                        {vistoriaDeDevolucao && (
+                            <div style={{ marginTop: '1rem', borderTop: '1px dashed #ccc', paddingTop: '1rem' }}>
+                                <VistoriaDetailDisplay title="Relatório da Vistoria de Devolução" detail={detalheDevolucao} />
+                            </div>
                         )}
                     </div>
                 );

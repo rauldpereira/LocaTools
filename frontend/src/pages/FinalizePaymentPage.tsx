@@ -27,12 +27,14 @@ const FinalizePaymentPage: React.FC = () => {
 
     const handleManualConfirmation = async () => {
         if (!window.confirm("Você confirma que o pagamento restante (incluindo taxas) foi recebido manualmente? Esta ação finalizará a ordem de serviço.")) return;
-        
+
         setLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
+            const body = { damageFee };
 
-            await axios.put(`http://localhost:3001/api/reservations/${orderId}/confirm-manual-payment`, {}, config);
+            await axios.put(`http://localhost:3001/api/reservations/${orderId}/confirm-manual-payment`, body, config);
+
             alert("Ordem finalizada com sucesso!");
             navigate('/admin');
         } catch (error) {
@@ -46,7 +48,8 @@ const FinalizePaymentPage: React.FC = () => {
     if (!order) return <p>Carregando...</p>;
 
     const valorRestante = Number(order.valor_total) - Number(order.valor_sinal);
-    const valorFinal = valorRestante + damageFee;
+    const taxaRemarcacao = Number(order.taxa_remarcacao) || 0; 
+    const valorFinal = valorRestante + damageFee + taxaRemarcacao;
 
     return (
         <div style={{ padding: '2rem', marginTop: '60px' }}>
@@ -57,16 +60,19 @@ const FinalizePaymentPage: React.FC = () => {
                 <p>Valor Total do Aluguel: R$ {Number(order.valor_total).toFixed(2)}</p>
                 <p>Sinal Pago: - R$ {Number(order.valor_sinal).toFixed(2)}</p>
                 <p style={{ fontWeight: 'bold' }}>Valor Restante: R$ {valorRestante.toFixed(2)}</p>
+                {taxaRemarcacao > 0 && (
+                    <p style={{ color: 'orange' }}>Taxa de Remarcação: + R$ {taxaRemarcacao.toFixed(2)}</p>
+                )}
             </div>
 
             <div className="damage-assessment" style={{ marginTop: '2rem' }}>
                 <h3>Análise de Avarias (Vistoria de Devolução)</h3>
                 <label>
                     Adicionar Taxa Adicional por Avarias: R$
-                    <input 
-                        type="number" 
-                        value={damageFee} 
-                        onChange={(e) => setDamageFee(Number(e.target.value))} 
+                    <input
+                        type="number"
+                        value={damageFee}
+                        onChange={(e) => setDamageFee(Number(e.target.value))}
                         min="0"
                     />
                 </label>
@@ -76,8 +82,8 @@ const FinalizePaymentPage: React.FC = () => {
 
             <div className="final-payment">
                 <h2 style={{ color: 'red' }}>Total a Receber do Cliente: R$ {valorFinal.toFixed(2)}</h2>
-                <button 
-                    onClick={handleManualConfirmation} 
+                <button
+                    onClick={handleManualConfirmation}
                     disabled={loading}
                     style={{ padding: '1rem', fontSize: '1.2rem', backgroundColor: 'green', color: 'white', cursor: 'pointer' }}
                 >

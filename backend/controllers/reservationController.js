@@ -1,6 +1,10 @@
 const { Op } = require('sequelize');
 const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize } = require('../models');
 const PDFDocument = require('pdfkit');
+const Stripe = require('stripe');
+
+
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const verificarDisponibilidade = async (item, options) => {
     const { id_equipamento, data_inicio, data_fim } = item;
@@ -377,6 +381,9 @@ const signContract = async (req, res) => {
 };
 
 const confirmManualPayment = async (req, res) => {
+
+    const { damageFee } = req.body;
+
     try {
         const order = await OrdemDeServico.findByPk(req.params.id);
         if (!order) {
@@ -388,9 +395,16 @@ const confirmManualPayment = async (req, res) => {
 
         await order.update({ status: 'finalizada' });
 
+        const taxaPorAvaria = Number(damageFee) || 0;
+
+
+        await order.update({ status: 'finalizada', taxa_avaria: taxaPorAvaria });
+
+        const valorRestante = Number(order.valor_total) - Number(order.valor_sinal);
+
         await Pagamento.create({
             id_ordem_servico: order.id,
-            valor: Number(order.valor_total) - Number(order.valor_sinal),
+            valor: valorRestante + taxaPorAvaria,
             status_pagamento: 'aprovado',
             id_transacao_externa: `manual_${req.user.id}_${Date.now()}`
         });
@@ -402,6 +416,162 @@ const confirmManualPayment = async (req, res) => {
     }
 };
 
+const cancelOrder = async (req, res) => {
+    try {
+        const order = await OrdemDeServico.findByPk(req.params.id);
+
+        if (!order) { return res.status(404).json({ error: 'Ordem de serviço não encontrada.' }); }
+        if (order.id_usuario !== req.user.id) { return res.status(403).json({ error: 'Acesso negado.' }); }
+        
+        if (!['aprovada', 'aguardando_assinatura'].includes(order.status)) {
+            return res.status(400).json({ error: `Não é possível cancelar uma reserva com status '${order.status}'.` });
+        }
+
+        const dataInicio = new Date(order.data_inicio);
+        const hoje = new Date();
+        const diffTime = dataInicio.getTime() - hoje.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        let taxa_cancelamento = 0;
+        let valor_reembolsado = 0;
+
+        if (diffDays <= 2) {
+            taxa_cancelamento = Number(order.valor_total) * 0.05; 
+            valor_reembolsado = Number(order.valor_sinal) - taxa_cancelamento;
+        } else {
+            taxa_cancelamento = 0;
+            valor_reembolsado = Number(order.valor_sinal);
+        }
+        
+        if (valor_reembolsado < 0) valor_reembolsado = 0;
+
+        const pagamentoOriginal = await Pagamento.findOne({ where: { id_ordem_servico: order.id } });
+        if (!pagamentoOriginal || !pagamentoOriginal.id_transacao_externa) {
+            return res.status(500).json({ error: 'Não foi possível encontrar o registro do pagamento original.' });
+        }
+        
+        if (valor_reembolsado > 0) {
+            await stripe.refunds.create({
+                charge: pagamentoOriginal.id_transacao_externa,
+                amount: Math.round(valor_reembolsado * 100), 
+            });
+        }
+        
+        await order.update({
+            status: 'cancelada',
+            taxa_cancelamento,
+            valor_reembolsado
+        });
+
+        res.status(200).json({ message: `Reserva cancelada. Reembolso de R$ ${valor_reembolsado.toFixed(2)} processado.` });
+
+    } catch (error) {
+        console.error('Erro ao cancelar a ordem de serviço:', error);
+        res.status(500).json({ error: 'Erro interno do servidor ao cancelar.' });
+    }
+};
+
+const checkRescheduleAvailability = async (req, res) => {
+    const { startDate, endDate } = req.body;
+    try {
+        const order = await OrdemDeServico.findByPk(req.params.id, {
+            include: [{
+                model: ItemReserva,
+                as: 'ItemReservas'
+            }]
+        });
+
+        if (!order) return res.status(404).json({ error: 'Ordem não encontrada.' });
+
+        let allItemsAvailable = true;
+        
+        for (const item of order.ItemReservas) {
+
+            const unidade = await Unidade.findByPk(item.id_unidade, {
+                include: [{
+                    model: Equipamento,
+                    as: 'Equipamento' 
+                }]
+            });
+            if (!unidade) continue;
+
+            const itemRequest = {
+                id_equipamento: unidade.Equipamento.id,
+                quantidade: 1,
+                data_inicio: startDate,
+                data_fim: endDate,
+            };
+
+            const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, {});
+            
+            const isThisUnitStillAvailable = unidadesDisponiveis.some(u => u.id === item.id_unidade && u.status === 'disponivel');
+            
+            if (!isThisUnitStillAvailable) {
+                allItemsAvailable = false;
+                break;
+            }
+        }
+
+        res.status(200).json({ available: allItemsAvailable });
+    } catch (error) {
+        console.error("Erro ao checar remarcação:", error);
+        res.status(500).json({ error: "Erro interno do servidor." });
+    }
+};
+
+
+const rescheduleOrder = async (req, res) => {
+    const { newStartDate, newEndDate } = req.body;
+    const orderId = req.params.id;
+
+    try {
+        await sequelize.transaction(async (t) => {
+            const order = await OrdemDeServico.findByPk(orderId, { include: [{ model: ItemReserva, as: 'ItemReservas' }], transaction: t });
+
+            if (!order || order.id_usuario !== req.user.id) {
+                throw new Error('Ordem não encontrada ou acesso negado.');
+            }
+            if (!['aprovada', 'aguardando_assinatura', 'em_andamento'].includes(order.status)) {
+                throw new Error('Este pedido não pode mais ser remarcado.');
+            }
+
+            const dataInicioOriginal = new Date(order.data_inicio);
+            const hoje = new Date();
+            const diffTime = dataInicioOriginal.getTime() - hoje.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const taxa_remarcacao = (diffDays <= 2) ? (Number(order.valor_total) * 0.05) : order.taxa_remarcacao; // Mantém a taxa se já existir
+
+            for (const item of order.ItemReservas) {
+                const unidade = await Unidade.findByPk(item.id_unidade, { include: [{ model: Equipamento, as: 'Equipamento' }], transaction: t });
+                const itemRequest = { id_equipamento: unidade.Equipamento.id, quantidade: 1, data_inicio: newStartDate, data_fim: newEndDate };
+                const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, { transaction: t });
+                if (!unidadesDisponiveis.some(u => u.id === item.id_unidade)) {
+                    throw new Error(`Conflito: A unidade #${item.id_unidade} não está disponível nas novas datas.`);
+                }
+            }
+            
+            await order.update({
+                data_inicio: newStartDate,
+                data_fim: newEndDate,
+                taxa_remarcacao: taxa_remarcacao 
+            }, { transaction: t });
+
+            await ItemReserva.update(
+                { data_inicio: newStartDate, data_fim: newEndDate },
+                { where: { id_ordem_servico: order.id }, transaction: t }
+            );
+        });
+
+        res.status(200).json({ message: 'Reserva remarcada com sucesso!' });
+
+    } catch (error) {
+        console.error("Erro ao remarcar:", error);
+        res.status(400).json({ error: error.message });
+    }
+};
+
+
 module.exports = {
     createOrder,
     getMyOrders,
@@ -412,5 +582,8 @@ module.exports = {
     getReservationsByUnit,
     getOrderById,
     signContract,
-    confirmManualPayment
+    confirmManualPayment,
+    cancelOrder,
+    checkRescheduleAvailability,
+    rescheduleOrder
 };
