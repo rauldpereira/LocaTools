@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { parseDateStringAsLocal } from '../../utils/dateUtils';
 
 interface Order {
     id: number;
@@ -64,15 +65,22 @@ const AdminReservationsList: React.FC = () => {
                     <tbody>
                         {orderList.map(order => (
                             <tr key={order.id}>
-                                {headers.map(header => (
-                                    <td key={header.key} style={{ border: '1px solid #ddd', padding: '8px' }}>
+                                {headers.map(header => {
+                                    let cellContent: React.ReactNode;
+                                    const value = order[header.key];
 
-                                        {header.key.includes('data')
-                                            ? new Date(order[header.key]).toLocaleDateString()
-                                            : order[header.key]
-                                        }
-                                    </td>
-                                ))}
+                                    if (typeof value === 'string' && header.key.includes('data')) {
+                                        cellContent = parseDateStringAsLocal(value).toLocaleDateString();
+                                    } else {
+                                        cellContent = value;
+                                    }
+
+                                    return (
+                                        <td key={header.key} style={{ border: '1px solid #ddd', padding: '8px' }}>
+                                            {cellContent}
+                                        </td>
+                                    );
+                                })}
                                 <td style={{ border: '1px solid #ddd', padding: '8px' }}>{action(order)}</td>
                             </tr>
                         ))}

@@ -100,12 +100,15 @@ const CartPage: React.FC = () => {
                             {cartItems.map(item => (
                                 <li key={item.cartItemId} className="cart-item">
                                     <div className="item-details">
-                                        <h3 style={{color: '#666'}}>{item.nome}</h3>
+                                        <h3 style={{ color: '#666' }}>{item.nome}</h3>
                                         <p>Quantidade: {item.quantidade}</p>
                                         <p>Preço unitário: R$ {item.preco.toFixed(2)}</p>
                                         <p>
                                             De: {parseDateStringAsLocal(item.data_inicio).toLocaleDateString()}
-                                            até {parseDateStringAsLocal(item.data_fim).toLocaleDateString()}
+                                        </p>
+
+                                        <p>
+                                            Até {parseDateStringAsLocal(item.data_fim).toLocaleDateString()}
                                         </p>
                                     </div>
                                     <button className="remove-button" onClick={() => removeFromCart(item.cartItemId)}>Remover</button>

@@ -1,4 +1,4 @@
-const { Unidade, Equipamento, ItemReserva, OrdemDeServico } = require('../models');
+const { Unidade, Equipamento, ItemReserva, OrdemDeServico, TipoAvaria } = require('../models');
 
 const addUnitsToEquipment = async (req, res) => {
     const equipmentId = req.params.id;
@@ -59,6 +59,7 @@ const updateUnitStatus = async (req, res) => {
         res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 };
+
 const deleteUnit = async (req, res) => {
     try {
         const unit = await Unidade.findByPk(req.params.id);
@@ -82,9 +83,31 @@ const deleteUnit = async (req, res) => {
     }
 };
 
+const updateUnitDetails = async (req, res) => {
+    const { status, avarias_atuais } = req.body;
+    
+    try {
+        const unit = await Unidade.findByPk(req.params.id);
+        if (!unit) {
+            return res.status(404).json({ error: 'Unidade não encontrada.' });
+        }
+
+        await unit.update({
+            status: status,
+            avarias_atuais: avarias_atuais
+        });
+
+        res.status(200).json(unit);
+    } catch (error) {
+        console.error('Erro ao atualizar detalhes da unidade:', error);
+        res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+};
+
 module.exports = { 
     addUnitsToEquipment,
     getUnitsByEquipment,
     updateUnitStatus,
-    deleteUnit
+    deleteUnit,
+    updateUnitDetails
 };

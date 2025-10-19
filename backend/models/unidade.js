@@ -26,6 +26,10 @@ module.exports = (sequelize, DataTypes) => {
     status: {
       type: DataTypes.ENUM('disponivel', 'alugado', 'manutencao'),
       defaultValue: 'disponivel'
+    },
+    avarias_atuais: {
+      type: DataTypes.JSON,
+      allowNull: true
     }
   }, {
     sequelize,

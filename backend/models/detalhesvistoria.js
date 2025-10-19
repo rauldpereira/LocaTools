@@ -8,6 +8,11 @@ module.exports = (sequelize, DataTypes) => {
       });
       DetalhesVistoria.belongsTo(models.Unidade, {
         foreignKey: 'id_unidade',
+        field: 'id_item_equipamento'
+      });
+      DetalhesVistoria.hasMany(models.AvariasEncontradas, {
+        foreignKey: 'id_detalhe_vistoria',
+        as: 'avariasEncontradas'
       });
     }
   }

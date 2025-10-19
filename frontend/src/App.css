@@ -49,3 +49,18 @@ body {
 .read-the-docs {
   color: #888;
 }
+
+.day-green { 
+  background-color: var(--cor-verde-fundo) !important; 
+  border-radius: 6px;
+}
+.day-yellow { 
+  background-color: var(--cor-amarelo-fundo) !important; 
+  border-radius: 6px;
+}
+.day-red { 
+  background-color: var(--cor-vermelho-fundo) !important; 
+  border-radius: 6px;
+  text-decoration: line-through; 
+  pointer-events: none; /* Impede que o usuário clique em dias indisponíveis */
+}

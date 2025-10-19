@@ -8,6 +8,8 @@ const categoriesRoutes = require('./routes/categoriesRoutes');
 const unitRoutes = require('./routes/unitRoutes');
 const cors = require('cors');
 const vistoriaRoutes = require('./routes/vistoriaRoutes');
+const horariosRoutes = require('./routes/horariosRoutes');
+const tipoAvariaRoutes = require('./routes/tipoAvariaRoutes');
 
 
 dotenv.config({ path: '.env', quiet: true });
@@ -28,7 +30,8 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/units', unitRoutes);
 app.use('/api/vistorias', vistoriaRoutes);
-
+app.use('/api/horarios', horariosRoutes);
+app.use('/api/tipos-avaria', tipoAvariaRoutes);
 
 app.get('/', (req, res) => {
   res.send('API do LocaTools está rodando!');

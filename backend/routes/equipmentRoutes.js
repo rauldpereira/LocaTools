@@ -7,7 +7,8 @@ const {
     getEquipmentById,
     updateEquipment,
     deleteEquipment,
-    checkAvailability 
+    checkAvailability,
+    getDailyAvailability  
 } = require('../controllers/equipmentController');
 
 const { addUnitsToEquipment, getUnitsByEquipment } = require('../controllers/unitController');
@@ -19,6 +20,7 @@ router.get('/', getEquipments);
 router.get('/:id', getEquipmentById);
 router.get('/:id/units', protect, admin, getUnitsByEquipment);
 router.get('/:id/availability', checkAvailability);
+router.get('/:id/daily-availability', getDailyAvailability);
 
 router.post('/', protect, admin, createEquipment);
 router.put('/:id', protect, admin, updateEquipment);

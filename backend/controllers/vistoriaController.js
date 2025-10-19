@@ -1,4 +1,4 @@
-const { Vistoria, DetalhesVistoria, OrdemDeServico, sequelize } = require('../models');
+const { Vistoria, DetalhesVistoria, OrdemDeServico, AvariasEncontradas, Unidade, sequelize } = require('../models');
 
 const createVistoria = async (req, res) => {
     const { id_ordem_servico, tipo_vistoria, detalhes } = req.body;
@@ -16,8 +16,7 @@ const createVistoria = async (req, res) => {
 
             const detalhesParsed = JSON.parse(detalhes);
 
-            const detalhesParaCriar = detalhesParsed.map(detalhe => {
-
+            for (const detalhe of detalhesParsed) {
                 const fotosDaUnidade = files
                     .filter(file => {
                         const regex = new RegExp(`\\[${detalhe.id_unidade}\\]`);
@@ -25,25 +24,40 @@ const createVistoria = async (req, res) => {
                     })
                     .map(file => `/uploads/vistorias/${file.filename}`);
 
-                return {
+                const novoDetalhe = await DetalhesVistoria.create({
                     id_vistoria: novaVistoria.id,
                     id_item_equipamento: detalhe.id_unidade,
                     condicao: detalhe.condicao,
                     foto: fotosDaUnidade,
                     comentarios: detalhe.comentarios
-                };
-            });
+                }, { transaction: t });
 
-            await DetalhesVistoria.bulkCreate(detalhesParaCriar, { transaction: t });
+                const avariasEncontradasIDs = detalhe.avariasEncontradas || [];
+                if (avariasEncontradasIDs.length > 0) {
+                    const avariasParaCriar = avariasEncontradasIDs.map((idAvaria) => ({
+                        id_detalhe_vistoria: novoDetalhe.id,
+                        id_tipo_avaria: idAvaria,
+                    }));
+                    await AvariasEncontradas.bulkCreate(avariasParaCriar, { transaction: t });
+                }
 
+                const unidade = await Unidade.findByPk(detalhe.id_unidade, { transaction: t });
+                if (unidade) {
+                    if (tipo_vistoria === 'devolucao') {
 
-            if (tipo_vistoria === 'entrega') {
-                const ordemDeServico = await OrdemDeServico.findByPk(id_ordem_servico, { transaction: t });
-                if (ordemDeServico) {
-                    await ordemDeServico.update({ status: 'aguardando_assinatura' }, { transaction: t });
+                        await unidade.update({
+                            avarias_atuais: avariasEncontradasIDs
+                        }, { transaction: t });
+                    } else if (tipo_vistoria === 'entrega') {
+
+                        await unidade.update({
+                            avarias_atuais: [],
+                            status: 'alugado'
+                        }, { transaction: t });
+                    }
                 }
             }
-
+  
             const ordemDeServico = await OrdemDeServico.findByPk(id_ordem_servico, { transaction: t });
             if (ordemDeServico) {
                 if (tipo_vistoria === 'entrega') {

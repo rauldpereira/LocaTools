@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios, { type AxiosRequestConfig } from 'axios';
 import { useAuth } from '../context/AuthContext';
 import RescheduleModal from '../components/RescheduleModal';
+import HorarioFuncionamento from '../components/HorarioFuncionamento';
 
 interface Equipamento { nome: string; url_imagem: string; }
 interface Unidade { id: number; Equipamento: Equipamento; }
@@ -122,7 +123,7 @@ const ReservationDetailsPage: React.FC = () => {
     const taxaRemarcacaoNum = Number(order.taxa_remarcacao || 0);
     const taxaCancelamentoNum = Number(order.taxa_cancelamento || 0);
     const valorReembolsadoNum = Number(order.valor_reembolsado || 0);
-    const valorTotal = Number(order.valor_total) + taxaAvariaNum + taxaRemarcacaoNum;
+    const valorTotalAjustado = Number(order.valor_total) + taxaAvariaNum + taxaRemarcacaoNum;
     const canReschedule = ['aprovada', 'aguardando_assinatura'].includes(order.status);
 
 
@@ -163,6 +164,8 @@ const ReservationDetailsPage: React.FC = () => {
 
             <h1 style={{ marginTop: '1rem' }}>Detalhes do Pedido #{order.id}</h1>
             <p style={{ fontSize: '1.2rem' }}><strong>Status:</strong> <span style={{ fontWeight: 'bold' }}>{order.status.replace(/_/g, ' ')}</span></p>
+
+            <HorarioFuncionamento />
 
 
 
@@ -234,9 +237,6 @@ const ReservationDetailsPage: React.FC = () => {
 
             <hr style={{ margin: '2rem 0' }} />
 
-            <h3>Período do Aluguel</h3>
-            <p><strong>Data de Saída (Entrega/Retirada):</strong> {parseDateStringAsLocal(order.data_inicio).toLocaleDateString()}</p>
-            <p><strong>Data de Devolução:</strong> {parseDateStringAsLocal(order.data_fim).toLocaleDateString()}</p>
 
             {order.status === 'cancelada' && (
                 <div style={{ border: '1px solid #dc3545', padding: '1.5rem', marginBottom: '1.5rem', borderRadius: '8px', backgroundColor: '#ffffffff' }}>
@@ -248,29 +248,25 @@ const ReservationDetailsPage: React.FC = () => {
                 </div>
             )}
 
-            <h3>Detalhes Financeiros</h3>
-            <p>Subtotal dos Itens: R$ {subtotal.toFixed(2)}</p>
-            <p>Custo do Frete: R$ {Number(order.custo_frete).toFixed(2)}</p>
+            <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                <h3>Resumo do Aluguel</h3>
+                <p><strong>Período de Saída:</strong> {parseDateStringAsLocal(order.data_inicio).toLocaleDateString()}</p>
+                <p><strong>Período de Devolução:</strong> {parseDateStringAsLocal(order.data_fim).toLocaleDateString()}</p>
+                <hr style={{ margin: '1rem 0' }} />
+                <p>Subtotal dos Itens: R$ {subtotal.toFixed(2)}</p>
+                <p>Custo do Frete: R$ {Number(order.custo_frete).toFixed(2)}</p>
+                {taxaRemarcacaoNum > 0 && <p style={{ color: 'orange' }}><strong>Taxa de Remarcação:</strong> + R$ {taxaRemarcacaoNum.toFixed(2)}</p>}
+                {taxaAvariaNum > 0 && <p style={{ color: 'red' }}><strong>Taxa por Avarias:</strong> + R$ {taxaAvariaNum.toFixed(2)}</p>}
+                <p style={{ borderTop: '1px solid #ccc', paddingTop: '10px', marginTop: '10px' }}><strong>Valor Total Ajustado:</strong> R$ {valorTotalAjustado.toFixed(2)}</p>
+                <p>Sinal Pago: R$ {Number(order.valor_sinal).toFixed(2)}</p>
+                {order.status === 'finalizada' && <p><strong>Valor Restante Pago:</strong> R$ {(valorTotalAjustado - Number(order.valor_sinal)).toFixed(2)}</p>}
+            </div>
 
-            {taxaAvariaNum > 0 && (
-                <p style={{ color: 'red' }}><strong>Taxa por Avarias:</strong> R$ {taxaAvariaNum.toFixed(2)}</p>
-            )}
-
-            {taxaRemarcacaoNum > 0 && (
-                <p style={{ color: 'orange' }}><strong>Taxa de Remarcação:</strong> + R$ {taxaRemarcacaoNum.toFixed(2)}</p>
-            )}
-
-            <p style={{ borderTop: '1px solid #ccc', paddingTop: '10px', marginTop: '10px' }}>
-                <strong>Valor Total:</strong> R$ {valorTotal.toFixed(2)}
-            </p>
-            <p>Sinal Pago (50%): R$ {Number(order.valor_sinal).toFixed(2)}</p>
-            <p><strong>Valor Restante Pago:</strong> R$ {(Number(order.valor_total) - Number(order.valor_sinal) + taxaAvariaNum).toFixed(2)}</p>
-
-            <hr style={{ margin: '1rem 0' }} />
-
-            <h3>Entrega</h3>
-            <p><strong>Tipo:</strong> {order.tipo_entrega === 'entrega' ? 'Entrega em domicílio' : 'Retirada na loja'}</p>
-            {order.tipo_entrega === 'entrega' && <p><strong>Endereço:</strong> {order.endereco_entrega}</p>}
+            <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                <h3>Entrega</h3>
+                <p><strong>Tipo:</strong> {order.tipo_entrega === 'entrega' ? 'Entrega em domicílio' : 'Retirada na loja'}</p>
+                {order.tipo_entrega === 'entrega' && <p><strong>Endereço:</strong> {order.endereco_entrega}</p>}
+            </div>
 
             <hr style={{ margin: '2rem 0' }} />
 

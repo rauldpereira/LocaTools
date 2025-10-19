@@ -13,10 +13,15 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'id_equipamento',
         as: 'ItensEquipamento'
       });
-      
+
       Equipamento.hasMany(models.Unidade, {
         foreignKey: 'id_equipamento',
         as: 'Unidades'
+      });
+
+      Equipamento.hasMany(models.TipoAvaria, {
+        foreignKey: 'id_equipamento',
+        as: 'TipoAvarias'
       });
     }
   }
@@ -38,9 +43,9 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     total_quantidade: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 1,
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
     },
     status: {
       type: DataTypes.ENUM('disponivel', 'alugado', 'manutencao'),

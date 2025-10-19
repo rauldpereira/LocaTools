@@ -28,19 +28,22 @@
 }
 
 /* Estilos base */
-html, body {
+html,
+body {
   margin: 0;
-  padding: 0; 
+  padding: 0;
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark; /* Permite que o navegador ajuste cores de inputs, etc. */
+  color-scheme: light dark;
+  /* Permite que o navegador ajuste cores de inputs, etc. */
 }
 
 body {
   color: var(--cor-texto-principal);
   background-color: var(--cor-fundo);
-  padding-top: 60px; /* Mantém o espaço para a Navbar */
+  padding-top: 60px;
+  /* Mantém o espaço para a Navbar */
 }
 
 /* Estilo geral para botões, usando variáveis */
@@ -56,11 +59,13 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: var(--cor-destaque);
 }
 
 @media (prefers-color-scheme: dark) {
+
   /* Fundo principal do calendário */
   .react-calendar {
     background: var(--cor-fundo-modal) !important;
@@ -98,10 +103,12 @@ button:hover {
 
   /* Dia atual (hoje) */
   .react-calendar__tile--now {
-    background: #3a4a60 !important; /* Força o fundo azul escuro */
+    background: #3a4a60 !important;
+    /* Força o fundo azul escuro */
     color: white !important;
   }
-   .react-calendar__tile--now:enabled:hover,
+
+  .react-calendar__tile--now:enabled:hover,
   .react-calendar__tile--now:enabled:focus {
     background: #4a5a70 !important;
   }
@@ -117,4 +124,36 @@ button:hover {
   background-color: var(--cor-dia-reservado-fundo) !important;
   color: var(--cor-dia-reservado-texto) !important;
   border-radius: 8px;
+}
+
+.day-green {
+  background-color: #02ff3d !important;
+  border-radius: 6px;
+}
+
+.day-yellow {
+  background-color: #ffc400 !important;
+  border-radius: 6px;
+}
+
+.day-red {
+  background-color: #ff0015 !important;
+  text-decoration: line-through;
+  pointer-events: none;
+  border-radius: 6px;
+}
+.react-calendar__tile--rangeStart,
+.react-calendar__tile--rangeEnd {
+  background-color: var(--cor-destaque) !important;
+  color: white !important;
+  border-radius: 6px !important;
+}
+
+/* --- ADICIONE ESTA NOVA REGRA --- */
+/* Estiliza os dias que ficam NO MEIO do intervalo selecionado */
+.react-calendar__tile--rangeMid {
+  background-color: var(--cor-destaque) !important;
+  color: white !important;
+  /* Remove o arredondamento para criar um efeito de bloco contínuo */
+  border-radius: 0 !important; 
 }

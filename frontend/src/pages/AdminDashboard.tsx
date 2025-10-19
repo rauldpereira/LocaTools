@@ -4,6 +4,7 @@ import EquipmentForm from '../components/Admin/EquipmentForm';
 import AddCategoryForm from '../components/Admin/AddCategoryForm';
 import EquipmentList from '../components/Admin/EquipmentList';
 import AdminReservationsList from '../components/Admin/AdminReservationsList';
+import HorariosForm  from '../components/Admin/HorariosForm';
 
 const AdminDashboard: React.FC = () => {
   const { isLoggedIn, user } = useAuth();
@@ -17,6 +18,7 @@ const AdminDashboard: React.FC = () => {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
               <EquipmentForm />
               <AddCategoryForm />
+              <HorariosForm />
             </div>
             
             <hr style={{ margin: '2rem 0' }} />

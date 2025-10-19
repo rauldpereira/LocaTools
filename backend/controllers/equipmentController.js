@@ -1,7 +1,8 @@
-const { Equipamento, Categoria, Unidade, ItemReserva, OrdemDeServico }= require('../models');
+const { Equipamento, Categoria, Unidade, ItemReserva, OrdemDeServico, sequelize, TipoAvaria }= require('../models');
 const { Op } = require('sequelize');
+
 const createEquipment = async (req, res) => {
-    const { nome, descricao, preco_diaria, id_categoria, status, url_imagem, quantidade_inicial } = req.body;
+    const { nome, descricao, preco_diaria, id_categoria, status, url_imagem, quantidade_inicial, avarias } = req.body;
 
     try {
         if (req.user.tipo_usuario !== 'admin') {
@@ -24,6 +25,22 @@ const createEquipment = async (req, res) => {
                 url_imagem,
                 total_quantidade: qtdInicialNum 
             }, { transaction: t });
+
+            await TipoAvaria.create({
+                descricao: 'Outros',
+                preco: 0,
+                id_equipamento: equipamentoCriado.id,
+                is_default: true
+            }, { transaction: t });
+
+            if (avarias && avarias.length > 0) {
+                const avariasParaCriar = avarias.map(avaria => ({
+                    ...avaria,
+                    id_equipamento: equipamentoCriado.id,
+                    is_default: false
+                }));
+                await TipoAvaria.bulkCreate(avariasParaCriar, { transaction: t });
+            }
 
             if (qtdInicialNum > 0) {
                 const unidadesParaCriar = [];
@@ -66,25 +83,25 @@ const getEquipments = async (req, res) => {
 };
 
 const getEquipmentById = async (req, res) => {
-    const { id } = req.params;
-
     try {
-        const equipamento = await Equipamento.findByPk(id, {
-            include: [{
-                model: Categoria,
-                as: 'Categoria',
-                attributes: ['id', 'nome']
-            }]
+        const equipment = await Equipamento.findByPk(req.params.id, {
+            include: [
+                { model: Categoria, as: 'Categoria' },
+                {
+                    model: TipoAvaria,
+                    as: 'TipoAvarias',
+                    required: false
+                }
+            ]
         });
 
-        if (!equipamento) {
-            return res.status(404).json({ error: 'Equipamento não encontrado.' });
+        if (equipment) {
+            res.status(200).json(equipment);
+        } else {
+            res.status(404).json({ error: 'Equipamento não encontrado.' });
         }
-
-        res.status(200).json(equipamento);
-
     } catch (error) {
-        console.error('Erro ao buscar equipamento por ID:', error);
+        console.error("Erro ao buscar equipamento:", error);
         res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 };
@@ -137,7 +154,6 @@ const deleteEquipment = async (req, res) => {
     }
 };
 
-
 const checkAvailability = async (req, res) => {
     const { id } = req.params;
     const { startDate, endDate } = req.query;
@@ -174,6 +190,55 @@ const checkAvailability = async (req, res) => {
     }
 };
 
+const getDailyAvailability = async (req, res) => {
+    const { id } = req.params;
+    const { startDate, endDate } = req.query; 
+
+    try {
+        const totalUnits = await Unidade.count({ where: { id_equipamento: id } });
+
+        const reservations = await ItemReserva.findAll({
+            where: {
+                [Op.or]: [
+                    { data_inicio: { [Op.lte]: endDate }, data_fim: { [Op.gte]: startDate } }
+                ]
+            },
+            include: [{
+                model: Unidade,
+                where: { id_equipamento: id },
+                attributes: []
+            }, {
+                model: OrdemDeServico,
+                where: { status: { [Op.in]: ['aprovada', 'aguardando_assinatura', 'em_andamento'] } },
+                attributes: []
+            }]
+        });
+
+        const availabilityByDay = {};
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
+            let reservedCount = 0;
+            
+            for (const res of reservations) {
+                const resStart = new Date(res.data_inicio);
+                const resEnd = new Date(res.data_fim);
+                if (day >= resStart && day <= resEnd) {
+                    reservedCount++;
+                }
+            }
+            const dayString = day.toISOString().split('T')[0];
+            availabilityByDay[dayString] = totalUnits - reservedCount;
+        }
+
+        res.status(200).json({ totalUnits, availabilityByDay });
+
+    } catch (error) {
+        console.error("Erro ao buscar disponibilidade diária:", error);
+        res.status(500).json({ error: "Erro interno do servidor." });
+    }
+};
 
 module.exports = {
     createEquipment,
@@ -181,5 +246,6 @@ module.exports = {
     getEquipmentById,
     updateEquipment,
     deleteEquipment,
-    checkAvailability
+    checkAvailability,
+    getDailyAvailability 
 };
