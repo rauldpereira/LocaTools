@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 
-// 1. GARANTA QUE AS NOVAS FUNÇÕES ESTÃO SENDO IMPORTADAS
 const { 
     createOrder,
     getMyOrders,
@@ -14,7 +13,8 @@ const {
     cancelOrder,
     confirmManualPayment,
     checkRescheduleAvailability, 
-    rescheduleOrder            
+    rescheduleOrder,
+    skipReturnInspection            
 } = require('../controllers/reservationController');
 
 const { protect, admin } = require('../middlewares/authMiddleware');
@@ -33,6 +33,7 @@ router.put('/:id/cancel', protect, cancelOrder);
 router.put('/:id/confirm-manual-payment', protect, admin, confirmManualPayment);
 router.put('/:id/reschedule', protect, rescheduleOrder);
 router.put('/:id', protect, admin, updateOrderStatus);
+router.put('/:id/skip-inspection', protect, admin, skipReturnInspection);
 
 router.delete('/:id', protect, deleteOrder);
 

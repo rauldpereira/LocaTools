@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
@@ -16,21 +16,23 @@ const AdminReservationsList: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const { token } = useAuth();
 
-    useEffect(() => {
-        const fetchAllOrders = async () => {
-            if (!token) return;
-            try {
-                const config = { headers: { Authorization: `Bearer ${token}` } };
-                const { data } = await axios.get('http://localhost:3001/api/reservations/all', config);
-                setOrders(data);
-            } catch (error) {
-                console.error("Erro ao buscar todas as reservas:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchAllOrders();
+    const fetchAllOrders = useCallback(async () => {
+        if (!token) return;
+        try {
+            setLoading(true); 
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const { data } = await axios.get('http://localhost:3001/api/reservations/all', config);
+            setOrders(data);
+        } catch (error) {
+            console.error("Erro ao buscar todas as reservas:", error);
+        } finally {
+            setLoading(false);
+        }
     }, [token]);
+
+    useEffect(() => {
+        fetchAllOrders();
+    }, [fetchAllOrders]); 
 
     const ordersForExitInspection = orders.filter(order => order.status === 'aprovada');
     const ordersAwaitingSignature = orders.filter(order => order.status === 'aguardando_assinatura');
@@ -41,6 +43,19 @@ const AdminReservationsList: React.FC = () => {
 
     if (loading) return <p>A carregar reservas...</p>;
 
+    const handleSkipInspection = async (orderId: number) => {
+        if (!window.confirm("Confirmar devolução sem avarias? O pedido irá direto para o pagamento final.")) {
+            return;
+        }
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.put(`http://localhost:3001/api/reservations/${orderId}/skip-inspection`, {}, config);
+            alert('Devolução rápida registrada!');
+            fetchAllOrders();
+        } catch (error: any) {
+            alert(`Erro: ${error.response?.data?.error || 'Não foi possível processar.'}`);
+        }
+    };
 
     const renderOrderTable = (
         title: string,
@@ -90,7 +105,7 @@ const AdminReservationsList: React.FC = () => {
         </div>
     );
 
-    return (
+   return (
         <div style={{ width: '100%' }}>
             {renderOrderTable(
                 "Reservas Aguardando Vistoria de Saída",
@@ -107,10 +122,22 @@ const AdminReservationsList: React.FC = () => {
             )}
 
             {renderOrderTable(
-                "Equipamentos em Locação (Aguardando Devolução)",
+                "Equipamentos em Locação (Aguardando Devolução)", 
                 ordersForReturnInspection,
-                [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Devolução' }],
-                order => <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}><button>Registar Devolução</button></Link>
+                [{key: 'id', label: 'Pedido ID'}, {key: 'data_fim', label: 'Data de Devolução'}],
+                order => (
+                    <div style={{display: 'flex', gap: '5px', justifyContent: 'center'}}>
+                        <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
+                            <button style={{backgroundColor: '#ffc107', color: '#212529'}}>Registrar Vistoria (com avarias)</button>
+                        </Link>
+                        <button 
+                            onClick={() => handleSkipInspection(order.id)} 
+                            style={{backgroundColor: '#28a745', color: 'white'}}
+                        >
+                            Devolução Rápida (OK)
+                        </button>
+                    </div>
+                )
             )}
 
             {renderOrderTable(
@@ -119,6 +146,7 @@ const AdminReservationsList: React.FC = () => {
                 [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }],
                 order => <Link to={`/admin/finalize-payment/${order.id}`}><button>Finalizar e Cobrar</button></Link>
             )}
+            
             {renderOrderTable("Histórico de Pedidos Finalizados", finalizedOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Finalização' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver pedido Completo</button></Link>))}
             {renderOrderTable("Histórico de Pedidos Cancelados", cancelledOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver Detalhes</button></Link>))}
         </div>

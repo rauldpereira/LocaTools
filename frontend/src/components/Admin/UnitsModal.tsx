@@ -9,16 +9,19 @@ interface TipoAvaria {
   descricao: string;
   preco: string;
 }
+
 interface EquipamentoComAvarias {
   id: number;
   nome: string;
   TipoAvarias: TipoAvaria[];
 }
+
 interface Unit {
   id: number;
   status: 'disponivel' | 'manutencao' | 'alugado';
-  avarias_atuais: number[];
+  avarias_atuais: number[] | null;
 }
+
 interface UnitsModalProps {
   equipmentId: number;
   isOpen: boolean;
@@ -31,8 +34,6 @@ const UnitItem: React.FC<{
   token: string | null,
   onDelete: (unitId: number) => void
 }> = ({ unit, tiposAvaria, token, onDelete }) => {
-
-
 
   const [status, setStatus] = useState(unit.status);
   const [checkedAvarias, setCheckedAvarias] = useState<{ [key: number]: boolean }>(() => {
@@ -78,7 +79,6 @@ const UnitItem: React.FC<{
         <h4>Unidade ID: {unit.id}</h4>
         <div>
           <label>Estado: </label>
-          {/* O admin agora pode mudar o status (exceto se estiver alugado) */}
           <select value={status} onChange={e => setStatus(e.target.value as Unit['status'])} disabled={status === 'alugado'}>
             <option value="disponivel">Disponível</option>
             <option value="manutencao">Em Manutenção</option>
@@ -116,8 +116,6 @@ const UnitItem: React.FC<{
   );
 };
 
-
-//  Componente Principal do Modal 
 const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose }) => {
   const { token } = useAuth();
   const [units, setUnits] = useState<Unit[]>([]);

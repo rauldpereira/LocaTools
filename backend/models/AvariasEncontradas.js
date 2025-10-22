@@ -8,6 +8,7 @@ module.exports = (sequelize, DataTypes) => {
       });
       AvariasEncontradas.belongsTo(models.TipoAvaria, {
         foreignKey: 'id_tipo_avaria',
+        as: 'TipoAvaria'
       });
     }
   }
@@ -18,7 +19,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'AvariasEncontradas',
-    tableName: 'AvariasEncontradas' 
+    tableName: 'AvariasEncontradas'
   });
   return AvariasEncontradas;
 };

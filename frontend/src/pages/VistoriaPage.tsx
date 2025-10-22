@@ -25,11 +25,19 @@ interface ReservedItem {
     Unidade: Unit;
 }
 
+interface AvariaEncontrada {
+    id: number;
+    id_detalhe_vistoria: number;
+    id_tipo_avaria: number;
+}
+
 interface DetalheVistoriaFeita {
+    id: number;
     condicao: string;
     comentarios: string;
     foto: string[] | null;
     id_item_equipamento: number;
+    avariasEncontradas?: AvariaEncontrada[];
 }
 
 interface VistoriaFeita {
@@ -61,43 +69,61 @@ const VistoriaPage: React.FC = () => {
     const params = new URLSearchParams(location.search);
     const tipoVistoria = params.get('tipo') === 'devolucao' ? 'devolucao' : 'entrega';
 
-    const vistoriaDeSaida = order?.Vistorias.find(v => v.tipo_vistoria === 'entrega');
+
 
     useEffect(() => {
         const fetchOrder = async () => {
+
             if (!token || !orderId) return;
+
+            setLoading(true);
+
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 const { data } = await axios.get(`http://localhost:3001/api/reservations/${orderId}`, config);
                 setOrder(data);
 
+                const vistoriaDeSaida = data.Vistorias.find((v: VistoriaFeita) => v.tipo_vistoria === 'entrega');
                 const initialDetails: { [key: number]: Partial<VistoriaDetailState> } = {};
+
                 data.ItemReservas.forEach((item: ReservedItem) => {
-
-                    // Pega as avarias que já estão "grudadas" na unidade
-                    const avariasAtuais = item.Unidade.avarias_atuais || [];
-
-                    // Cria o objeto de 'checkedAvarias' já preenchido
+                    const unitId = item.Unidade.id;
+                    let condicao: 'ok' | 'danificado' = 'ok';
+                    let comentarios = '';
                     const checkedAvarias: { [key: number]: boolean } = {};
-                    avariasAtuais.forEach((id: number) => {
-                        checkedAvarias[id] = true;
-                    });
 
-                    initialDetails[item.Unidade.id] = {
-                        condicao: avariasAtuais.length > 0 ? 'danificado' : 'ok',
-                        comentarios: '',
+                    if (tipoVistoria === 'devolucao' && vistoriaDeSaida) {
+                        const detalheSaida = vistoriaDeSaida.detalhes.find((d: DetalheVistoriaFeita) => d.id_item_equipamento === unitId);
+                        if (detalheSaida) {
+                            condicao = detalheSaida.condicao as 'ok' | 'danificado';
+                            comentarios = detalheSaida.comentarios || '';
+                            detalheSaida.avariasEncontradas?.forEach((avaria: AvariaEncontrada) => {
+                                checkedAvarias[avaria.id_tipo_avaria] = true;
+                            });
+                        }
+                    } else if (tipoVistoria === 'entrega') {
+                        const avariasAtuais = item.Unidade.avarias_atuais || [];
+                        avariasAtuais.forEach((id: number) => {
+                            checkedAvarias[id] = true;
+                        });
+                        condicao = avariasAtuais.length > 0 ? 'danificado' : 'ok';
+                    }
+                    initialDetails[unitId] = {
+                        condicao,
+                        comentarios,
                         fotos: [],
-                        checkedAvarias: checkedAvarias // Pré-preenche o checklist!
+                        checkedAvarias
                     };
                 });
                 setVistoriaDetails(initialDetails);
-
             } catch (error) {
                 console.error("Erro ao buscar ordem para vistoria:", error);
+            } finally {
+                setLoading(false);
             }
         };
         fetchOrder();
-    }, [orderId, token]);
+    }, [orderId, token, tipoVistoria]);
 
     const handleDetailChange = (unitId: number, field: keyof VistoriaDetailState, value: string) => {
         setVistoriaDetails(prev => ({ ...prev, [unitId]: { ...prev[unitId], [field]: value } }));
@@ -132,6 +158,8 @@ const VistoriaPage: React.FC = () => {
         formData.append('id_ordem_servico', order.id.toString());
         formData.append('tipo_vistoria', tipoVistoria);
 
+        let isSubmitValid = true;
+
         const detalhesPayload = order.ItemReservas.map(item => {
             const unitDetails = vistoriaDetails[item.Unidade.id];
             const avariasEncontradas = Object.keys(unitDetails?.checkedAvarias || {})
@@ -140,6 +168,13 @@ const VistoriaPage: React.FC = () => {
 
             const condicao = unitDetails?.condicao || 'ok';
 
+            const avariaOutros = item.Unidade.Equipamento.TipoAvarias.find(a => a.descricao.toLowerCase() === 'outros');
+
+            if (avariaOutros && unitDetails?.checkedAvarias?.[avariaOutros.id] && !unitDetails.comentarios) {
+                isSubmitValid = false;
+                alert(`Erro na Unidade #${item.Unidade.id}: Você marcou "Outros" mas não preencheu os comentários.`);
+            }
+
             return {
                 id_unidade: item.Unidade.id,
                 condicao: condicao,
@@ -147,6 +182,12 @@ const VistoriaPage: React.FC = () => {
                 avariasEncontradas: avariasEncontradas
             };
         });
+
+        if (!isSubmitValid) {
+            setLoading(false);
+            return;
+        }
+
         formData.append('detalhes', JSON.stringify(detalhesPayload));
 
         order.ItemReservas.forEach(item => {
@@ -173,6 +214,8 @@ const VistoriaPage: React.FC = () => {
 
     if (!order) return <p>A carregar dados da ordem...</p>;
 
+    const vistoriaDeSaida = order?.Vistorias.find(v => v.tipo_vistoria === 'entrega');
+
     return (
         <div style={{ padding: '2rem', marginTop: '60px' }}>
             <h1>{tipoVistoria === 'entrega' ? 'Vistoria de Saída' : 'Vistoria de Devolução'} - Pedido #{order.id}</h1>
@@ -181,12 +224,15 @@ const VistoriaPage: React.FC = () => {
                 const equipamento = item.Unidade.Equipamento;
                 const detalheVistoriaSaida = vistoriaDeSaida?.detalhes.find(d => d.id_item_equipamento === item.Unidade.id);
 
+                const avariaOutros = equipamento.TipoAvarias.find(a => a.descricao.toLowerCase() === 'outros');
+                const avariasNormais = equipamento.TipoAvarias.filter(a => a.descricao.toLowerCase() !== 'outros');
+
                 return (
                     <div key={item.id} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
                         <h3>{equipamento.nome} (Unidade ID: {unitId})</h3>
 
                         {tipoVistoria === 'devolucao' && detalheVistoriaSaida && (
-                            <div style={{ backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '5px', marginBottom: '1rem' }}>
+                            <div style={{ backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '5px', marginBottom: '1rem', color: '#333' }}>
                                 <h4>Dados da Vistoria de Saída (para comparação)</h4>
                                 <p><strong>Condição na Saída:</strong> {detalheVistoriaSaida.condicao}</p>
                                 <p><strong>Comentários na Saída:</strong> {detalheVistoriaSaida.comentarios || 'N/A'}</p>
@@ -194,19 +240,21 @@ const VistoriaPage: React.FC = () => {
                         )}
 
                         <div>
-                            <label style={{fontWeight: 'bold'}}>Condição Geral da Unidade:</label>
-                            <select 
+                            <label style={{ fontWeight: 'bold' }}>Condição Geral da Unidade:</label>
+                            <select
                                 value={vistoriaDetails[unitId]?.condicao || 'ok'}
                                 onChange={e => handleDetailChange(unitId, 'condicao', e.target.value as 'ok' | 'danificado')}
-                                style={{color: vistoriaDetails[unitId]?.condicao === 'danificado' ? 'red' : 'green'}}
+                                style={{ color: vistoriaDetails[unitId]?.condicao === 'danificado' ? 'red' : 'green' }}
                             >
                                 <option value="ok">OK</option>
                                 <option value="danificado">Danificado</option>
                             </select>
                         </div>
+                        
 
                         <h4>Checklist de Avarias</h4>
-                        {equipamento.TipoAvarias.map(avaria => (
+
+                        {avariasNormais.map(avaria => (
                             <div key={avaria.id}>
                                 <label>
                                     <input
@@ -219,14 +267,27 @@ const VistoriaPage: React.FC = () => {
                             </div>
                         ))}
 
+                        {avariaOutros && (
+                            <div key={avariaOutros.id} style={{ borderTop: '1px dashed #ccc', marginTop: '1rem', paddingTop: '1rem' }}>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        checked={vistoriaDetails[unitId]?.checkedAvarias?.[avariaOutros.id] || false}
+                                        onChange={() => handleAvariaCheck(unitId, avariaOutros.id)}
+                                    />
+                                    {avariaOutros.descricao} (Preço a ser definido)
+                                </label>
+                            </div>
+                        )}
                         <div style={{ marginTop: '0.5rem' }}>
-                            <label>Comentários Adicionais (Ex: "Outros" danos):</label>
+                            <label>Comentários Adicionais (Obrigatório se "Outros" for marcado):</label>
                             <textarea
                                 style={{ width: '100%', minHeight: '60px' }}
                                 value={vistoriaDetails[unitId]?.comentarios || ''}
                                 onChange={e => handleDetailChange(unitId, 'comentarios', e.target.value)}
                             />
                         </div>
+                        
                         <div style={{ marginTop: '0.5rem' }}>
                             <label>Fotos da Vistoria:</label>
                             <input type="file" multiple accept="image/*" style={{ width: '100%' }}

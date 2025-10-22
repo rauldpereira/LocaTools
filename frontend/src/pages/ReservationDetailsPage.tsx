@@ -5,11 +5,52 @@ import { useAuth } from '../context/AuthContext';
 import RescheduleModal from '../components/RescheduleModal';
 import HorarioFuncionamento from '../components/HorarioFuncionamento';
 
-interface Equipamento { nome: string; url_imagem: string; }
+interface Equipamento { 
+    nome: string; 
+    url_imagem: string;  
+    TipoAvarias: TipoAvaria[]; 
+}
+
 interface Unidade { id: number; Equipamento: Equipamento; }
+
 interface ItemReserva { id: number; Unidade: Unidade; }
-interface DetalheVistoria { id: number; id_item_equipamento: number; condicao: string; comentarios: string; foto: string[] | null; }
-interface Vistoria { id: number; tipo_vistoria: 'entrega' | 'devolucao'; data: string; detalhes: DetalheVistoria[]; }
+
+interface DetalheVistoria { 
+    id: number; 
+    id_item_equipamento: number; 
+    condicao: string; comentarios: 
+    string; foto: string[] | null; 
+}
+
+interface Vistoria { 
+    id: number; 
+    tipo_vistoria: 'entrega' | 'devolucao'; 
+    data: string; 
+    detalhes: DetalheVistoria[]; 
+}
+
+interface TipoAvaria { 
+    id: number; 
+    descricao: 
+    string; 
+    preco: string;
+}
+
+interface AvariaEncontrada {
+    id: number;
+    id_tipo_avaria: number;
+    TipoAvaria: TipoAvaria;
+}
+
+interface DetalheVistoriaFeita {
+    id: number;
+    condicao: string;
+    comentarios: string;
+    foto: string[] | null;
+    id_item_equipamento: number;
+    avariasEncontradas: AvariaEncontrada[];
+}
+
 interface OrderDetails {
     id: number;
     status: string;
@@ -127,32 +168,50 @@ const ReservationDetailsPage: React.FC = () => {
     const canReschedule = ['aprovada', 'aguardando_assinatura'].includes(order.status);
 
 
-    const VistoriaDetailDisplay = ({ title, detail }: { title: string, detail: DetalheVistoria | undefined }) => {
-        if (!detail) return null;
-        return (
-            <div style={{ marginTop: '1rem' }}>
-                <h4>{title}</h4>
-                <p><strong>Condição:</strong> {detail.condicao}</p>
-                <p><strong>Comentários:</strong> {detail.comentarios || 'Nenhum comentário.'}</p>
-                {detail.foto && detail.foto.length > 0 ? (
-                    <div>
-                        <strong>Fotos:</strong><br />
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
-                            {detail.foto.map((url, index) => (
-                                <a key={index} href={`${backendUrl}${url}`} target="_blank" rel="noopener noreferrer">
-                                    <img
-                                        src={`${backendUrl}${url}`}
-                                        alt={`Foto ${index + 1}`}
-                                        style={{ height: '100px', width: '100px', objectFit: 'cover', borderRadius: '5px' }}
-                                    />
-                                </a>
-                            ))}
-                        </div>
+    const VistoriaDetailDisplay = ({ title, detail }: { title: string, detail: DetalheVistoria | DetalheVistoriaFeita | undefined }) => {
+    if (!detail) return null;
+    const avarias = (detail as DetalheVistoriaFeita).avariasEncontradas;
+
+    return (
+        <div style={{ marginTop: '1rem' }}>
+            <h4>{title}</h4>
+            <p><strong>Condição:</strong> {detail.condicao}</p>
+            <p><strong>Comentários:</strong> {detail.comentarios || 'Nenhum comentário.'}</p>
+
+            {avarias && avarias.length > 0 && (
+                <div>
+                    <strong>Avarias Registradas:</strong>
+                    <ul style={{ margin: '5px 0 10px 20px', padding: 0 }}>
+                        {avarias.map(avaria => (
+                            <li key={avaria.id} style={{color: avaria.TipoAvaria.descricao.toLowerCase() === 'outros' ? 'inherit' : 'red'}}>
+                                {avaria.TipoAvaria.descricao}
+                                {Number(avaria.TipoAvaria.preco) > 0 && ` (R$ ${Number(avaria.TipoAvaria.preco).toFixed(2)})`}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            {detail.foto && detail.foto.length > 0 ? (
+                <div>
+                    <strong>Fotos:</strong><br />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+                        {detail.foto.map((url, index) => (
+                            <a key={index} href={`${backendUrl}${url}`} target="_blank" rel="noopener noreferrer">
+                                <img
+                                    src={`${backendUrl}${url}`}
+                                    alt={`Foto ${index + 1}`}
+                                    style={{ height: '100px', width: '100px', objectFit: 'cover', borderRadius: '5px' }}
+                                />
+                            </a>
+                        ))}
                     </div>
-                ) : <p><strong>Fotos:</strong> Nenhuma foto registrada.</p>}
-            </div>
-        );
-    };
+                </div>
+            ) : <p><strong>Fotos:</strong> Nenhuma foto registrada.</p>}
+        </div>
+    );
+};
+
 
     return (
         <div style={{ padding: '2rem', marginTop: '60px', maxWidth: '800px', margin: '80px auto' }}>
@@ -277,18 +336,26 @@ const ReservationDetailsPage: React.FC = () => {
                 return (
                     <div key={item.id} style={{ border: '1px solid #ddd', padding: '1.5rem', marginBottom: '1.5rem', borderRadius: '8px' }}>
                         <h3>{item.Unidade.Equipamento.nome} (Unidade #{item.Unidade.id})</h3>
+                        
+                        <div style={{ borderBottom: vistoriaDeDevolucao ? '1px dashed #ccc' : 'none', paddingBottom: '1rem', marginBottom: '1rem' }}>
+                            {vistoriaDeSaida ? (
+                                <VistoriaDetailDisplay title="Relatório da Vistoria de Saída" detail={detalheSaida} />
+                            ) : (
+                                order.status !== 'cancelada' && <p style={{ color: 'orange' }}>Aguardando vistoria de saída.</p>
+                            )}
+                        </div>
 
-                        {vistoriaDeSaida ? (
-                            <VistoriaDetailDisplay title="Relatório da Vistoria de Saída" detail={detalheSaida} />
+                        {vistoriaDeDevolucao ? (
+                            <VistoriaDetailDisplay title="Relatório da Vistoria de Devolução" detail={detalheDevolucao} />
                         ) : (
-                            order.status === 'cancelada'
-                                ? <p style={{ color: 'red' }}>O pedido foi cancelado.</p>
-                                : <p style={{ color: 'orange' }}>Aguardando vistoria de saída pela nossa equipe.</p>
-                        )}
-                        {vistoriaDeDevolucao && (
-                            <div style={{ marginTop: '1rem', borderTop: '1px dashed #ccc', paddingTop: '1rem' }}>
-                                <VistoriaDetailDisplay title="Relatório da Vistoria de Devolução" detail={detalheDevolucao} />
-                            </div>
+                            (order.status === 'aguardando_pagamento_final' || order.status === 'finalizada') ? (
+                                <div>
+                                    <h4>Relatório da Vistoria de Devolução</h4>
+                                    <p style={{color: 'green'}}>Devolução Rápida: A vistoria consta que o equipamento foi entregue sem novas avarias.</p>
+                                </div>
+                            ) : (
+                                order.status === 'em_andamento' && <p style={{ color: 'blue' }}>Aguardando devolução do equipamento.</p>
+                            )
                         )}
                     </div>
                 );

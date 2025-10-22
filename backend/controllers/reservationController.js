@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria } = require('../models');
+const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas } = require('../models');
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
 
@@ -251,7 +251,7 @@ const getOrderById = async (req, res) => {
                             model: Equipamento,
                             as: 'Equipamento',
                             attributes: ['nome', 'url_imagem'],
-                            include: [{
+                            include: [{ 
                                 model: TipoAvaria,
                                 as: 'TipoAvarias',
                                 required: false
@@ -265,7 +265,19 @@ const getOrderById = async (req, res) => {
                     required: false,
                     include: [{
                         model: DetalhesVistoria,
-                        as: 'detalhes'
+                        as: 'detalhes',
+
+                        include: [{
+                            model: AvariasEncontradas,
+                            as: 'avariasEncontradas',
+                            required: false,
+                            include: [{
+                                model: TipoAvaria,
+                                as: 'TipoAvaria',
+                                attributes: ['id', 'descricao', 'preco'],
+                                required: false
+                            }]
+                        }]
                     }]
                 }
             ]
@@ -524,7 +536,6 @@ const checkRescheduleAvailability = async (req, res) => {
     }
 };
 
-
 const rescheduleOrder = async (req, res) => {
     const { newStartDate, newEndDate } = req.body;
     const orderId = req.params.id;
@@ -547,7 +558,7 @@ const rescheduleOrder = async (req, res) => {
             if (originalDuration !== newDuration) {
                 throw new Error('A duração da remarcação deve ser a mesma da reserva original.');
             }
-            
+
             for (const item of order.ItemReservas) {
                 const unidade = await Unidade.findByPk(item.id_unidade, { include: [{ model: Equipamento, as: 'Equipamento' }], transaction: t });
                 const itemRequest = { id_equipamento: unidade.Equipamento.id, quantidade: 1, data_inicio: newStartDate, data_fim: newEndDate };
@@ -577,6 +588,41 @@ const rescheduleOrder = async (req, res) => {
     }
 };
 
+const skipReturnInspection = async (req, res) => {
+    try {
+        await sequelize.transaction(async (t) => {
+            const order = await OrdemDeServico.findByPk(req.params.id, {
+                include: [{ model: ItemReserva, as: 'ItemReservas' }],
+                transaction: t
+            });
+
+            if (!order) {
+                throw new Error('Ordem de serviço não encontrada.');
+            }
+            if (order.status !== 'em_andamento') {
+                throw new Error('Este pedido não está na etapa de devolução.');
+            }
+
+            await order.update({
+                status: 'aguardando_pagamento_final',
+                taxa_avaria: 0
+            }, { transaction: t });
+
+            for (const item of order.ItemReservas) {
+                const unidade = await Unidade.findByPk(item.id_unidade, { transaction: t });
+                if (unidade && unidade.status === 'alugado') {
+                    await unidade.update({ status: 'disponivel' }, { transaction: t });
+                }
+            }
+        });
+
+        res.status(200).json({ message: 'Devolução rápida registrada com sucesso.' });
+    } catch (error) {
+        console.error('Erro na devolução rápida:', error);
+        res.status(400).json({ error: error.message });
+    }
+};
+
 
 module.exports = {
     createOrder,
@@ -591,5 +637,6 @@ module.exports = {
     confirmManualPayment,
     cancelOrder,
     checkRescheduleAvailability,
-    rescheduleOrder
+    rescheduleOrder,
+    skipReturnInspection
 };
