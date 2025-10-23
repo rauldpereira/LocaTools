@@ -31,7 +31,9 @@ const Navbar: React.FC = () => {
                             </li>
                             {user?.tipo_usuario === 'admin' && (
                                 <li>
-                                    <Link to="/admin">Painel Admin</Link>
+                                    <Link to="/admin">Painel Admin   </Link>
+
+                                    <Link to="/admin/reports">Relatórios</Link>
                                 </li>
                             )}
                             <li>

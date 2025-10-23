@@ -18,6 +18,8 @@ import ReservationDetailsPage from './pages/ReservationDetailsPage';
 import VistoriaPage from './pages/VistoriaPage';
 import FinalizePaymentPage from './pages/FinalizePaymentPage';
 import EditEquipmentPage from './pages/EditEquipmentPage';
+import AdminReportsPage from './pages/AdminReportsPage';
+
 
 const stripePromise = loadStripe('pk_test_51RxzLsHUnTeu3by4toldZZMEswVFiFnrXc0eSI9PyNzEGnICbSvasFqoC0cmMgqkD3Ie6tQIEhKlhDvitfTbcwTT00qAldkZVx');
 
@@ -42,6 +44,7 @@ function App() {
                 <Route path="admin/vistoria/:orderId" element={<VistoriaPage />} />
                 <Route path="admin/finalize-payment/:orderId" element={<FinalizePaymentPage />} />
                 <Route path="admin/equipment/:id/edit" element={<EditEquipmentPage />} />
+                <Route path="admin/reports" element={<AdminReportsPage />} />
               </Route>
             </Routes>
           </Router>
