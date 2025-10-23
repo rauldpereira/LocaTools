@@ -3,7 +3,6 @@ const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, De
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
 
-
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const verificarDisponibilidade = async (item, options) => {
@@ -303,76 +302,136 @@ const generateContract = async (req, res) => {
     const tipoUsuario = req.user.tipo_usuario;
 
     try {
+
         const order = await OrdemDeServico.findByPk(id, {
-            include: [{
-                model: Usuario,
-                as: 'Usuario',
-            }, {
-                model: ItemReserva,
-                as: 'ItemReservas',
-                include: [{
-                    model: Unidade,
-                    as: 'Unidade',
+            include: [
+                { model: Usuario, as: 'Usuario', attributes: ['nome', 'email'] },
+                { 
+                    model: ItemReserva, 
+                    as: 'ItemReservas', 
+                    include: [{ 
+                        model: Unidade, as: 'Unidade', 
+                        include: [{ model: Equipamento, as: 'Equipamento' }] 
+                    }] 
+                },
+                {
+                    model: Vistoria,
+                    as: 'Vistorias',
+                    where: { tipo_vistoria: 'entrega' },
+                    required: false,
                     include: [{
-                        model: Equipamento,
-                        as: 'Equipamento',
+                        model: DetalhesVistoria,
+                        as: 'detalhes',
+                        include: [{
+                            model: AvariasEncontradas,
+                            as: 'avariasEncontradas',
+                            required: false,
+                            include: [{ model: TipoAvaria, as: 'TipoAvaria' }]
+                        }]
                     }]
-                }]
-            }]
+                }
+            ]
         });
 
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
         }
-
         if (order.id_usuario !== userId && tipoUsuario !== 'admin') {
             return res.status(403).json({ error: 'Acesso negado.' });
         }
-
         if (!order.ItemReservas || order.ItemReservas.length === 0) {
-            return res.status(500).json({ error: 'Não foi possível gerar o contrato: nenhum item encontrado na reserva.' });
+            return res.status(500).json({ error: 'Pedido sem itens.' });
         }
+        
+        const vistoriaSaida = (order.Vistorias && order.Vistorias.length > 0) ? order.Vistorias[0] : null;
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=contrato_ordem_servico_${id}.pdf`);
+        res.setHeader('Content-Disposition', `attachment; filename=contrato_locacao_${id}.pdf`);
 
-        const doc = new PDFDocument();
+        const doc = new PDFDocument({ margin: 50 });
         doc.pipe(res);
 
-        doc.fontSize(25).text('Contrato de Aluguel de Equipamento', { align: 'center' });
+
+        doc.fontSize(18).font('Helvetica-Bold').text('CONTRATO DE LOCAÇÃO DE EQUIPAMENTOS', { align: 'center' });
+        doc.fontSize(14).text(`Contrato Nº: ${order.id}`, { align: 'center' });
+        doc.moveDown(2);
+
+        doc.fontSize(12).font('Helvetica-Bold').text('1. AS PARTES');
+        doc.font('Helvetica').text(`LOCADORA: LOCATOOLS LTDA, CNPJ 00.000.000/0001-00`);
+        doc.text(`LOCATÁRIO(A): ${order.Usuario.nome}, Email: ${order.Usuario.email}`);
         doc.moveDown();
-        doc.fontSize(16).text(`Ordem de Serviço ID: ${order.id}`);
+
+        doc.font('Helvetica-Bold').text('2. OBJETO DO CONTRATO');
+        doc.font('Helvetica').text('O presente contrato tem como objeto a locação do(s) equipamento(s) descrito(s) abaixo:');
         doc.moveDown();
-        doc.fontSize(14).text('Detalhes do Cliente:');
-        doc.fontSize(12).text(`Nome: ${order.Usuario.nome}`);
-        doc.fontSize(12).text(`Email: ${order.Usuario.email}`);
-        doc.moveDown();
-        doc.fontSize(14).text('Itens de Aluguel:');
 
         order.ItemReservas.forEach((item, index) => {
-            doc.fontSize(12).text(`Item #${index + 1}: ${item.Unidade.Equipamento.nome}`);
-            doc.fontSize(10).text(`  - Unidade ID: ${item.id_unidade}`);
-            doc.fontSize(10).text(`  - Período: ${new Date(item.data_inicio).toLocaleDateString()} a ${new Date(item.data_fim).toLocaleDateString()}`);
+            doc.font('Helvetica-Bold').text(`Item ${index + 1}: ${item.Unidade.Equipamento.nome} (Unidade ID: ${item.id_unidade})`);
+            doc.font('Helvetica').text(`Descrição: ${item.Unidade.Equipamento.descricao.substring(0, 150)}...`);
             doc.moveDown(0.5);
         });
 
+        doc.font('Helvetica-Bold').text('3. PERÍODO DE LOCAÇÃO');
+        const dataInicio = new Date(order.data_inicio).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+        const dataFim = new Date(order.data_fim).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+        doc.font('Helvetica').text(`Início: ${dataInicio} (Horário de retirada conforme funcionamento).`);
+        doc.text(`Fim: ${dataFim} (Horário de devolução conforme funcionamento).`);
         doc.moveDown();
-        doc.text('Termos e Condições...');
+
+        doc.font('Helvetica-Bold').text('4. VISTORIA DE SAÍDA (ESTADO DO EQUIPAMENTO)');
+        if (vistoriaSaida) {
+            doc.font('Helvetica').text('O(A) LOCATÁRIO(A) declara receber o(s) equipamento(s) no estado descrito pela vistoria de saída:');
+            vistoriaSaida.detalhes.forEach(detalhe => {
+                doc.font('Helvetica-Bold').text(`- Unidade ID #${detalhe.id_unidade}:`);
+                doc.font('Helvetica').text(`  Condição Geral: ${detalhe.condicao}`);
+                doc.text(`  Comentários: ${detalhe.comentarios || 'Nenhum.'}`);
+                if (detalhe.avariasEncontradas && detalhe.avariasEncontradas.length > 0) {
+                    doc.text('  Avarias pré-existentes (check):');
+                    detalhe.avariasEncontradas.forEach(avaria => {
+                        doc.text(`    - ${avaria.TipoAvaria.descricao}`);
+                    });
+                }
+            });
+        } else {
+            doc.font('Helvetica').text('Vistoria de saída pendente de realização.');
+        }
         doc.moveDown();
-        doc.text('_________________________');
-        doc.text(`Assinatura do Cliente: ${order.Usuario.nome}`);
+
+        doc.font('Helvetica-Bold').text('5. VALORES E PAGAMENTO');
+        doc.font('Helvetica').text(`Valor Total do Aluguel: R$ ${Number(order.valor_total).toFixed(2)}`);
+        doc.text(`Sinal (50%) Pago: R$ ${Number(order.valor_sinal).toFixed(2)}`);
+        doc.text(`Valor Restante: R$ ${(Number(order.valor_total) - Number(order.valor_sinal)).toFixed(2)} (a ser pago na devolução).`);
+        doc.moveDown();
+
+        doc.font('Helvetica-Bold').text('6. TERMOS E CONDIÇÕES');
+        doc.font('Helvetica').fontSize(10);
+        doc.text('6.1. OBRIGAÇÕES DA LOCATÁRIA (Cliente):');
+        doc.list([
+            'Utilizar o equipamento conforme as instruções de uso.',
+            'Zelar pela guarda e conservação do equipamento.',
+            'Devolver o equipamento na data estipulada. A não devolução implicará em multa diária no valor de 10% do total do contrato.',
+            'Responsabilizar-se por qualquer dano, quebra ou perda do equipamento durante o período de locação.'
+        ], { indent: 20 });
+        doc.moveDown(0.5);
+        doc.text('6.2. DEVOLUÇÃO E AVARIAS:');
+        doc.text('Na devolução, uma nova vistoria será realizada. Avarias que não constam na Vistoria de Saída (Cláusula 4) serão de responsabilidade do(a) LOCATÁRIO(A), sendo os custos de reparo (baseados no catálogo de avarias) adicionados ao valor final do pagamento.');
+        
+        doc.moveDown(2);
+
+        doc.fontSize(12);
+        doc.text('________________________________________', { align: 'center' });
+        doc.text(order.Usuario.nome, { align: 'center' });
+        doc.text('(Assinado digitalmente ao aceitar os termos na plataforma)', { align: 'center', fontSize: 9 });
 
         doc.end();
 
     } catch (error) {
         console.error('Erro ao gerar contrato:', error);
-
         if (!res.headersSent) {
             res.status(500).json({ error: 'Erro interno do servidor ao gerar contrato.' });
         }
     }
 };
-
 const signContract = async (req, res) => {
     try {
         const order = await OrdemDeServico.findByPk(req.params.id);
@@ -622,7 +681,6 @@ const skipReturnInspection = async (req, res) => {
         res.status(400).json({ error: error.message });
     }
 };
-
 
 module.exports = {
     createOrder,
