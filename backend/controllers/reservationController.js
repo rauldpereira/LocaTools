@@ -413,8 +413,24 @@ const generateContract = async (req, res) => {
             'Responsabilizar-se por qualquer dano, quebra ou perda do equipamento durante o período de locação.'
         ], { indent: 20 });
         doc.moveDown(0.5);
+
+
         doc.text('6.2. DEVOLUÇÃO E AVARIAS:');
-        doc.text('Na devolução, uma nova vistoria será realizada. Avarias que não constam na Vistoria de Saída (Cláusula 4) serão de responsabilidade do(a) LOCATÁRIO(A), sendo os custos de reparo (baseados no catálogo de avarias) adicionados ao valor final do pagamento.');
+        doc.text('Na devolução, uma nova vistoria será realizada. Avarias que não constam na Vistoria de Saída (Cláusula 4) serão de responsabilidade do(a) LOCATÁRIO(A), sendo os custos de reparo (baseados no catálogo de avarias) adicionados ao valor final do pagamento.');      
+        doc.moveDown(0.5);
+
+
+        doc.font('Helvetica-Bold').text('6.3. POLÍTICA DE CANCELAMENTO:');
+        doc.font('Helvetica').text(
+            'O(A) LOCATÁRIO(A) pode solicitar o cancelamento desta reserva, sujeito às seguintes regras:',
+            { continued: true }
+        ).text(' '); 
+        doc.list([
+            'Direito de Arrependimento (Art. 49, CDC): O(A) LOCATÁRIO(A) pode cancelar esta reserva em até 7 (sete) dias corridos após a data do pagamento do sinal, recebendo o reembolso integral do valor pago.',
+            'Política da Loja (Após 7 dias): Se o prazo legal de 7 dias já passou, valerá a seguinte regra:',
+            '  - Cancelamento com mais de 2 dias de antecedência do início do aluguel: Reembolso integral do sinal.',
+            '  - Cancelamento com 2 dias ou menos de antecedência do início do aluguel: Será retida uma taxa de 5% sobre o VALOR TOTAL do contrato, e o restante do sinal pago será reembolsado.'
+        ], { indent: 20 });
         
         doc.moveDown(2);
 
@@ -432,6 +448,7 @@ const generateContract = async (req, res) => {
         }
     }
 };
+
 const signContract = async (req, res) => {
     try {
         const order = await OrdemDeServico.findByPk(req.params.id);
@@ -498,48 +515,72 @@ const cancelOrder = async (req, res) => {
 
         if (!order) { return res.status(404).json({ error: 'Ordem de serviço não encontrada.' }); }
         if (order.id_usuario !== req.user.id) { return res.status(403).json({ error: 'Acesso negado.' }); }
-
+        
+        
         if (!['aprovada', 'aguardando_assinatura'].includes(order.status)) {
             return res.status(400).json({ error: `Não é possível cancelar uma reserva com status '${order.status}'.` });
         }
 
-        const dataInicio = new Date(order.data_inicio);
+        const pagamentoOriginal = await Pagamento.findOne({ 
+            where: { 
+                id_ordem_servico: order.id, 
+                status_pagamento: 'aprovado' 
+            } 
+        });
+        if (!pagamentoOriginal) {
+            return res.status(500).json({ error: 'Registro do pagamento original não encontrado.' });
+        }
+
         const hoje = new Date();
-        const diffTime = dataInicio.getTime() - hoje.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const dataDoPagamento = new Date(pagamentoOriginal.createdAt);
+        const dataInicioAluguel = new Date(order.data_inicio);
+
+        const diffPagamento = hoje.getTime() - dataDoPagamento.getTime();
+        const diasDesdePagamento = Math.ceil(diffPagamento / (1000 * 60 * 60 * 24));
+
+        const diffAluguel = dataInicioAluguel.getTime() - hoje.getTime();
+        const diasParaAluguel = Math.ceil(diffAluguel / (1000 * 60 * 60 * 24));
 
         let taxa_cancelamento = 0;
         let valor_reembolsado = 0;
+        let mensagem = "";
 
-        if (diffDays <= 2) {
-            taxa_cancelamento = Number(order.valor_total) * 0.05;
-            valor_reembolsado = Number(order.valor_sinal) - taxa_cancelamento;
-        } else {
+        if (diasDesdePagamento <= 7) {
             taxa_cancelamento = 0;
             valor_reembolsado = Number(order.valor_sinal);
+            mensagem = `Reserva cancelada dentro do prazo de 7 dias (Art. 49 CDC). Reembolso total de R$ ${valor_reembolsado.toFixed(2)} processado.`;
+        
+        } else {
+            
+            if (diasParaAluguel <= 2) {
+                // Cancelamento em cima da hora
+                taxa_cancelamento = Number(order.valor_total) * 0.05;
+                valor_reembolsado = Number(order.valor_sinal) - taxa_cancelamento;
+                mensagem = `Cancelamento fora do prazo legal e a menos de 2 dias do aluguel. Taxa de R$ ${taxa_cancelamento.toFixed(2)} aplicada. Reembolso de R$ ${valor_reembolsado.toFixed(2)} processado.`;
+            } else {
+                // Cancelamento com antecedência
+                taxa_cancelamento = 0;
+                valor_reembolsado = Number(order.valor_sinal);
+                mensagem = `Reserva cancelada com antecedência. Reembolso total do sinal de R$ ${valor_reembolsado.toFixed(2)} processado.`;
+            }
         }
-
+        
         if (valor_reembolsado < 0) valor_reembolsado = 0;
-
-        const pagamentoOriginal = await Pagamento.findOne({ where: { id_ordem_servico: order.id } });
-        if (!pagamentoOriginal || !pagamentoOriginal.id_transacao_externa) {
-            return res.status(500).json({ error: 'Não foi possível encontrar o registro do pagamento original.' });
-        }
 
         if (valor_reembolsado > 0) {
             await stripe.refunds.create({
                 charge: pagamentoOriginal.id_transacao_externa,
-                amount: Math.round(valor_reembolsado * 100),
+                amount: Math.round(valor_reembolsado * 100), 
             });
         }
-
+        
         await order.update({
             status: 'cancelada',
             taxa_cancelamento,
             valor_reembolsado
         });
 
-        res.status(200).json({ message: `Reserva cancelada. Reembolso de R$ ${valor_reembolsado.toFixed(2)} processado.` });
+        res.status(200).json({ message: mensagem });
 
     } catch (error) {
         console.error('Erro ao cancelar a ordem de serviço:', error);
