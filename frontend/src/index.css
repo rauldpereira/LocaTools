@@ -1,159 +1,135 @@
+/* ===============================
+   VARIÁVEIS DE TEMA
+================================= */
+
 :root {
-  --cor-fundo: #FFFFFF;
+  --cor-fundo: #ffffff;
   --cor-texto-principal: #213547;
-  --cor-fundo-modal: #FFFFFF;
-  --cor-borda: #DDDDDD;
-  --cor-fundo-item: #f9f9f9;
+  --cor-fundo-modal: #ffffff;
+  --cor-borda: #dddddd;
   --cor-destaque: #007bff;
-  --cor-dia-reservado-fundo: #FF4136;
-  --cor-dia-reservado-texto: #FFFFFF;
+  --cor-dia-reservado-fundo: #ff4136;
+  --cor-dia-reservado-texto: #ffffff;
   --cor-fundo-botao: #f0f0f0;
   --cor-texto-botao: #213547;
 }
 
-/* Media query para detectar o tema escuro do sistema */
 @media (prefers-color-scheme: dark) {
   :root {
     --cor-fundo: #242424;
     --cor-texto-principal: rgba(255, 255, 255, 0.87);
-    --cor-fundo-modal: #2E2E2E;
+    --cor-fundo-modal: #2e2e2e;
     --cor-borda: #555555;
-    --cor-fundo-item: #3A3A3A;
     --cor-destaque: #58a6ff;
     --cor-dia-reservado-fundo: #a11a1a;
-    --cor-dia-reservado-texto: #FFFFFF;
+    --cor-dia-reservado-texto: #ffffff;
     --cor-fundo-botao: #444444;
     --cor-texto-botao: rgba(255, 255, 255, 0.87);
   }
 }
 
-/* Estilos base */
-html,
-body {
-  margin: 0;
-  padding: 0;
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color-scheme: light dark;
-  /* Permite que o navegador ajuste cores de inputs, etc. */
-}
+/* ===============================
+   BASE GERAL
+================================= */
 
 body {
   color: var(--cor-texto-principal);
   background-color: var(--cor-fundo);
-  padding-top: 60px;
-  /* Mantém o espaço para a Navbar */
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
-/* Estilo geral para botões, usando variáveis */
-button {
+/* ===============================
+   CALENDÁRIO
+================================= */
+
+.react-calendar {
+  background: var(--cor-fundo-modal) !important;
+  border: 1px solid var(--cor-borda) !important;
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: var(--cor-fundo-botao);
-  color: var(--cor-texto-botao);
-  cursor: pointer;
-  transition: border-color 0.25s;
+  color: var(--cor-texto-principal) !important;
 }
 
-button:hover {
-  border-color: var(--cor-destaque);
+/* Navegação */
+.react-calendar__navigation button {
+  color: var(--cor-texto-principal) !important;
+  background: none !important;
+  border-radius: 6px;
+}
+.react-calendar__navigation button:hover {
+  background-color: var(--cor-borda) !important;
 }
 
-@media (prefers-color-scheme: dark) {
-
-  /* Fundo principal do calendário */
-  .react-calendar {
-    background: var(--cor-fundo-modal) !important;
-    border-color: var(--cor-borda) !important;
-  }
-
-  /* Botões de navegação (setas, mês) */
-  .react-calendar__navigation button {
-    color: var(--cor-texto-principal) !important;
-    background: none !important;
-  }
-
-  .react-calendar__navigation button:hover,
-  .react-calendar__navigation button:focus {
-    background-color: var(--cor-borda) !important;
-  }
-
-  /* Dias da semana (SEG, TER, QUA...) */
-  .react-calendar__month-view__weekdays__weekday abbr {
-    color: var(--cor-texto-principal) !important;
-    text-decoration: none;
-  }
-
-  /* Todos os dias do calendário */
-  .react-calendar__tile {
-    color: var(--cor-texto-principal) !important;
-    background: none !important;
-  }
-
-  /* Efeito hover nos dias */
-  .react-calendar__tile:enabled:hover,
-  .react-calendar__tile:enabled:focus {
-    background-color: var(--cor-borda) !important;
-  }
-
-  /* Dia atual (hoje) */
-  .react-calendar__tile--now {
-    background: #3a4a60 !important;
-    /* Força o fundo azul escuro */
-    color: white !important;
-  }
-
-  .react-calendar__tile--now:enabled:hover,
-  .react-calendar__tile--now:enabled:focus {
-    background: #4a5a70 !important;
-  }
-
-  /* Dias de outros meses */
-  .react-calendar__month-view__days__day--neighboringMonth {
-    color: #757575 !important;
-  }
+/* Dias da semana */
+.react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none;
+  color: var(--cor-texto-principal) !important;
 }
 
-/* Classe para o dia reservado (funciona em ambos os temas) */
-.booked-day {
-  background-color: var(--cor-dia-reservado-fundo) !important;
-  color: var(--cor-dia-reservado-texto) !important;
-  border-radius: 8px;
+/* Dias padrão */
+.react-calendar__tile {
+  background: none !important;
+  color: var(--cor-texto-principal) !important;
+  border-radius: 6px;
+  transition: filter 0.2s ease;
 }
+
+/* Hover */
+.react-calendar__tile:enabled:hover {
+  filter: brightness(1.2);
+}
+
+/* REMOVE fundo cinza de foco */
+.react-calendar__tile:enabled:focus {
+  background-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove estilo interno ativo */
+.react-calendar__tile--active {
+  background-color: #339cff !important;
+  color: #fff !important;
+}
+
+/* Dia atual */
+.react-calendar__tile--now {
+  background: #3a4a60 !important;
+  color: white !important;
+}
+
+/* ===============================
+   DISPONIBILIDADE
+================================= */
 
 .day-green {
   background-color: #02ff3d !important;
-  border-radius: 6px;
+  color: #000 !important;
 }
 
 .day-yellow {
   background-color: #ffc400 !important;
-  border-radius: 6px;
+  color: #000 !important;
 }
 
 .day-red {
   background-color: #ff0015 !important;
+  color: #fff !important;
   text-decoration: line-through;
   pointer-events: none;
-  border-radius: 6px;
-}
-.react-calendar__tile--rangeStart,
-.react-calendar__tile--rangeEnd {
-  background-color: var(--cor-destaque) !important;
-  color: white !important;
-  border-radius: 6px !important;
 }
 
-/* --- ADICIONE ESTA NOVA REGRA --- */
-/* Estiliza os dias que ficam NO MEIO do intervalo selecionado */
-.react-calendar__tile--rangeMid {
-  background-color: var(--cor-destaque) !important;
-  color: white !important;
-  /* Remove o arredondamento para criar um efeito de bloco contínuo */
-  border-radius: 0 !important; 
+.day-blue {
+  background-color: #339cff !important;
+  color: #fff !important;
+}
+
+/* Intervalo */
+.react-calendar__tile--active,
+.react-calendar__tile--hasActive,
+.react-calendar__tile:enabled:focus {
+  background-color: #339cff !important;
+  color: #fff !important;
+  outline: none !important;
+  box-shadow: none !important;
+  filter: none !important;
 }

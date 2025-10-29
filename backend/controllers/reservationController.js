@@ -3,28 +3,41 @@ const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, De
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
 
+const { parseDateStringAsLocal } = require('../utils/dateUtils');
+
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-const verificarDisponibilidade = async (item, options) => {
+const verificarDisponibilidade = async (item, options, excludeOrderId = null) => {
     const { id_equipamento, data_inicio, data_fim } = item;
-    const unidadesDoEquipamento = await Unidade.findAll({ where: { id_equipamento }, ...options });
+    
+    // 1. Busca TODAS as unidades, ignorando o status
+    const unidadesDoEquipamento = await Unidade.findAll({ 
+        where: { id_equipamento }, 
+        ...options 
+    });
 
+    const orderStatusWhere = {
+        status: { [Op.in]: ['aprovada', 'aguardando_assinatura', 'em_andamento'] }
+    };
+    if (excludeOrderId) {
+        orderStatusWhere.id = { [Op.not]: excludeOrderId };
+    }
+
+    // 2. Busca reservas que conflitam com a data, IGNORANDO o pedido atual
     const unidadesReservadas = await ItemReserva.findAll({
         where: {
-            [Op.or]: [
-                { data_inicio: { [Op.between]: [data_inicio, data_fim] } },
-                { data_fim: { [Op.between]: [data_inicio, data_fim] } },
-                { data_inicio: { [Op.lte]: data_inicio }, data_fim: { [Op.gte]: data_fim } },
-            ],
+            data_inicio: { [Op.lte]: data_fim },
+            data_fim: { [Op.gte]: data_inicio }
         },
         include: [
             { model: Unidade, where: { id_equipamento }, required: true },
-            { model: OrdemDeServico, where: { status: { [Op.in]: ['pendente', 'aprovada'] } }, required: true }
+            { model: OrdemDeServico, where: orderStatusWhere, required: true }
         ],
         ...options
     });
 
     const idDasUnidadesReservadas = unidadesReservadas.map(r => r.id_unidade);
+    // Retorna unidades que NÃO ESTÃO na lista de reservadas
     return unidadesDoEquipamento.filter(u => !idDasUnidadesReservadas.includes(u.id));
 };
 
@@ -249,8 +262,8 @@ const getOrderById = async (req, res) => {
                         include: [{
                             model: Equipamento,
                             as: 'Equipamento',
-                            attributes: ['nome', 'url_imagem'],
-                            include: [{ 
+                            attributes: ['id', 'nome', 'url_imagem', 'total_quantidade'],
+                            include: [{
                                 model: TipoAvaria,
                                 as: 'TipoAvarias',
                                 required: false
@@ -265,7 +278,6 @@ const getOrderById = async (req, res) => {
                     include: [{
                         model: DetalhesVistoria,
                         as: 'detalhes',
-
                         include: [{
                             model: AvariasEncontradas,
                             as: 'avariasEncontradas',
@@ -295,7 +307,6 @@ const getOrderById = async (req, res) => {
         res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 };
-
 const generateContract = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
@@ -590,27 +601,16 @@ const cancelOrder = async (req, res) => {
 
 const checkRescheduleAvailability = async (req, res) => {
     const { startDate, endDate } = req.body;
-    try {
-        const order = await OrdemDeServico.findByPk(req.params.id, {
-            include: [{
-                model: ItemReserva,
-                as: 'ItemReservas'
-            }]
-        });
+    const orderId = req.params.id;
 
+    try {
+        const order = await OrdemDeServico.findByPk(orderId, { include: [{ model: ItemReserva, as: 'ItemReservas' }] });
         if (!order) return res.status(404).json({ error: 'Ordem não encontrada.' });
 
         let allItemsAvailable = true;
-
         for (const item of order.ItemReservas) {
-
-            const unidade = await Unidade.findByPk(item.id_unidade, {
-                include: [{
-                    model: Equipamento,
-                    as: 'Equipamento'
-                }]
-            });
-            if (!unidade) continue;
+            const unidade = await Unidade.findByPk(item.id_unidade, { include: [{ model: Equipamento, as: 'Equipamento' }] });
+            if (!unidade) { allItemsAvailable = false; break; }
 
             const itemRequest = {
                 id_equipamento: unidade.Equipamento.id,
@@ -619,16 +619,14 @@ const checkRescheduleAvailability = async (req, res) => {
                 data_fim: endDate,
             };
 
-            const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, {});
-
-            const isThisUnitStillAvailable = unidadesDisponiveis.some(u => u.id === item.id_unidade && u.status === 'disponivel');
-
+            const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, {}, orderId);
+            const isThisUnitStillAvailable = unidadesDisponiveis.some(u => u.id === item.id_unidade);
+            
             if (!isThisUnitStillAvailable) {
                 allItemsAvailable = false;
                 break;
             }
         }
-
         res.status(200).json({ available: allItemsAvailable });
     } catch (error) {
         console.error("Erro ao checar remarcação:", error);
@@ -636,23 +634,36 @@ const checkRescheduleAvailability = async (req, res) => {
     }
 };
 
+
 const rescheduleOrder = async (req, res) => {
     const { newStartDate, newEndDate } = req.body;
     const orderId = req.params.id;
 
     try {
         await sequelize.transaction(async (t) => {
-            const order = await OrdemDeServico.findByPk(orderId, { include: [{ model: ItemReserva, as: 'ItemReservas' }], transaction: t });
+            const order = await OrdemDeServico.findByPk(orderId, { 
+                include: [{ model: ItemReserva, as: 'ItemReservas' }], 
+                transaction: t 
+            });
 
             if (!order || order.id_usuario !== req.user.id) {
                 throw new Error('Ordem não encontrada ou acesso negado.');
             }
-            if (!['aprovada', 'aguardando_assinatura'].includes(order.status)) {
+            if (!['aprovada', 'aguardando_assinatura', 'em_andamento'].includes(order.status)) {
                 throw new Error('Este pedido não pode mais ser remarcado.');
             }
 
+            const dataInicioOriginal = parseDateStringAsLocal(order.data_inicio);
+            const hoje = new Date();
+            const diffTime = dataInicioOriginal.getTime() - hoje.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const taxa_remarcacao = (diffDays <= 2) 
+                ? (Number(order.valor_total) * 0.05) 
+                : (order.taxa_remarcacao || 0);
+
             const oneDay = 1000 * 60 * 60 * 24;
-            const originalDuration = (new Date(order.data_fim) - new Date(order.data_inicio)) / oneDay;
+            const originalDuration = (parseDateStringAsLocal(order.data_fim) - parseDateStringAsLocal(order.data_inicio)) / oneDay;
             const newDuration = (new Date(newEndDate) - new Date(newStartDate)) / oneDay;
 
             if (originalDuration !== newDuration) {
@@ -662,16 +673,18 @@ const rescheduleOrder = async (req, res) => {
             for (const item of order.ItemReservas) {
                 const unidade = await Unidade.findByPk(item.id_unidade, { include: [{ model: Equipamento, as: 'Equipamento' }], transaction: t });
                 const itemRequest = { id_equipamento: unidade.Equipamento.id, quantidade: 1, data_inicio: newStartDate, data_fim: newEndDate };
-                const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, { transaction: t });
+                
+                const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, { transaction: t }, orderId);
+                
                 if (!unidadesDisponiveis.some(u => u.id === item.id_unidade)) {
-                    throw new Error(`Conflito: A unidade #${item.id_unidade} não está disponível nas novas datas.`);
+                    throw new Error(`Conflito: A unidade #${item.id_unidade} não está disponível.`);
                 }
             }
 
             await order.update({
                 data_inicio: newStartDate,
                 data_fim: newEndDate,
-                taxa_remarcacao: 0
+                taxa_remarcacao: taxa_remarcacao 
             }, { transaction: t });
 
             await ItemReserva.update(

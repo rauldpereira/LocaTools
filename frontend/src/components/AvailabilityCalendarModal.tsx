@@ -57,8 +57,17 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
     const getTileClassName = ({ date, view }: { date: Date, view: string }) => {
         if (view !== 'month') return null;
+
         const dayString = date.toISOString().split('T')[0];
         const availability = availabilityData[dayString];
+
+        if (selectedRange && selectedRange.length === 2) {
+            const [start, end] = selectedRange;
+            if (date >= start && date <= end) {
+                return 'day-blue'; 
+            }
+        }
+
         if (availability === undefined) return null;
         const percentage = (availability / equipment.total_quantidade) * 100;
 
@@ -66,6 +75,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         if (percentage <= 50) return 'day-yellow';
         return 'day-green';
     };
+
 
     const handleAddToCart = () => {
         if (!isLoggedIn || !selectedRange) return;
@@ -97,6 +107,9 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                 <button onClick={onClose} style={{ position: 'absolute', top: 15, right: 15, background: 'none', border: 'none', fontSize: '1.5rem', color: 'var(--cor-texto-principal)', cursor: 'pointer' }}>&times;</button>
                 <h2>Disponibilidade para {equipment.nome}</h2>
                 <p>Selecione o período desejado no calendário.</p>
+                <p style={{ textAlign: 'center', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    Disponibilidade
+                </p>
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div className="day-green" style={{ width: 15, height: 15, marginRight: 5 }}></div> Alta
@@ -107,7 +120,11 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div className="day-red" style={{ width: 15, height: 15, marginRight: 5 }}></div> Indisponível
                     </div>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div className="day-blue" style={{ width: 15, height: 15, marginRight: 5 }}></div> Selecionado
+                    </div>
                 </div>
+
 
                 {loading ? <p>Carregando calendário...</p> : (
                     <Calendar

@@ -1,5 +1,12 @@
-const { Equipamento, Categoria, Unidade, ItemReserva, OrdemDeServico, sequelize, TipoAvaria }= require('../models');
+const { Equipamento, Categoria, Unidade, ItemReserva, OrdemDeServico, sequelize, TipoAvaria } = require('../models');
 const { Op } = require('sequelize');
+
+const parseDateStringAsLocal = (dateString) => {
+    if (!dateString) return new Date();
+    const dateOnly = dateString.split('T')[0];
+    const [year, month, day] = dateOnly.split('-').map(Number);
+    return new Date(year, month - 1, day);
+};
 
 const createEquipment = async (req, res) => {
     const { nome, descricao, preco_diaria, id_categoria, status, url_imagem, quantidade_inicial, avarias } = req.body;
@@ -15,7 +22,7 @@ const createEquipment = async (req, res) => {
         }
 
         const newEquipment = await sequelize.transaction(async (t) => {
-            
+
             const equipamentoCriado = await Equipamento.create({
                 nome,
                 descricao,
@@ -23,7 +30,7 @@ const createEquipment = async (req, res) => {
                 id_categoria,
                 status: status || 'disponivel',
                 url_imagem,
-                total_quantidade: qtdInicialNum 
+                total_quantidade: qtdInicialNum
             }, { transaction: t });
 
             await TipoAvaria.create({
@@ -192,38 +199,47 @@ const checkAvailability = async (req, res) => {
 
 const getDailyAvailability = async (req, res) => {
     const { id } = req.params;
-    const { startDate, endDate } = req.query; 
+    const { startDate, endDate, excludeOrderId } = req.query;
 
     try {
+
         const totalUnits = await Unidade.count({ where: { id_equipamento: id } });
+
+        const orderStatusWhere = {
+            status: { [Op.in]: ['aprovada', 'aguardando_assinatura', 'em_andamento'] }
+        };
+        if (excludeOrderId) {
+            orderStatusWhere.id = { [Op.not]: excludeOrderId };
+        }
 
         const reservations = await ItemReserva.findAll({
             where: {
-                [Op.or]: [
-                    { data_inicio: { [Op.lte]: endDate }, data_fim: { [Op.gte]: startDate } }
+                [Op.and]: [
+                    { data_inicio: { [Op.lte]: endDate } },
+                    { data_fim: { [Op.gte]: startDate } }
                 ]
             },
-            include: [{
-                model: Unidade,
-                where: { id_equipamento: id },
-                attributes: []
-            }, {
-                model: OrdemDeServico,
-                where: { status: { [Op.in]: ['aprovada', 'aguardando_assinatura', 'em_andamento'] } },
-                attributes: []
-            }]
+            include: [
+                { model: Unidade, where: { id_equipamento: id }, attributes: [] },
+                { model: OrdemDeServico, where: orderStatusWhere, attributes: [] }
+            ]
         });
 
         const availabilityByDay = {};
-        const start = new Date(startDate);
-        const end = new Date(endDate);
+
+        const start = parseDateStringAsLocal(startDate);
+        const end = parseDateStringAsLocal(endDate);
 
         for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
             let reservedCount = 0;
-            
             for (const res of reservations) {
+
                 const resStart = new Date(res.data_inicio);
+                resStart.setHours(0, 0, 0, 0);
+
                 const resEnd = new Date(res.data_fim);
+                resEnd.setHours(0, 0, 0, 0);
+
                 if (day >= resStart && day <= resEnd) {
                     reservedCount++;
                 }
@@ -232,7 +248,7 @@ const getDailyAvailability = async (req, res) => {
             availabilityByDay[dayString] = totalUnits - reservedCount;
         }
 
-        res.status(200).json({ totalUnits, availabilityByDay });
+        res.status(200).json({ totalUnits: totalUnits, availabilityByDay });
 
     } catch (error) {
         console.error("Erro ao buscar disponibilidade diária:", error);
@@ -247,5 +263,5 @@ module.exports = {
     updateEquipment,
     deleteEquipment,
     checkAvailability,
-    getDailyAvailability 
+    getDailyAvailability
 };
