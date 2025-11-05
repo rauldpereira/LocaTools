@@ -1,4 +1,6 @@
 const { Equipamento, Categoria, Unidade, ItemReserva, OrdemDeServico, sequelize, TipoAvaria } = require('../models');
+const { HorarioFuncionamento, DiasExcecoes } = require('../models');
+
 const { Op } = require('sequelize');
 
 const parseDateStringAsLocal = (dateString) => {
@@ -7,6 +9,16 @@ const parseDateStringAsLocal = (dateString) => {
     const [year, month, day] = dateOnly.split('-').map(Number);
     return new Date(year, month - 1, day);
 };
+
+const diasSemanaMap = [
+    'domingo', 
+    'segunda', 
+    'terca',   
+    'quarta',  
+    'quinta',  
+    'sexta',   
+    'sabado'   
+];
 
 const createEquipment = async (req, res) => {
     const { nome, descricao, preco_diaria, id_categoria, status, url_imagem, quantidade_inicial, avarias } = req.body;
@@ -203,6 +215,23 @@ const getDailyAvailability = async (req, res) => {
 
     try {
 
+        const regrasPadraoRaw = await HorarioFuncionamento.findAll();
+        const regrasPadrao = regrasPadraoRaw.reduce((acc, regra) => {
+            acc[regra.dia_semana] = { fechado: regra.fechado };
+            return acc;
+        }, {});
+
+
+        const excecoesRaw = await DiasExcecoes.findAll({
+            where: {
+                data: { [Op.gte]: startDate, [Op.lte]: endDate }
+            }
+        });
+        const excecoes = excecoesRaw.reduce((acc, exc) => {
+            acc[exc.data] = exc;
+            return acc;
+        }, {});
+
         const totalUnits = await Unidade.count({ where: { id_equipamento: id } });
 
         const orderStatusWhere = {
@@ -226,28 +255,45 @@ const getDailyAvailability = async (req, res) => {
         });
 
         const availabilityByDay = {};
-
         const start = parseDateStringAsLocal(startDate);
         const end = parseDateStringAsLocal(endDate);
 
         for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
+            
+            const dayString = day.toISOString().split('T')[0];
+            const diaSemanaString = diasSemanaMap[day.getDay()];
+            let empresaAberta = true;
+
+            const excecao = excecoes[dayString];
+            if (excecao) {
+
+                empresaAberta = excecao.funcionamento;
+            } else {
+                const regra = regrasPadrao[diaSemanaString];
+                if (regra && regra.fechado) { 
+                    empresaAberta = false;
+                }
+            }
+
+            if (!empresaAberta) {
+                availabilityByDay[dayString] = 0; 
+                continue; 
+            }
+
             let reservedCount = 0;
             for (const res of reservations) {
-
-                const resStart = new Date(res.data_inicio);
-                resStart.setHours(0, 0, 0, 0);
-
-                const resEnd = new Date(res.data_fim);
-                resEnd.setHours(0, 0, 0, 0);
-
+                
+                const resStart = new Date(res.data_inicio); resStart.setHours(0, 0, 0, 0);
+                const resEnd = new Date(res.data_fim); resEnd.setHours(0, 0, 0, 0);
+                
                 if (day >= resStart && day <= resEnd) {
                     reservedCount++;
                 }
             }
-            const dayString = day.toISOString().split('T')[0];
+            
             availabilityByDay[dayString] = totalUnits - reservedCount;
         }
-
+        
         res.status(200).json({ totalUnits: totalUnits, availabilityByDay });
 
     } catch (error) {

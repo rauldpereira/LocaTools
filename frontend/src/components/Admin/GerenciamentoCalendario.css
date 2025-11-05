@@ -1,0 +1,116 @@
+.admin-calendario-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: var(--cor-fundo-secundaria);
+  border-radius: 8px;
+  color: var(--cor-texto-principal);
+}
+
+.admin-calendario-container .react-calendar {
+  width: 100%;
+  border: 1px solid var(--cor-borda);
+  background-color: var(--cor-fundo-modal);
+  border-radius: 8px;
+}
+
+
+.react-calendar__month-view__weekdays__weekday,
+.react-calendar__month-view__days__day {
+  color: var(--cor-texto-principal);
+}
+
+.react-calendar__navigation button {
+  color: var(--cor-texto-principal);
+}
+
+.react-calendar__navigation button:hover {
+  background-color: var(--cor-fundo-hover);
+}
+
+.react-calendar__tile.dia-normal,
+.legenda-item .dia-normal {
+  background-color: transparent !important;
+}
+
+
+.react-calendar__tile.dia-padrao-fechado,
+.legenda-item .dia-padrao-fechado {
+  background-color: #4A4A4A !important;
+  color: #999 !important;
+  opacity: 0.7;
+}
+
+
+.react-calendar__tile.dia-padrao-fechado:hover {
+  background-color: #555 !important;
+}
+
+
+
+.react-calendar__tile.dia-excecao-fechado,
+.legenda-item .dia-excecao-fechado {
+  background-color: #E53E3E !important;
+  color: white !important;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+
+.react-calendar__tile.dia-excecao-fechado:hover {
+  background-color: #c53030 !important;
+}
+
+
+.react-calendar__tile.dia-excecao-aberto,
+.legenda-item .dia-excecao-aberto {
+  background-color: #38A169 !important;
+  color: white !important;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.react-calendar__tile.dia-excecao-aberto:hover {
+  background-color: #2f855a !important;
+}
+
+.calendario-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  justify-content: center;
+}
+
+.legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legenda-item .cor {
+  width: 15px;
+  height: 15px;
+  border: 1px solid #777;
+  border-radius: 4px;
+}
+
+.btn-importar-feriados {
+  background-color: var(--cor-primaria);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  margin-top: 1.5rem;
+  cursor: pointer;
+}
+
+.btn-importar-feriados:hover {
+  background-color: var(--cor-primaria-hover);
+}
+
+.btn-importar-feriados:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}

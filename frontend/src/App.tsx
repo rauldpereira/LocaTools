@@ -1,5 +1,5 @@
 import './App.css';
-import { AuthProvider } from './context/AuthContext';
+import AuthProvider  from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
@@ -19,6 +19,7 @@ import VistoriaPage from './pages/VistoriaPage';
 import FinalizePaymentPage from './pages/FinalizePaymentPage';
 import EditEquipmentPage from './pages/EditEquipmentPage';
 import AdminReportsPage from './pages/AdminReportsPage';
+import GerenciamentoCalendario from './components/Admin/GerenciamentoCalendario';
 
 
 const stripePromise = loadStripe('pk_test_51RxzLsHUnTeu3by4toldZZMEswVFiFnrXc0eSI9PyNzEGnICbSvasFqoC0cmMgqkD3Ie6tQIEhKlhDvitfTbcwTT00qAldkZVx');
@@ -45,6 +46,8 @@ function App() {
                 <Route path="admin/finalize-payment/:orderId" element={<FinalizePaymentPage />} />
                 <Route path="admin/equipment/:id/edit" element={<EditEquipmentPage />} />
                 <Route path="admin/reports" element={<AdminReportsPage />} />
+                <Route path="admin/calendario" element={<GerenciamentoCalendario />} />
+
               </Route>
             </Routes>
           </Router>

@@ -11,6 +11,7 @@ const vistoriaRoutes = require('./routes/vistoriaRoutes');
 const horariosRoutes = require('./routes/horariosRoutes');
 const tipoAvariaRoutes = require('./routes/tipoAvariaRoutes');
 const reportsRoutes = require('./routes/reportsRoutes');
+const calendarioRoutes = require('./routes/calendarioRoutes');
 
 
 dotenv.config({ path: '.env', quiet: true });
@@ -34,7 +35,7 @@ app.use('/api/vistorias', vistoriaRoutes);
 app.use('/api/horarios', horariosRoutes);
 app.use('/api/tipos-avaria', tipoAvariaRoutes);
 app.use('/api/reports', reportsRoutes);
-
+app.use('/api', calendarioRoutes);
 
 app.get('/', (req, res) => {
   res.send('API do LocaTools está rodando!');

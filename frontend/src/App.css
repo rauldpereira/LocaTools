@@ -64,3 +64,19 @@ body {
   text-decoration: line-through; 
   pointer-events: none; /* Impede que o usuário clique em dias indisponíveis */
 }
+
+.day-fechado-padrao {
+  /* "Preto" - um cinza bem escuro, cor de fundo do seu modal */
+  background-color: #222; 
+  /* Cor do texto "morta" */
+  color: #555; 
+  /* Opcional: riscar o dia */
+  text-decoration: line-through;
+}
+
+.day-neighboring-month {
+  /* "Sem cor" - usa o fundo do calendário */
+  background-color: transparent !important; 
+  /* Cor do texto "morta" / quase invisível */
+  color: #444; 
+}

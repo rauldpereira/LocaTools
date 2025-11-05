@@ -1,44 +1,129 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Calendar from 'react-calendar';
-//import 'react-calendar/dist/Calendar.css';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import HorarioFuncionamento from './HorarioFuncionamento';
 
+interface IDiaStatus {
+    data: string;
+    status: 'ABERTO' | 'FECHADO';
+    fonte: 'padrao' | 'excecao';
+    descricao: string | null;
+    tipo?: 'feriado' | 'parada' | 'extra' | 'outro';
+}
+
+interface IMesPublicado {
+    ano: number;
+    mes: number;
+}
+
+const toISODate = (date: Date): string => date.toISOString().split('T')[0];
+
+
 const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void }> = ({ equipment, onClose }) => {
     const { addToCart } = useCart();
-    const { isLoggedIn } = useAuth();
+    const { isLoggedIn, isLoadingAuth } = useAuth(); 
     const navigate = useNavigate();
+
     const [availabilityData, setAvailabilityData] = useState<{ [key: string]: number }>({});
     const [selectedRange, setSelectedRange] = useState<Date[] | null>(null);
     const [availableForRange, setAvailableForRange] = useState<number | null>(null);
     const [quantity, setQuantity] = useState(1);
+
+    const [statusDias, setStatusDias] = useState<Map<string, IDiaStatus>>(new Map());
+    const [currentMonthView, setCurrentMonthView] = useState(new Date());
+    const [minDate, setMinDate] = useState<Date | undefined>(undefined);
+    const [maxDate, setMaxDate] = useState<Date | undefined>(undefined);
+
+    
     const [loading, setLoading] = useState(true);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     useEffect(() => {
-        const today = new Date();
-        const endDate = new Date();
-        endDate.setDate(today.getDate() + 60);
+        if (isLoadingAuth || !isLoggedIn) return; 
+
+        const fetchMesesPublicados = async () => {
+            try {
+                setLoading(true);
+                setErrorMessage(null);
+
+                const { data: meses } = await axios.get<IMesPublicado[]>(
+                    'http://localhost:3001/api/calendario/meses-publicados'
+                );
+
+                if (meses.length === 0) {
+                    setErrorMessage("Nenhum mês disponível para agendamento no momento.");
+                    setLoading(false);
+                    return;
+                }
+
+                const primeiroMes = meses[0];
+                const ultimoMes = meses[meses.length - 1];
+
+                const dataMin = new Date(primeiroMes.ano, primeiroMes.mes - 1, 1);
+                const dataMax = new Date(ultimoMes.ano, ultimoMes.mes, 0);
+
+                setMinDate(dataMin);
+                setMaxDate(dataMax);
+                setCurrentMonthView(dataMin);
+
+            } catch (err) {
+                console.error("Erro ao buscar meses publicados:", err);
+                setErrorMessage("Erro ao carregar meses disponíveis.");
+                setLoading(false);
+            }
+        };
+
+        fetchMesesPublicados();
+    }, [isLoadingAuth, isLoggedIn]); 
+
+
+    useEffect(() => {
+        if (!minDate) return;
+
+        const fetchStatusMensal = async () => {
+            const ano = currentMonthView.getFullYear();
+            const mes = currentMonthView.getMonth() + 1;
+
+            try {
+                const { data } = await axios.get<IDiaStatus[]>(
+                    'http://localhost:3001/api/calendario/status-mensal',
+                    { params: { ano, mes } }
+                );
+                const diasMap = new Map(data.map(dia => [dia.data, dia]));
+                setStatusDias(diasMap);
+            } catch (err) {
+                console.error("Erro ao buscar status mensal:", err);
+            }
+        };
+
+        fetchStatusMensal();
+    }, [currentMonthView, minDate]); 
+
+    useEffect(() => {
+        if (!minDate || !maxDate || !equipment.id) return;
 
         const fetchDailyAvailability = async () => {
             try {
                 const { data } = await axios.get(`http://localhost:3001/api/equipment/${equipment.id}/daily-availability`, {
                     params: {
-                        startDate: today.toISOString().split('T')[0],
-                        endDate: endDate.toISOString().split('T')[0]
+                        startDate: toISODate(minDate),
+                        endDate: toISODate(maxDate)
                     }
                 });
                 setAvailabilityData(data.availabilityByDay);
             } catch (error) {
-                console.error("Erro ao buscar disponibilidade diária", error);
+                console.error("Erro ao buscar disponibilidade diária do equipamento", error);
+                setErrorMessage("Não foi possível carregar a disponibilidade deste item.");
             } finally {
-                setLoading(false);
+                setLoading(false); 
             }
         };
         fetchDailyAvailability();
-    }, [equipment.id]);
+    }, [minDate, maxDate, equipment.id]); 
+
 
     useEffect(() => {
         if (selectedRange && selectedRange.length === 2) {
@@ -55,11 +140,15 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         }
     }, [selectedRange, availabilityData]);
 
+
     const getTileClassName = ({ date, view }: { date: Date, view: string }) => {
         if (view !== 'month') return null;
+        const dayString = toISODate(date);
 
-        const dayString = date.toISOString().split('T')[0];
-        const availability = availabilityData[dayString];
+
+        if (date.getMonth() !== currentMonthView.getMonth()) {
+            return 'day-neighboring-month';
+        }
 
         if (selectedRange && selectedRange.length === 2) {
             const [start, end] = selectedRange;
@@ -68,12 +157,57 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
             }
         }
 
-        if (availability === undefined) return null;
-        const percentage = (availability / equipment.total_quantidade) * 100;
+        const diaStatusAdmin = statusDias.get(dayString);
+        const availabilityEstoque = availabilityData[dayString];
 
-        if (availability === 0) return 'day-red';
-        if (percentage <= 50) return 'day-yellow';
-        return 'day-green';
+        if (!diaStatusAdmin) {
+            return null;
+        }
+
+        if (diaStatusAdmin.status === 'FECHADO') {
+            if (diaStatusAdmin.fonte === 'padrao') {
+                return 'day-fechado-padrao'; 
+            }
+
+            if (diaStatusAdmin.fonte === 'excecao') {
+                return 'day-red'; 
+            }
+        }
+        
+        
+        if (availabilityEstoque === undefined) return null; 
+        if (availabilityEstoque === 0) return 'day-red'; 
+        
+        
+        const percentage = (availabilityEstoque / equipment.total_quantidade) * 100;
+        if (percentage <= 50) return 'day-yellow'; 
+
+        
+        return 'day-green'; 
+    };
+
+     
+    const tileDisabled = ({ date, view }: { date: Date, view: string }): boolean => { 
+        if (view !== 'month') return false;
+
+        
+        if (date.getMonth() !== currentMonthView.getMonth()) {
+            return true;
+        }
+
+        const dayString = toISODate(date);
+        const diaStatusAdmin = statusDias.get(dayString);
+        const availabilityEstoque = availabilityData[dayString];
+
+        if (!diaStatusAdmin || diaStatusAdmin.status === 'FECHADO') {
+            return true;
+        }
+
+        if (availabilityEstoque === 0) {
+            return true;
+        }
+
+        return false; 
     };
 
 
@@ -101,6 +235,10 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
     const handleContentClick = (e: React.MouseEvent) => e.stopPropagation();
 
+    if (isLoadingAuth) {
+        return <div style={modalOverlayStyle} onClick={onClose}><p>Carregando...</p></div>;
+    }
+
     return (
         <div style={modalOverlayStyle} onClick={onClose}>
             <div style={modalContentStyle} onClick={handleContentClick}>
@@ -126,12 +264,24 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                 </div>
 
 
-                {loading ? <p>Carregando calendário...</p> : (
+                {loading ? <p>Carregando calendário...</p> : 
+                 errorMessage ? <p style={{ color: 'red' }}>{errorMessage}</p> : (
                     <Calendar
                         onChange={(value) => setSelectedRange(value as Date[])}
                         selectRange={true}
-                        tileClassName={getTileClassName}
-                        minDate={new Date()}
+                        
+                        minDate={minDate} 
+                        maxDate={maxDate} 
+                        activeStartDate={currentMonthView} 
+                        onActiveStartDateChange={({ activeStartDate }) => 
+                            setCurrentMonthView(activeStartDate || new Date())
+                        } 
+                        
+                        tileClassName={getTileClassName} 
+                        tileDisabled={tileDisabled} 
+
+                        minDetail="month" 
+                        maxDetail="month"
                     />
                 )}
 
