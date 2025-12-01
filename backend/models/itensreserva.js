@@ -9,6 +9,10 @@ module.exports = (sequelize, DataTypes) => {
       ItemReserva.belongsTo(models.Unidade, {
         foreignKey: 'id_unidade',
       });
+      ItemReserva.hasOne(models.Prejuizo, {
+        foreignKey: 'item_reserva_id',
+        as: 'prejuizo'
+    });
     }
   }
   ItemReserva.init({
@@ -34,6 +38,15 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: false
     },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'ATIVO'
+    },
+    data_devolucao_real: {
+      type: DataTypes.DATE,
+      allowNull: true
+    }
   }, {
     sequelize,
     modelName: 'ItemReserva',

@@ -24,7 +24,7 @@ const toISODate = (date: Date): string => date.toISOString().split('T')[0];
 
 const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void }> = ({ equipment, onClose }) => {
     const { addToCart } = useCart();
-    const { isLoggedIn, isLoadingAuth } = useAuth(); 
+    const { isLoggedIn, isLoadingAuth } = useAuth();
     const navigate = useNavigate();
 
     const [availabilityData, setAvailabilityData] = useState<{ [key: string]: number }>({});
@@ -37,12 +37,12 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
     const [minDate, setMinDate] = useState<Date | undefined>(undefined);
     const [maxDate, setMaxDate] = useState<Date | undefined>(undefined);
 
-    
+
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     useEffect(() => {
-        if (isLoadingAuth || !isLoggedIn) return; 
+        if (isLoadingAuth || !isLoggedIn) return;
 
         const fetchMesesPublicados = async () => {
             try {
@@ -62,12 +62,18 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                 const primeiroMes = meses[0];
                 const ultimoMes = meses[meses.length - 1];
 
-                const dataMin = new Date(primeiroMes.ano, primeiroMes.mes - 1, 1);
+                const adminMinDate = new Date(primeiroMes.ano, primeiroMes.mes - 1, 1);
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const effectiveMinDate = adminMinDate < today ? today : adminMinDate;
+
                 const dataMax = new Date(ultimoMes.ano, ultimoMes.mes, 0);
 
-                setMinDate(dataMin);
+                setMinDate(effectiveMinDate);
                 setMaxDate(dataMax);
-                setCurrentMonthView(dataMin);
+                setCurrentMonthView(effectiveMinDate);
 
             } catch (err) {
                 console.error("Erro ao buscar meses publicados:", err);
@@ -77,7 +83,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         };
 
         fetchMesesPublicados();
-    }, [isLoadingAuth, isLoggedIn]); 
+    }, [isLoadingAuth, isLoggedIn]);
 
 
     useEffect(() => {
@@ -100,7 +106,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         };
 
         fetchStatusMensal();
-    }, [currentMonthView, minDate]); 
+    }, [currentMonthView, minDate]);
 
     useEffect(() => {
         if (!minDate || !maxDate || !equipment.id) return;
@@ -118,11 +124,11 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                 console.error("Erro ao buscar disponibilidade diária do equipamento", error);
                 setErrorMessage("Não foi possível carregar a disponibilidade deste item.");
             } finally {
-                setLoading(false); 
+                setLoading(false);
             }
         };
         fetchDailyAvailability();
-    }, [minDate, maxDate, equipment.id]); 
+    }, [minDate, maxDate, equipment.id]);
 
 
     useEffect(() => {
@@ -153,7 +159,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         if (selectedRange && selectedRange.length === 2) {
             const [start, end] = selectedRange;
             if (date >= start && date <= end) {
-                return 'day-blue'; 
+                return 'day-blue';
             }
         }
 
@@ -166,31 +172,31 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
         if (diaStatusAdmin.status === 'FECHADO') {
             if (diaStatusAdmin.fonte === 'padrao') {
-                return 'day-fechado-padrao'; 
+                return 'day-fechado-padrao';
             }
 
             if (diaStatusAdmin.fonte === 'excecao') {
-                return 'day-red'; 
+                return 'day-red';
             }
         }
-        
-        
-        if (availabilityEstoque === undefined) return null; 
-        if (availabilityEstoque === 0) return 'day-red'; 
-        
-        
-        const percentage = (availabilityEstoque / equipment.total_quantidade) * 100;
-        if (percentage <= 50) return 'day-yellow'; 
 
-        
-        return 'day-green'; 
+
+        if (availabilityEstoque === undefined) return null;
+        if (availabilityEstoque === 0) return 'day-red';
+
+
+        const percentage = (availabilityEstoque / equipment.total_quantidade) * 100;
+        if (percentage <= 50) return 'day-yellow';
+
+
+        return 'day-green';
     };
 
-     
-    const tileDisabled = ({ date, view }: { date: Date, view: string }): boolean => { 
+
+    const tileDisabled = ({ date, view }: { date: Date, view: string }): boolean => {
         if (view !== 'month') return false;
 
-        
+
         if (date.getMonth() !== currentMonthView.getMonth()) {
             return true;
         }
@@ -207,7 +213,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
             return true;
         }
 
-        return false; 
+        return false;
     };
 
 
@@ -264,26 +270,26 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                 </div>
 
 
-                {loading ? <p>Carregando calendário...</p> : 
-                 errorMessage ? <p style={{ color: 'red' }}>{errorMessage}</p> : (
-                    <Calendar
-                        onChange={(value) => setSelectedRange(value as Date[])}
-                        selectRange={true}
-                        
-                        minDate={minDate} 
-                        maxDate={maxDate} 
-                        activeStartDate={currentMonthView} 
-                        onActiveStartDateChange={({ activeStartDate }) => 
-                            setCurrentMonthView(activeStartDate || new Date())
-                        } 
-                        
-                        tileClassName={getTileClassName} 
-                        tileDisabled={tileDisabled} 
+                {loading ? <p>Carregando calendário...</p> :
+                    errorMessage ? <p style={{ color: 'red' }}>{errorMessage}</p> : (
+                        <Calendar
+                            onChange={(value) => setSelectedRange(value as Date[])}
+                            selectRange={true}
 
-                        minDetail="month" 
-                        maxDetail="month"
-                    />
-                )}
+                            minDate={minDate}
+                            maxDate={maxDate}
+                            activeStartDate={currentMonthView}
+                            onActiveStartDateChange={({ activeStartDate }) =>
+                                setCurrentMonthView(activeStartDate || new Date())
+                            }
+
+                            tileClassName={getTileClassName}
+                            tileDisabled={tileDisabled}
+
+                            minDetail="month"
+                            maxDetail="month"
+                        />
+                    )}
 
                 {availableForRange !== null && (
                     <div style={{ marginTop: '1rem', borderTop: '1px solid var(--cor-borda)', paddingTop: '1rem' }}>

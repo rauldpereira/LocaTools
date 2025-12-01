@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas } = require('../models');
+const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo } = require('../models');
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
 
@@ -10,7 +10,6 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const verificarDisponibilidade = async (item, options, excludeOrderId = null) => {
     const { id_equipamento, data_inicio, data_fim } = item;
     
-    // 1. Busca TODAS as unidades, ignorando o status
     const unidadesDoEquipamento = await Unidade.findAll({ 
         where: { id_equipamento }, 
         ...options 
@@ -23,7 +22,6 @@ const verificarDisponibilidade = async (item, options, excludeOrderId = null) =>
         orderStatusWhere.id = { [Op.not]: excludeOrderId };
     }
 
-    // 2. Busca reservas que conflitam com a data, IGNORANDO o pedido atual
     const unidadesReservadas = await ItemReserva.findAll({
         where: {
             data_inicio: { [Op.lte]: data_fim },
@@ -37,7 +35,6 @@ const verificarDisponibilidade = async (item, options, excludeOrderId = null) =>
     });
 
     const idDasUnidadesReservadas = unidadesReservadas.map(r => r.id_unidade);
-    // Retorna unidades que NÃO ESTÃO na lista de reservadas
     return unidadesDoEquipamento.filter(u => !idDasUnidadesReservadas.includes(u.id));
 };
 
@@ -256,20 +253,27 @@ const getOrderById = async (req, res) => {
                 {
                     model: ItemReserva,
                     as: 'ItemReservas',
-                    include: [{
-                        model: Unidade,
-                        as: 'Unidade',
-                        include: [{
-                            model: Equipamento,
-                            as: 'Equipamento',
-                            attributes: ['id', 'nome', 'url_imagem', 'total_quantidade'],
+                    include: [
+                        {
+                            model: Unidade,
+                            as: 'Unidade',
                             include: [{
-                                model: TipoAvaria,
-                                as: 'TipoAvarias',
-                                required: false
+                                model: Equipamento,
+                                as: 'Equipamento',
+                                attributes: ['id', 'nome', 'url_imagem', 'total_quantidade'],
+                                include: [{
+                                    model: TipoAvaria,
+                                    as: 'TipoAvarias',
+                                    required: false
+                                }]
                             }]
-                        }]
-                    }]
+                        },
+                        {
+                            model: Prejuizo,
+                            as: 'prejuizo',
+                            required: false
+                        }
+                    ]
                 },
                 {
                     model: Vistoria,
@@ -290,23 +294,30 @@ const getOrderById = async (req, res) => {
                             }]
                         }]
                     }]
+                },
+                { 
+                    model: Usuario, 
+                    as: 'Usuario', 
+                    attributes: ['id', 'nome', 'email'] 
                 }
             ]
         });
 
-        if (order && order.id_usuario !== req.user.id && req.user.tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado.' });
-        }
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
+        }
+        
+        if (order.id_usuario !== req.user.id && req.user.tipo_usuario !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado.' });
         }
 
         res.status(200).json(order);
     } catch (error) {
-        console.error("Erro ao buscar detalhes da ordem:", error)
+        console.error("Erro ao buscar detalhes da ordem:", error);
         res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 };
+
 const generateContract = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
@@ -485,7 +496,6 @@ const signContract = async (req, res) => {
 };
 
 const confirmManualPayment = async (req, res) => {
-
     const { damageFee } = req.body;
 
     try {
@@ -493,16 +503,21 @@ const confirmManualPayment = async (req, res) => {
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
         }
-        if (order.status !== 'aguardando_pagamento_final') {
-            return res.status(400).json({ error: 'Esta ordem não está na etapa de pagamento final.' });
+
+        const statusPermitidos = ['aguardando_pagamento_final', 'PREJUIZO'];
+        
+        if (!statusPermitidos.includes(order.status)) {
+            return res.status(400).json({ 
+                error: `Status inválido para finalizar: ${order.status}. Esperado: aguardando_pagamento_final ou PREJUIZO.` 
+            });
         }
-
-        await order.update({ status: 'finalizada' });
-
+       
         const taxaPorAvaria = Number(damageFee) || 0;
-
-
-        await order.update({ status: 'finalizada', taxa_avaria: taxaPorAvaria });
+        
+        await order.update({ 
+            status: 'finalizada', 
+            taxa_avaria: taxaPorAvaria 
+        });
 
         const valorRestante = Number(order.valor_total) - Number(order.valor_sinal);
 
@@ -736,6 +751,85 @@ const skipReturnInspection = async (req, res) => {
     }
 };
 
+const finalizarComPendencia = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const order = await OrdemDeServico.findByPk(id);
+        
+        if (!order) {
+            return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
+        }
+
+        if (['finalizada', 'cancelada'].includes(order.status)) {
+            return res.status(400).json({ error: 'Ordem já está encerrada.' });
+        }
+
+        await order.update({ 
+            status: 'PREJUIZO',
+        });
+
+        res.status(200).json({ message: 'Ordem encerrada com pendências financeiras.' });
+
+    } catch (error) {
+        console.error('Erro ao finalizar com pendência:', error);
+        res.status(500).json({ error: 'Erro interno.' });
+    }
+};
+
+const recoverDebt = async (req, res) => {
+    const { id } = req.params;
+    const { forma_pagamento, valor_recebido } = req.body;
+
+    const transaction = await sequelize.transaction();
+
+    try {
+        const order = await OrdemDeServico.findByPk(id, {
+            include: [{ 
+                model: ItemReserva, 
+                as: 'ItemReservas',
+                include: [{ model: Prejuizo, as: 'prejuizo' }]
+            }]
+        });
+
+        if (!order) {
+            await transaction.rollback();
+            return res.status(404).json({ error: 'Ordem não encontrada.' });
+        }
+
+        if (order.status !== 'PREJUIZO') {
+            await transaction.rollback();
+            return res.status(400).json({ error: 'Esta ordem não possui pendência de prejuízo ativa.' });
+        }
+
+        for (const item of order.ItemReservas) {
+            if (item.prejuizo && !item.prejuizo.resolvido) {
+                await item.prejuizo.update({
+                    resolvido: true,
+                    data_resolucao: new Date(),
+                    forma_recuperacao: forma_pagamento || 'manual'
+                }, { transaction });
+            }
+        }
+
+        await Pagamento.create({
+            id_ordem_servico: order.id,
+            valor: valor_recebido,
+            status_pagamento: 'aprovado',
+            id_transacao_externa: `recuperacao_divida_${Date.now()}`
+        }, { transaction });
+
+        await order.update({ status: 'finalizada' }, { transaction });
+
+        await transaction.commit();
+        res.status(200).json({ message: 'Dívida recuperada e ordem finalizada com sucesso!' });
+
+    } catch (error) {
+        await transaction.rollback();
+        console.error('Erro ao recuperar dívida:', error);
+        res.status(500).json({ error: 'Erro interno.' });
+    }
+};
+
 module.exports = {
     createOrder,
     getMyOrders,
@@ -750,5 +844,7 @@ module.exports = {
     cancelOrder,
     checkRescheduleAvailability,
     rescheduleOrder,
-    skipReturnInspection
+    skipReturnInspection,
+    finalizarComPendencia,
+    recoverDebt
 };

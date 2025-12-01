@@ -5,34 +5,41 @@ import { useAuth } from '../context/AuthContext';
 import RescheduleModal from '../components/RescheduleModal';
 import HorarioFuncionamento from '../components/HorarioFuncionamento';
 
-interface Equipamento { 
-    nome: string; 
-    url_imagem: string;  
-    TipoAvarias: TipoAvaria[]; 
+
+interface ItemReserva {
+    id: number;
+    status?: string;
+    Unidade: {
+        id: number;
+        Equipamento: { nome: string; }
+    };
+    prejuizo?: {
+        id: number;
+        tipo: string;
+        valor_prejuizo: string | number;
+        observacao: string;
+        resolvido: boolean;
+    } | null;
 }
 
-interface Unidade { id: number; Equipamento: Equipamento; }
-
-interface ItemReserva { id: number; Unidade: Unidade; }
-
-interface DetalheVistoria { 
-    id: number; 
-    id_item_equipamento: number; 
-    condicao: string; comentarios: 
-    string; foto: string[] | null; 
+interface DetalheVistoria {
+    id: number;
+    id_item_equipamento: number;
+    condicao: string; comentarios:
+    string; foto: string[] | null;
 }
 
-interface Vistoria { 
-    id: number; 
-    tipo_vistoria: 'entrega' | 'devolucao'; 
-    data: string; 
-    detalhes: DetalheVistoria[]; 
+interface Vistoria {
+    id: number;
+    tipo_vistoria: 'entrega' | 'devolucao';
+    data: string;
+    detalhes: DetalheVistoria[];
 }
 
-interface TipoAvaria { 
-    id: number; 
-    descricao: 
-    string; 
+interface TipoAvaria {
+    id: number;
+    descricao:
+    string;
     preco: string;
 }
 
@@ -86,7 +93,6 @@ const ReservationDetailsPage: React.FC = () => {
     const [contractLoading, setContractLoading] = useState(false);
     const backendUrl = 'http://localhost:3001';
     const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
-
 
     const fetchOrderDetails = async () => {
         if (!token || !orderId) return;
@@ -167,50 +173,73 @@ const ReservationDetailsPage: React.FC = () => {
     const valorTotalAjustado = Number(order.valor_total) + taxaAvariaNum + taxaRemarcacaoNum;
     const canReschedule = ['aprovada', 'aguardando_assinatura'].includes(order.status);
 
+    const totalDivida = order ? order.ItemReservas.reduce((acc, item) => {
+        const valorB_O = (item.prejuizo && !item.prejuizo.resolvido) ? Number(item.prejuizo.valor_prejuizo) : 0;
+        return acc + valorB_O;
+    }, 0) : 0;
+
+    const totalPendente = order ? totalDivida + (Number(order.valor_total) - Number(order.valor_sinal)) : 0;
+
+    const handleRecoverDebt = async () => {
+        if (!window.confirm(`Confirmar o recebimento de R$ ${totalPendente.toFixed(2)} e quitar a dívida?`)) return;
+
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.put(`${backendUrl}/api/reservations/${orderId}/recover-debt`, {
+                valor_recebido: totalPendente,
+                forma_pagamento: 'manual_balcao'
+            }, config);
+
+            alert("Pagamento registrado! O pedido foi regularizado e finalizado.");
+            fetchOrderDetails();
+        } catch (error) {
+            alert("Erro ao processar pagamento.");
+        }
+    };
 
     const VistoriaDetailDisplay = ({ title, detail }: { title: string, detail: DetalheVistoria | DetalheVistoriaFeita | undefined }) => {
-    if (!detail) return null;
-    const avarias = (detail as DetalheVistoriaFeita).avariasEncontradas;
+        if (!detail) return null;
+        const avarias = (detail as DetalheVistoriaFeita).avariasEncontradas;
 
-    return (
-        <div style={{ marginTop: '1rem' }}>
-            <h4>{title}</h4>
-            <p><strong>Condição:</strong> {detail.condicao}</p>
-            <p><strong>Comentários:</strong> {detail.comentarios || 'Nenhum comentário.'}</p>
+        return (
+            <div style={{ marginTop: '1rem' }}>
+                <h4>{title}</h4>
+                <p><strong>Condição:</strong> {detail.condicao}</p>
+                <p><strong>Comentários:</strong> {detail.comentarios || 'Nenhum comentário.'}</p>
 
-            {avarias && avarias.length > 0 && (
-                <div>
-                    <strong>Avarias Registradas:</strong>
-                    <ul style={{ margin: '5px 0 10px 20px', padding: 0 }}>
-                        {avarias.map(avaria => (
-                            <li key={avaria.id} style={{color: avaria.TipoAvaria.descricao.toLowerCase() === 'outros' ? 'inherit' : 'red'}}>
-                                {avaria.TipoAvaria.descricao}
-                                {Number(avaria.TipoAvaria.preco) > 0 && ` (R$ ${Number(avaria.TipoAvaria.preco).toFixed(2)})`}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
-            {detail.foto && detail.foto.length > 0 ? (
-                <div>
-                    <strong>Fotos:</strong><br />
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
-                        {detail.foto.map((url, index) => (
-                            <a key={index} href={`${backendUrl}${url}`} target="_blank" rel="noopener noreferrer">
-                                <img
-                                    src={`${backendUrl}${url}`}
-                                    alt={`Foto ${index + 1}`}
-                                    style={{ height: '100px', width: '100px', objectFit: 'cover', borderRadius: '5px' }}
-                                />
-                            </a>
-                        ))}
+                {avarias && avarias.length > 0 && (
+                    <div>
+                        <strong>Avarias Registradas:</strong>
+                        <ul style={{ margin: '5px 0 10px 20px', padding: 0 }}>
+                            {avarias.map(avaria => (
+                                <li key={avaria.id} style={{ color: avaria.TipoAvaria.descricao.toLowerCase() === 'outros' ? 'inherit' : 'red' }}>
+                                    {avaria.TipoAvaria.descricao}
+                                    {Number(avaria.TipoAvaria.preco) > 0 && ` (R$ ${Number(avaria.TipoAvaria.preco).toFixed(2)})`}
+                                </li>
+                            ))}
+                        </ul>
                     </div>
-                </div>
-            ) : <p><strong>Fotos:</strong> Nenhuma foto registrada.</p>}
-        </div>
-    );
-};
+                )}
+
+                {detail.foto && detail.foto.length > 0 ? (
+                    <div>
+                        <strong>Fotos:</strong><br />
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+                            {detail.foto.map((url, index) => (
+                                <a key={index} href={`${backendUrl}${url}`} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                        src={`${backendUrl}${url}`}
+                                        alt={`Foto ${index + 1}`}
+                                        style={{ height: '100px', width: '100px', objectFit: 'cover', borderRadius: '5px' }}
+                                    />
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                ) : <p><strong>Fotos:</strong> Nenhuma foto registrada.</p>}
+            </div>
+        );
+    };
 
 
     return (
@@ -226,12 +255,9 @@ const ReservationDetailsPage: React.FC = () => {
 
             <HorarioFuncionamento />
 
-
-
             {user?.tipo_usuario !== 'admin' && canReschedule && (
                 <button onClick={() => setIsRescheduleModalOpen(true)} style={{ backgroundColor: 'orange', color: 'white', marginRight: '1rem' }}>Remarcar</button>
             )}
-
 
             {user?.tipo_usuario === 'admin' && (
                 <div style={{
@@ -248,7 +274,6 @@ const ReservationDetailsPage: React.FC = () => {
                     {order.status === 'aprovada' && <Link to={`/admin/vistoria/${order.id}`}><button>Realizar Vistoria de Saída</button></Link>}
                     {order.status === 'em_andamento' && <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}><button>Registrar Vistoria de Devolução</button></Link>}
                     {order.status === 'aguardando_pagamento_final' && <Link to={`/admin/finalize-payment/${order.id}`}><button>Finalizar e Cobrar</button></Link>}
-
 
                     {(order.status !== 'aprovada' && order.status !== 'em_andamento' && order.status !== 'aguardando_pagamento_final') &&
                         <p>Nenhuma ação pendente para este pedido no momento.</p>
@@ -267,13 +292,47 @@ const ReservationDetailsPage: React.FC = () => {
             {isRescheduleModalOpen && (
                 <RescheduleModal
                     order={order}
-                    token={token}
                     onClose={() => setIsRescheduleModalOpen(false)}
                     onSuccess={() => {
                         setIsRescheduleModalOpen(false);
                         fetchOrderDetails();
                     }}
                 />
+            )}
+
+            {order.status === 'PREJUIZO' && user?.tipo_usuario === 'admin' && (
+                <div style={{
+                    backgroundColor: '#ffe6e6',
+                    border: '2px solid #dc3545',
+                    borderRadius: '8px',
+                    padding: '1.5rem',
+                    margin: '2rem 0',
+                    textAlign: 'center'
+                }}>
+                    <h2 style={{ color: '#dc3545', marginTop: 0 }}>PEDIDO COM DÍVIDA ATIVA</h2>
+                    <p style={{ fontSize: '1.1rem' }}>Este pedido foi encerrado com pendências financeiras (Roubo/Calote).</p>
+
+                    <h1 style={{ fontSize: '2.5rem', margin: '1rem 0' }}>
+                        R$ {totalPendente.toFixed(2)}
+                    </h1>
+
+                    <button
+                        onClick={handleRecoverDebt}
+                        style={{
+                            padding: '1rem 2rem',
+                            fontSize: '1.2rem',
+                            fontWeight: 'bold',
+                            backgroundColor: '#28a745',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        Receber Pagamento e Finalizar
+                    </button>
+                </div>
             )}
 
             {user?.tipo_usuario !== 'admin' && order.status === 'aguardando_assinatura' && (
@@ -295,7 +354,6 @@ const ReservationDetailsPage: React.FC = () => {
             )}
 
             <hr style={{ margin: '2rem 0' }} />
-
 
             {order.status === 'cancelada' && (
                 <div style={{ border: '1px solid #dc3545', padding: '1.5rem', marginBottom: '1.5rem', borderRadius: '8px', backgroundColor: '#ffffffff' }}>
@@ -336,7 +394,7 @@ const ReservationDetailsPage: React.FC = () => {
                 return (
                     <div key={item.id} style={{ border: '1px solid #ddd', padding: '1.5rem', marginBottom: '1.5rem', borderRadius: '8px' }}>
                         <h3>{item.Unidade.Equipamento.nome} (Unidade #{item.Unidade.id})</h3>
-                        
+
                         <div style={{ borderBottom: vistoriaDeDevolucao ? '1px dashed #ccc' : 'none', paddingBottom: '1rem', marginBottom: '1rem' }}>
                             {vistoriaDeSaida ? (
                                 <VistoriaDetailDisplay title="Relatório da Vistoria de Saída" detail={detalheSaida} />
@@ -351,7 +409,7 @@ const ReservationDetailsPage: React.FC = () => {
                             (order.status === 'aguardando_pagamento_final' || order.status === 'finalizada') ? (
                                 <div>
                                     <h4>Relatório da Vistoria de Devolução</h4>
-                                    <p style={{color: 'green'}}>Devolução Rápida: A vistoria consta que o equipamento foi entregue sem novas avarias.</p>
+                                    <p style={{ color: 'green' }}>Devolução Rápida: A vistoria consta que o equipamento foi entregue sem novas avarias.</p>
                                 </div>
                             ) : (
                                 order.status === 'em_andamento' && <p style={{ color: 'blue' }}>Aguardando devolução do equipamento.</p>

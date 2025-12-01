@@ -4,7 +4,7 @@ const { Usuario } = require('../models');
 
 
 const registerUser = async (req, res) => {
-  const { nome, email, senha } = req.body;
+  const { nome, email, senha, telefone, cpf, rg } = req.body;
   try {
     if (!nome || !email || !senha) {
       return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
@@ -13,6 +13,11 @@ const registerUser = async (req, res) => {
     if (userExists) {
       return res.status(409).json({ error: 'Já existe um usuário com este e-mail.' });
     }
+    if (cpf) {
+        const cpfExists = await Usuario.findOne({ where: { cpf } });
+        if (cpfExists) return res.status(400).json({ error: 'CPF já cadastrado.' });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const senha_hash = await bcrypt.hash(senha, salt);
     const newUser = await Usuario.create({
@@ -20,6 +25,9 @@ const registerUser = async (req, res) => {
       email,
       senha_hash,
       tipo_usuario: 'cliente',
+      telefone,
+      cpf,
+      rg
     });
     res.status(201).json({
       message: 'Usuário registrado com sucesso.',

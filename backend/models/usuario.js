@@ -26,6 +26,19 @@ module.exports = (sequelize, DataTypes) => {
     senha_hash: DataTypes.STRING,
     tipo_usuario: {
       type: DataTypes.ENUM('cliente', 'admin', 'motorista')
+    },
+    telefone: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    cpf: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true
+    },
+    rg: {
+      type: DataTypes.STRING,
+      allowNull: true
     }
   }, {
     sequelize,

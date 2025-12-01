@@ -14,7 +14,9 @@ const {
     confirmManualPayment,
     checkRescheduleAvailability, 
     rescheduleOrder,
-    skipReturnInspection            
+    skipReturnInspection,
+    finalizarComPendencia,
+    recoverDebt            
 } = require('../controllers/reservationController');
 
 const { protect, admin } = require('../middlewares/authMiddleware');
@@ -34,6 +36,8 @@ router.put('/:id/confirm-manual-payment', protect, admin, confirmManualPayment);
 router.put('/:id/reschedule', protect, rescheduleOrder);
 router.put('/:id', protect, admin, updateOrderStatus);
 router.put('/:id/skip-inspection', protect, admin, skipReturnInspection);
+router.put('/:id/finish-with-debt', protect, admin, finalizarComPendencia);
+router.put('/:id/recover-debt', protect, admin, recoverDebt);
 
 router.delete('/:id', protect, deleteOrder);
 

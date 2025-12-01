@@ -47,7 +47,8 @@ module.exports = (sequelize, DataTypes) => {
         'entregue',
         'devolvida',
         'finalizada',
-        'aguardando_pagamento_final'
+        'aguardando_pagamento_final',
+        'PREJUIZO'
       ),
       allowNull: false,
       defaultValue: 'pendente'
