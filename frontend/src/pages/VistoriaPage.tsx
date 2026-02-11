@@ -241,8 +241,8 @@ const VistoriaPage: React.FC = () => {
     const vistoriaDeSaida = order?.Vistorias.find(v => v.tipo_vistoria === 'entrega');
 
     return (
-        <div style={{ padding: '2rem', marginTop: '60px', maxWidth: '900px', margin: '80px auto' }}>
-            <h1>{tipoVistoria === 'entrega' ? 'Vistoria de Saída' : 'Vistoria de Devolução'} - Pedido #{order.id}</h1>
+        <div style={{ padding: '2rem', marginTop: '60px', maxWidth: '900px', margin: '80px auto', color: "black" }}>
+            <h1 style={{color: "white"}}>{tipoVistoria === 'entrega' ? 'Vistoria de Saída' : 'Vistoria de Devolução'} - Pedido #{order.id}</h1>
             
             {order.ItemReservas.map(item => {
                 const unitId = item.Unidade.id;
@@ -374,7 +374,7 @@ const VistoriaPage: React.FC = () => {
                         )}
 
                         <div style={{ marginTop: '1rem' }}>
-                            <label style={{ fontWeight: 'bold' }}>
+                            <label style={{ fontWeight: 'bold', color: "black" }}>
                                 {isPrejuizo ? 'Justificativa / Observação do B.O.:' : 'Comentários da Vistoria:'}
                             </label>
                             <textarea

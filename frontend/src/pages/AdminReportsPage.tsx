@@ -5,6 +5,8 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
 } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface KpiData {
     faturamentoTotal: number;
@@ -115,25 +117,71 @@ const AdminReportsPage: React.FC = () => {
 
     const processTableData = (data: any[], searchKeys: string[]) => {
         let processed = [...data];
-
         if (searchTerm) {
             const lowerTerm = searchTerm.toLowerCase();
             processed = processed.filter(item => 
                 searchKeys.some(key => String(item[key] || '').toLowerCase().includes(lowerTerm))
             );
         }
-
         if (sortConfig) {
             processed.sort((a, b) => {
                 const valA = a[sortConfig.key];
                 const valB = b[sortConfig.key];
-                
                 if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
                 if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
                 return 0;
             });
         }
         return processed;
+    };
+
+    const handleExportPDF = () => {
+        if (!financialData || !financialData.extrato) return;
+
+        const doc = new jsPDF();
+
+        // Cabeçalho do PDF
+        doc.setFontSize(18);
+        doc.text("Extrato Financeiro - LocaTools", 14, 20);
+        
+        doc.setFontSize(10);
+        doc.text(`Período: ${new Date(startDate).toLocaleDateString()} a ${new Date(endDate).toLocaleDateString()}`, 14, 28);
+        doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 34);
+
+        // Processa os dados (respeitando o filtro de busca atual da tela, se quiser)
+        // Aqui vamos exportar TUDO o que está carregado, ou você pode usar processTableData se quiser exportar só o filtrado.
+        const dadosParaExportar = processTableData(financialData.extrato, ['descricao', 'tipo']);
+
+        const tableRows = dadosParaExportar.map(item => {
+            const valorFmt = item.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            return [
+                new Date(item.data).toLocaleDateString() + ' ' + new Date(item.data).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                item.descricao,
+                item.tipo,
+                valorFmt
+            ];
+        });
+
+        autoTable(doc, {
+            head: [['Data', 'Descrição', 'Tipo', 'Valor']],
+            body: tableRows,
+            startY: 40,
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [44, 62, 80] }, // Cor escura profissional
+            // Pinta de vermelho se for DESPESA
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 3) {
+                    const rawValue = dadosParaExportar[data.row.index].valor;
+                    if (rawValue < 0) {
+                        data.cell.styles.textColor = [220, 53, 69]; // Vermelho
+                    } else {
+                        data.cell.styles.textColor = [40, 167, 69]; // Verde
+                    }
+                }
+            }
+        });
+
+        doc.save(`Extrato_Financeiro_${startDate}_${endDate}.pdf`);
     };
 
     const getEvolutionData = () => {
@@ -171,13 +219,14 @@ const AdminReportsPage: React.FC = () => {
     return (
         <div style={{ padding: '2rem', marginTop: '60px', backgroundColor: '#f4f6f8', minHeight: '100vh', color: '#333' }}>
             <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ margin: 0, fontSize: '2rem', color: '#2c3e50' }}>Relatórios</h1>
+                <h1 style={{ margin: 0, fontSize: '2rem', color: '#2c3e50' }}>Central de Controle</h1>
+                <p style={{ margin: 0, color: '#666' }}>Relatórios e Inteligência de Negócio</p>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '2rem', borderBottom: '2px solid #ddd', paddingBottom: '10px' }}>
-                <button onClick={() => setActiveTab('financeiro')} style={activeTab === 'financeiro' ? activeTabStyle : tabStyle}>Financeiro</button>
-                <button onClick={() => setActiveTab('ocorrencias')} style={activeTab === 'ocorrencias' ? activeTabStyle : tabStyle}> Prejuizos e Roubos</button>
-                <button onClick={() => setActiveTab('inventario')} style={activeTab === 'inventario' ? activeTabStyle : tabStyle}>Inventário</button>
+                <button onClick={() => setActiveTab('financeiro')} style={activeTab === 'financeiro' ? activeTabStyle : tabStyle}>📊 Financeiro</button>
+                <button onClick={() => setActiveTab('ocorrencias')} style={activeTab === 'ocorrencias' ? activeTabStyle : tabStyle}>🚨 B.O.s e Roubos</button>
+                <button onClick={() => setActiveTab('inventario')} style={activeTab === 'inventario' ? activeTabStyle : tabStyle}>📦 Inventário</button>
             </div>
 
             {activeTab === 'financeiro' && financialData && (
@@ -192,10 +241,10 @@ const AdminReportsPage: React.FC = () => {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                        <KpiCard title="Faturamento Bruto" value={`R$ ${financialData.kpis.faturamentoTotal.toFixed(2)}`} icon="" color="#28a745" />
-                        <KpiCard title="Prejuízo (Perdas)" value={`R$ ${financialData.kpis.totalPrejuizoAberto.toFixed(2)}`} icon="" color="#dc3545" />
-                        <KpiCard title="Lucro Líquido Real" value={`R$ ${financialData.kpis.lucroLiquido.toFixed(2)}`} icon="" color={financialData.kpis.lucroLiquido >= 0 ? "#28a745" : "#dc3545"} highlight />
-                        <KpiCard title="Recuperado" value={`R$ ${financialData.kpis.totalPrejuizoRecuperado.toFixed(2)}`} icon="" color="#17a2b8" />
+                        <KpiCard title="Faturamento Bruto" value={`R$ ${financialData.kpis.faturamentoTotal.toFixed(2)}`} icon="💰" color="#28a745" />
+                        <KpiCard title="Prejuízo (Perdas)" value={`R$ ${financialData.kpis.totalPrejuizoAberto.toFixed(2)}`} icon="📉" color="#dc3545" />
+                        <KpiCard title="Lucro Líquido Real" value={`R$ ${financialData.kpis.lucroLiquido.toFixed(2)}`} icon="📊" color={financialData.kpis.lucroLiquido >= 0 ? "#28a745" : "#dc3545"} highlight />
+                        <KpiCard title="Recuperado" value={`R$ ${financialData.kpis.totalPrejuizoRecuperado.toFixed(2)}`} icon="🤝" color="#17a2b8" />
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -243,12 +292,20 @@ const AdminReportsPage: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* EXTRATO FINANCEIRO COM BOTÃO DE PDF */}
                     <div style={cardContainerStyle}>
-                        <div style={{display:'flex', justifyContent:'space-between'}}>
-                            <h3 style={cardTitleStyle}>Extrato Detalhado</h3>
-                            <input type="text" placeholder="Buscar no extrato..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={inputStyle} />
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'10px'}}>
+                            <h3 style={{...cardTitleStyle, borderBottom: 'none', margin: 0}}>📜 Extrato Detalhado</h3>
+                            
+                            <div style={{display:'flex', gap:'10px'}}>
+                                <input type="text" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={inputStyle} />
+                                {/* BOTÃO DE PDF */}
+                                <button onClick={handleExportPDF} style={{...btnStyle, backgroundColor: '#6c757d'}}>
+                                    📥 Baixar PDF
+                                </button>
+                            </div>
                         </div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
                             <thead style={{backgroundColor: '#f1f1f1'}}>
                                 <tr>
                                     <SortableTh label="Data" sortKey="data" />
@@ -260,7 +317,7 @@ const AdminReportsPage: React.FC = () => {
                             <tbody>
                                 {processTableData(financialData.extrato, ['descricao', 'tipo']).map((item: any, idx) => (
                                     <tr key={`${item.id}-${idx}`} style={{borderBottom: '1px solid #eee'}}>
-                                        <td style={tdStyle}>{new Date(item.data).toLocaleDateString()}</td>
+                                        <td style={tdStyle}>{new Date(item.data).toLocaleDateString()} <small style={{color:'#999'}}>{new Date(item.data).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</small></td>
                                         <td style={tdStyle}>{item.descricao}</td>
                                         <td style={{...tdStyle, fontWeight:'bold', color: item.tipo === 'RECEITA' ? 'green' : 'red'}}>{item.tipo}</td>
                                         <td style={{...tdStyle, fontWeight:'bold', color: item.tipo === 'RECEITA' ? 'green' : 'red'}}>
@@ -276,11 +333,11 @@ const AdminReportsPage: React.FC = () => {
 
             {activeTab === 'ocorrencias' && operationalData && (
                 <div style={cardContainerStyle}>
-                    <div style={{display:'flex', justifyContent: 'space-between', alignItems:'center', marginBottom: '20px'}}>
-                        <h3 style={{...cardTitleStyle, borderBottom: 'none', margin: 0}}>Relatório de Ocorrências</h3>
-                        <input type="text" placeholder="Buscar por cliente, equipamento..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{...inputStyle, width: '300px'}} />
+                   {/* ... (Tabela de Ocorrências igual antes) ... */}
+                   <div style={{display:'flex', justifyContent: 'space-between', alignItems:'center', marginBottom: '20px'}}>
+                        <h3 style={{...cardTitleStyle, borderBottom: 'none', margin: 0}}>🚨 Relatório de Ocorrências</h3>
+                        <input type="text" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{...inputStyle, width: '300px'}} />
                     </div>
-
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{backgroundColor: '#333', color: 'white'}}>
                             <tr>
@@ -301,7 +358,7 @@ const AdminReportsPage: React.FC = () => {
                                     <td style={tdStyle}>{bo.equipamento} <span style={{fontSize: '0.8rem', color: '#666'}}>(#{bo.unidadeId})</span></td>
                                     <td style={tdStyle}>{bo.cliente}<br/><span style={{fontSize: '0.8rem', color: '#666'}}>{bo.contato}</span></td>
                                     <td style={{...tdStyle, fontWeight: 'bold'}}>R$ {Number(bo.valor).toFixed(2)}</td>
-                                    <td style={tdStyle}>{bo.resolvido ? <span style={{color: 'green'}}>RESOLVIDO</span> : <span style={{color: 'red'}}>PENDENTE</span>}</td>
+                                    <td style={tdStyle}>{bo.resolvido ? <span style={{color: 'green'}}>RESOLVIDO ✅</span> : <span style={{color: 'red'}}>PENDENTE ⚠️</span>}</td>
                                     <td style={{...tdStyle, maxWidth: '200px', fontSize: '0.9rem', color: '#666'}}>{bo.obs}</td>
                                 </tr>
                             ))}
@@ -312,9 +369,10 @@ const AdminReportsPage: React.FC = () => {
 
             {activeTab === 'inventario' && operationalData && (
                 <div style={cardContainerStyle}>
-                    <div style={{display:'flex', justifyContent: 'space-between', alignItems:'center', marginBottom: '20px'}}>
-                        <h3 style={{...cardTitleStyle, borderBottom: 'none', margin: 0}}>Inventário Completo</h3>
-                        <input type="text" placeholder="Buscar equipamento, ID..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{...inputStyle, width: '300px'}} />
+                     {/* ... (Tabela de Inventário igual antes) ... */}
+                     <div style={{display:'flex', justifyContent: 'space-between', alignItems:'center', marginBottom: '20px'}}>
+                        <h3 style={{...cardTitleStyle, borderBottom: 'none', margin: 0}}>📦 Inventário Completo</h3>
+                        <input type="text" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{...inputStyle, width: '300px'}} />
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{backgroundColor: '#e9ecef', color: '#333'}}>

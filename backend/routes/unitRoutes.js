@@ -1,14 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const { updateUnitStatus, deleteUnit, updateUnitDetails } = require('../controllers/unitController');
-const { getReservationsByUnit } = require('../controllers/reservationController');
+
+const { 
+    getUnitsByEquipment, 
+    addUnitsToEquipment, 
+    deleteUnit, 
+    updateUnitDetails,
+    createMaintenance,
+    deleteMaintenance,
+    getAllMaintenances
+} = require('../controllers/unitController');
+
 const { protect, admin } = require('../middlewares/authMiddleware');
 
+router.get('/equipment/:id', protect, admin, getUnitsByEquipment);
+router.get('/maintenances/dashboard', protect, admin, getAllMaintenances);
 
-router.put('/:id', protect, admin, updateUnitStatus);
-router.get('/:id/reservations', protect, admin, getReservationsByUnit);
+router.post('/', protect, admin, addUnitsToEquipment);
 router.delete('/:id', protect, admin, deleteUnit);
-router.put('/:id/details', protect, admin, updateUnitDetails);
+router.put('/:id', protect, admin, updateUnitDetails);
+
+router.post('/:id_unidade/maintenance', protect, admin, createMaintenance);
+
+router.delete('/maintenance/:id', protect, admin, deleteMaintenance);
 
 
 module.exports = router;

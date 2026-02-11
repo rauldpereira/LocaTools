@@ -9,33 +9,70 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const verificarDisponibilidade = async (item, options, excludeOrderId = null) => {
     const { id_equipamento, data_inicio, data_fim } = item;
-    
-    const unidadesDoEquipamento = await Unidade.findAll({ 
-        where: { id_equipamento }, 
-        ...options 
+
+    // 1. Pega todas as unidades desse equipamento
+    const unidadesDoEquipamento = await Unidade.findAll({
+        where: { id_equipamento },
+        ...options
     });
 
-    const orderStatusWhere = {
-        status: { [Op.in]: ['aprovada', 'aguardando_assinatura', 'em_andamento'] }
-    };
-    if (excludeOrderId) {
-        orderStatusWhere.id = { [Op.not]: excludeOrderId };
-    }
-
-    const unidadesReservadas = await ItemReserva.findAll({
+    // 2. Busca TUDO que está ocupando data (seja Aluguel OU Manutenção)
+    const conflitos = await ItemReserva.findAll({
         where: {
+            // Verifica choque de datas (se uma começa antes da outra terminar)
             data_inicio: { [Op.lte]: data_fim },
-            data_fim: { [Op.gte]: data_inicio }
+            data_fim: { [Op.gte]: data_inicio },
+            
+            // AQUI TÁ O SEGREDO: Pega status 'ativo' (cliente) OU 'manutencao'
+            // Se você filtrar status aqui, pode perder os bloqueios sem OS, 
+            // então vamos pegar tudo e filtrar no Javascript abaixo.
         },
         include: [
-            { model: Unidade, where: { id_equipamento }, required: true },
-            { model: OrdemDeServico, where: orderStatusWhere, required: true }
+            { 
+                model: Unidade, 
+                where: { id_equipamento }, 
+                required: true 
+            },
+            { 
+                model: OrdemDeServico, 
+                // MUITO IMPORTANTE: required: false
+                // Isso diz: "Traz a reserva mesmo se NÃO tiver cliente (Manutenção)"
+                required: false 
+            }
         ],
         ...options
     });
 
-    const idDasUnidadesReservadas = unidadesReservadas.map(r => r.id_unidade);
-    return unidadesDoEquipamento.filter(u => !idDasUnidadesReservadas.includes(u.id));
+    // 3. Agora a gente passa o pente fino pra saber quem tá bloqueado
+    const idsBloqueados = [];
+
+    conflitos.forEach(reserva => {
+        
+        // BLOQUEIO 1: É Manutenção? (Se o status for 'manutencao', já era)
+        if (reserva.status === 'manutencao') {
+            idsBloqueados.push(reserva.id_unidade);
+            return; // Já bloqueou, vai pro próximo
+        }
+
+        // BLOQUEIO 2: É Cliente? (Tem OS e ela está ativa)
+        if (reserva.OrdemDeServico) {
+            // Se estamos editando um pedido, não conta o próprio pedido como conflito
+            if (excludeOrderId && reserva.OrdemDeServico.id == excludeOrderId) return;
+
+            // Status de pedido que realmente ocupa a máquina
+            const statusQueOcupa = ['aprovada', 'aguardando_assinatura', 'em_andamento', 'pendente']; 
+            
+            if (statusQueOcupa.includes(reserva.OrdemDeServico.status)) {
+                idsBloqueados.push(reserva.id_unidade);
+            }
+        }
+    });
+
+    // 4. Retorna só quem SOBROU (Total - Bloqueados)
+    // Remove duplicatas do array de bloqueados antes de filtrar
+    const idsUnicosBloqueados = [...new Set(idsBloqueados)];
+    
+    return unidadesDoEquipamento.filter(u => !idsUnicosBloqueados.includes(u.id));
 };
 
 const createOrder = async (req, res) => {
@@ -295,10 +332,10 @@ const getOrderById = async (req, res) => {
                         }]
                     }]
                 },
-                { 
-                    model: Usuario, 
-                    as: 'Usuario', 
-                    attributes: ['id', 'nome', 'email'] 
+                {
+                    model: Usuario,
+                    as: 'Usuario',
+                    attributes: ['id', 'nome', 'email']
                 }
             ]
         });
@@ -306,7 +343,7 @@ const getOrderById = async (req, res) => {
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
         }
-        
+
         if (order.id_usuario !== req.user.id && req.user.tipo_usuario !== 'admin') {
             return res.status(403).json({ error: 'Acesso negado.' });
         }
@@ -328,13 +365,13 @@ const generateContract = async (req, res) => {
         const order = await OrdemDeServico.findByPk(id, {
             include: [
                 { model: Usuario, as: 'Usuario', attributes: ['nome', 'email'] },
-                { 
-                    model: ItemReserva, 
-                    as: 'ItemReservas', 
-                    include: [{ 
-                        model: Unidade, as: 'Unidade', 
-                        include: [{ model: Equipamento, as: 'Equipamento' }] 
-                    }] 
+                {
+                    model: ItemReserva,
+                    as: 'ItemReservas',
+                    include: [{
+                        model: Unidade, as: 'Unidade',
+                        include: [{ model: Equipamento, as: 'Equipamento' }]
+                    }]
                 },
                 {
                     model: Vistoria,
@@ -364,7 +401,7 @@ const generateContract = async (req, res) => {
         if (!order.ItemReservas || order.ItemReservas.length === 0) {
             return res.status(500).json({ error: 'Pedido sem itens.' });
         }
-        
+
         const vistoriaSaida = (order.Vistorias && order.Vistorias.length > 0) ? order.Vistorias[0] : null;
 
         res.setHeader('Content-Type', 'application/pdf');
@@ -394,8 +431,8 @@ const generateContract = async (req, res) => {
         });
 
         doc.font('Helvetica-Bold').text('3. PERÍODO DE LOCAÇÃO');
-        const dataInicio = new Date(order.data_inicio).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-        const dataFim = new Date(order.data_fim).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+        const dataInicio = new Date(order.data_inicio).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        const dataFim = new Date(order.data_fim).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
         doc.font('Helvetica').text(`Início: ${dataInicio} (Horário de retirada conforme funcionamento).`);
         doc.text(`Fim: ${dataFim} (Horário de devolução conforme funcionamento).`);
         doc.moveDown();
@@ -438,7 +475,7 @@ const generateContract = async (req, res) => {
 
 
         doc.text('6.2. DEVOLUÇÃO E AVARIAS:');
-        doc.text('Na devolução, uma nova vistoria será realizada. Avarias que não constam na Vistoria de Saída (Cláusula 4) serão de responsabilidade do(a) LOCATÁRIO(A), sendo os custos de reparo (baseados no catálogo de avarias) adicionados ao valor final do pagamento.');      
+        doc.text('Na devolução, uma nova vistoria será realizada. Avarias que não constam na Vistoria de Saída (Cláusula 4) serão de responsabilidade do(a) LOCATÁRIO(A), sendo os custos de reparo (baseados no catálogo de avarias) adicionados ao valor final do pagamento.');
         doc.moveDown(0.5);
 
 
@@ -446,14 +483,14 @@ const generateContract = async (req, res) => {
         doc.font('Helvetica').text(
             'O(A) LOCATÁRIO(A) pode solicitar o cancelamento desta reserva, sujeito às seguintes regras:',
             { continued: true }
-        ).text(' '); 
+        ).text(' ');
         doc.list([
             'Direito de Arrependimento (Art. 49, CDC): O(A) LOCATÁRIO(A) pode cancelar esta reserva em até 7 (sete) dias corridos após a data do pagamento do sinal, recebendo o reembolso integral do valor pago.',
             'Política da Loja (Após 7 dias): Se o prazo legal de 7 dias já passou, valerá a seguinte regra:',
             '  - Cancelamento com mais de 2 dias de antecedência do início do aluguel: Reembolso integral do sinal.',
             '  - Cancelamento com 2 dias ou menos de antecedência do início do aluguel: Será retida uma taxa de 5% sobre o VALOR TOTAL do contrato, e o restante do sinal pago será reembolsado.'
         ], { indent: 20 });
-        
+
         doc.moveDown(2);
 
         doc.fontSize(12);
@@ -496,7 +533,7 @@ const signContract = async (req, res) => {
 };
 
 const confirmManualPayment = async (req, res) => {
-    const { damageFee } = req.body;
+    const { damageFee, lateFee } = req.body;
 
     try {
         const order = await OrdemDeServico.findByPk(req.params.id);
@@ -505,25 +542,33 @@ const confirmManualPayment = async (req, res) => {
         }
 
         const statusPermitidos = ['aguardando_pagamento_final', 'PREJUIZO'];
-        
+
         if (!statusPermitidos.includes(order.status)) {
-            return res.status(400).json({ 
-                error: `Status inválido para finalizar: ${order.status}. Esperado: aguardando_pagamento_final ou PREJUIZO.` 
+            return res.status(400).json({
+                error: `Status inválido para finalizar: ${order.status}. Esperado: aguardando_pagamento_final ou PREJUIZO.`
             });
         }
-       
-        const taxaPorAvaria = Number(damageFee) || 0;
-        
-        await order.update({ 
-            status: 'finalizada', 
-            taxa_avaria: taxaPorAvaria 
+
+        // Converte os valores recebidos
+        const taxaAvariaVal = Number(damageFee) || 0;
+        const taxaAtrasoVal = Number(lateFee) || 0;
+
+        // Atualiza o pedido com os status e taxas
+        await order.update({
+            status: 'finalizada',
+            taxa_avaria: taxaAvariaVal,
+            taxa_atraso: taxaAtrasoVal // Salva a multa no histórico do pedido
         });
 
-        const valorRestante = Number(order.valor_total) - Number(order.valor_sinal);
+        // Calcula o valor base que faltava do aluguel
+        const valorRestanteAluguel = Number(order.valor_total) - Number(order.valor_sinal);
+
+        // Soma TUDO para o pagamento (Aluguel + Avarias/B.O. + Multa Atraso)
+        const valorTotalCobrado = valorRestanteAluguel + taxaAvariaVal + taxaAtrasoVal;
 
         await Pagamento.create({
             id_ordem_servico: order.id,
-            valor: valorRestante + taxaPorAvaria,
+            valor: valorTotalCobrado, 
             status_pagamento: 'aprovado',
             id_transacao_externa: `manual_${req.user.id}_${Date.now()}`
         });
@@ -541,17 +586,17 @@ const cancelOrder = async (req, res) => {
 
         if (!order) { return res.status(404).json({ error: 'Ordem de serviço não encontrada.' }); }
         if (order.id_usuario !== req.user.id) { return res.status(403).json({ error: 'Acesso negado.' }); }
-        
-        
+
+
         if (!['aprovada', 'aguardando_assinatura'].includes(order.status)) {
             return res.status(400).json({ error: `Não é possível cancelar uma reserva com status '${order.status}'.` });
         }
 
-        const pagamentoOriginal = await Pagamento.findOne({ 
-            where: { 
-                id_ordem_servico: order.id, 
-                status_pagamento: 'aprovado' 
-            } 
+        const pagamentoOriginal = await Pagamento.findOne({
+            where: {
+                id_ordem_servico: order.id,
+                status_pagamento: 'aprovado'
+            }
         });
         if (!pagamentoOriginal) {
             return res.status(500).json({ error: 'Registro do pagamento original não encontrado.' });
@@ -575,9 +620,9 @@ const cancelOrder = async (req, res) => {
             taxa_cancelamento = 0;
             valor_reembolsado = Number(order.valor_sinal);
             mensagem = `Reserva cancelada dentro do prazo de 7 dias (Art. 49 CDC). Reembolso total de R$ ${valor_reembolsado.toFixed(2)} processado.`;
-        
+
         } else {
-            
+
             if (diasParaAluguel <= 2) {
                 // Cancelamento em cima da hora
                 taxa_cancelamento = Number(order.valor_total) * 0.05;
@@ -590,16 +635,16 @@ const cancelOrder = async (req, res) => {
                 mensagem = `Reserva cancelada com antecedência. Reembolso total do sinal de R$ ${valor_reembolsado.toFixed(2)} processado.`;
             }
         }
-        
+
         if (valor_reembolsado < 0) valor_reembolsado = 0;
 
         if (valor_reembolsado > 0) {
             await stripe.refunds.create({
                 charge: pagamentoOriginal.id_transacao_externa,
-                amount: Math.round(valor_reembolsado * 100), 
+                amount: Math.round(valor_reembolsado * 100),
             });
         }
-        
+
         await order.update({
             status: 'cancelada',
             taxa_cancelamento,
@@ -636,7 +681,7 @@ const checkRescheduleAvailability = async (req, res) => {
 
             const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, {}, orderId);
             const isThisUnitStillAvailable = unidadesDisponiveis.some(u => u.id === item.id_unidade);
-            
+
             if (!isThisUnitStillAvailable) {
                 allItemsAvailable = false;
                 break;
@@ -656,9 +701,9 @@ const rescheduleOrder = async (req, res) => {
 
     try {
         await sequelize.transaction(async (t) => {
-            const order = await OrdemDeServico.findByPk(orderId, { 
-                include: [{ model: ItemReserva, as: 'ItemReservas' }], 
-                transaction: t 
+            const order = await OrdemDeServico.findByPk(orderId, {
+                include: [{ model: ItemReserva, as: 'ItemReservas' }],
+                transaction: t
             });
 
             if (!order || order.id_usuario !== req.user.id) {
@@ -672,9 +717,9 @@ const rescheduleOrder = async (req, res) => {
             const hoje = new Date();
             const diffTime = dataInicioOriginal.getTime() - hoje.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            const taxa_remarcacao = (diffDays <= 2) 
-                ? (Number(order.valor_total) * 0.05) 
+
+            const taxa_remarcacao = (diffDays <= 2)
+                ? (Number(order.valor_total) * 0.05)
                 : (order.taxa_remarcacao || 0);
 
             const oneDay = 1000 * 60 * 60 * 24;
@@ -688,9 +733,9 @@ const rescheduleOrder = async (req, res) => {
             for (const item of order.ItemReservas) {
                 const unidade = await Unidade.findByPk(item.id_unidade, { include: [{ model: Equipamento, as: 'Equipamento' }], transaction: t });
                 const itemRequest = { id_equipamento: unidade.Equipamento.id, quantidade: 1, data_inicio: newStartDate, data_fim: newEndDate };
-                
+
                 const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, { transaction: t }, orderId);
-                
+
                 if (!unidadesDisponiveis.some(u => u.id === item.id_unidade)) {
                     throw new Error(`Conflito: A unidade #${item.id_unidade} não está disponível.`);
                 }
@@ -699,7 +744,7 @@ const rescheduleOrder = async (req, res) => {
             await order.update({
                 data_inicio: newStartDate,
                 data_fim: newEndDate,
-                taxa_remarcacao: taxa_remarcacao 
+                taxa_remarcacao: taxa_remarcacao
             }, { transaction: t });
 
             await ItemReserva.update(
@@ -755,7 +800,7 @@ const finalizarComPendencia = async (req, res) => {
     try {
         const { id } = req.params;
         const order = await OrdemDeServico.findByPk(id);
-        
+
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
         }
@@ -764,8 +809,8 @@ const finalizarComPendencia = async (req, res) => {
             return res.status(400).json({ error: 'Ordem já está encerrada.' });
         }
 
-        await order.update({ 
-            status: 'PREJUIZO',
+        await order.update({
+            status: 'finalizada', 
         });
 
         res.status(200).json({ message: 'Ordem encerrada com pendências financeiras.' });
@@ -784,8 +829,8 @@ const recoverDebt = async (req, res) => {
 
     try {
         const order = await OrdemDeServico.findByPk(id, {
-            include: [{ 
-                model: ItemReserva, 
+            include: [{
+                model: ItemReserva,
                 as: 'ItemReservas',
                 include: [{ model: Prejuizo, as: 'prejuizo' }]
             }]
@@ -830,6 +875,59 @@ const recoverDebt = async (req, res) => {
     }
 };
 
+const calcularMultaAtraso = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const order = await OrdemDeServico.findByPk(id, {
+            include: [{
+                model: ItemReserva,
+                as: 'ItemReservas',
+                include: [{
+                    model: Unidade, as: 'Unidade',
+                    include: [{ model: Equipamento, as: 'Equipamento' }]
+                }]
+            }]
+        });
+
+        if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
+
+        const dataPrevista = new Date(order.data_fim);
+        const dataHoje = new Date();
+
+        dataPrevista.setHours(0, 0, 0, 0);
+        dataHoje.setHours(0, 0, 0, 0);
+
+        if (dataHoje <= dataPrevista) {
+            return res.json({ diasAtraso: 0, valorMulta: 0 });
+        }
+
+        const diffTime = Math.abs(dataHoje - dataPrevista);
+        const diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        let valorDiariaTotal = 0;
+        order.ItemReservas.forEach(item => {
+            if (item.Unidade?.Equipamento?.preco_diaria) {
+                valorDiariaTotal += Number(item.Unidade.Equipamento.preco_diaria);
+            }
+        });
+
+        const MULTIPLICADOR_PENALIDADE = 2;
+
+        const valorMulta = diasAtraso * valorDiariaTotal * MULTIPLICADOR_PENALIDADE;
+
+        res.json({
+            diasAtraso,
+            valorDiariaBase: valorDiariaTotal,
+            valorMulta
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao calcular multa.' });
+    }
+};
+
 module.exports = {
     createOrder,
     getMyOrders,
@@ -846,5 +944,6 @@ module.exports = {
     rescheduleOrder,
     skipReturnInspection,
     finalizarComPendencia,
-    recoverDebt
+    recoverDebt,
+    calcularMultaAtraso
 };

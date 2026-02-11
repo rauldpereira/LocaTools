@@ -4,6 +4,6 @@ const { getHorarios, updateHorarios } = require('../controllers/horariosControll
 const { protect, admin } = require('../middlewares/authMiddleware');
 
 router.get('/', getHorarios); 
-router.put('/', protect, admin, updateHorarios); 
+router.post('/', protect, admin, updateHorarios); 
 
 module.exports = router;

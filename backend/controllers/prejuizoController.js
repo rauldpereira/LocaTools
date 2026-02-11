@@ -24,38 +24,38 @@ const prejuizoController = {
         observacao,
         resolvido: false
       }, { transaction });
-
+      
       if (['ROUBO', 'EXTRAVIO', 'AVARIA'].includes(tipo)) {
         if (item.Unidade) {
           await item.Unidade.update({ 
-            status: 'MANUTENCAO',
+            status: 'manutencao',
             observacao: `Baixa por ${tipo} na OS #${item.id_ordem_servico}`
           }, { transaction });
         }
       } else if (tipo === 'CALOTE') {
         if (item.Unidade) {
           await item.Unidade.update({ 
-            status: 'DISPONIVEL' 
+            status: 'disponivel'
           }, { transaction });
         }
       }
 
       await item.update({
-        status: 'FINALIZADO_COM_PREJUIZO', 
+        status: 'finalizado_com_prejuizo',
         data_devolucao_real: new Date()
       }, { transaction });
 
       const itensPendentes = await ItemReserva.count({
         where: {
           id_ordem_servico: item.id_ordem_servico,
-          status: 'ATIVO'
+          status: 'ativo'
         },
         transaction
       });
 
       if (itensPendentes === 0) {
         await OrdemDeServico.update({
-          status: 'PREJUIZO'
+          status: 'finalizada'
         }, { 
           where: { id: item.id_ordem_servico },
           transaction 

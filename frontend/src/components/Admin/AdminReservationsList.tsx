@@ -68,48 +68,73 @@ const AdminReservationsList: React.FC = () => {
         headers: { key: keyof Order, label: string }[],
         action: (order: Order) => React.ReactNode
     ) => (
-        <div style={{ marginBottom: '2.5rem' }}>
-            <h3>{title}</h3>
+        <div style={{ marginBottom: '3rem' }}>
+            <h3 style={{ color: '#444', borderLeft: '4px solid #007bff', paddingLeft: '10px', marginBottom: '1rem' }}>
+                {title} <span style={{fontSize:'0.8rem', color:'#888', fontWeight:'normal'}}>({orderList.length})</span>
+            </h3>
+            
             {orderList.length === 0 ? (
-                <p>Nenhuma reserva nesta etapa.</p>
+                <div style={{ padding: '2rem', backgroundColor: '#f9f9f9', borderRadius: '8px', textAlign: 'center', color: '#888' }}>
+                    Nenhum pedido nesta etapa.
+                </div>
             ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                        <tr>
-                            {headers.map(header => (
-                                <th key={header.key} style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>{header.label}</th>
-                            ))}
-                            <th style={{ border: '1px solid #ddd', padding: '8px' }}>Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {orderList.map(order => (
-                            <tr key={order.id} style={{backgroundColor: order.status === 'PREJUIZO' ? '#fff0f0' : 'inherit'}}>
-                                {headers.map(header => {
-                                    let cellContent: React.ReactNode;
-                                    const value = order[header.key];
-
-                                    if (typeof value === 'string' && header.key.includes('data')) {
-                                        cellContent = parseDateStringAsLocal(value).toLocaleDateString();
-                                    } else if (header.key === 'status') {
-                                        const statusText = String(value).replace(/_/g, ' ').toUpperCase();
-                                        const color = value === 'PREJUIZO' ? 'red' : (value === 'finalizada' ? 'green' : 'black');
-                                        cellContent = <span style={{fontWeight: 'bold', color: color}}>{statusText}</span>;
-                                    } else {
-                                        cellContent = value;
-                                    }
-
-                                    return (
-                                        <td key={header.key} style={{ border: '1px solid #ddd', padding: '8px' }}>
-                                            {cellContent}
-                                        </td>
-                                    );
-                                })}
-                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{action(order)}</td>
+                <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                        <thead>
+                            <tr style={{ backgroundColor: '#f8f9fa', color: '#555', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                                {headers.map(header => (
+                                    <th key={header.key} style={{ padding: '15px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>{header.label}</th>
+                                ))}
+                                <th style={{ padding: '15px', borderBottom: '2px solid #ddd' }}>Ação</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {orderList.map((order, index) => {
+                                const isPrejuizo = order.status === 'PREJUIZO';
+                                const rowStyle = {
+                                    backgroundColor: isPrejuizo ? '#fff0f0' : (index % 2 === 0 ? '#fff' : '#fcfcfc'), // Zebrado
+                                    borderBottom: '1px solid #eee'
+                                };
+                                
+                                return (
+                                    <tr key={order.id} style={rowStyle}>
+                                        {headers.map(header => {
+                                            let cellContent: React.ReactNode;
+                                            const value = order[header.key];
+
+                                            if (typeof value === 'string' && header.key.includes('data')) {
+                                                cellContent = parseDateStringAsLocal(value).toLocaleDateString();
+                                            } else if (header.key === 'status') {
+                                                const statusText = String(value).replace(/_/g, ' ').toUpperCase();
+                                                
+                                                const color = isPrejuizo ? '#d32f2f' : (value === 'finalizada' ? '#28a745' : '#333');
+                                                const bgBadge = isPrejuizo ? '#ffebee' : (value === 'finalizada' ? '#e6fffa' : 'transparent');
+                                                
+                                                cellContent = (
+                                                    <span style={{
+                                                        fontWeight: 'bold', color: color, 
+                                                        backgroundColor: bgBadge, padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem'
+                                                    }}>
+                                                        {isPrejuizo ? '🚨 ' : ''}{statusText}
+                                                    </span>
+                                                );
+                                            } else {
+                                                cellContent = value;
+                                            }
+
+                                            return (
+                                                <td key={header.key} style={{ padding: '15px', color: '#333' }}>
+                                                    {cellContent}
+                                                </td>
+                                            );
+                                        })}
+                                        <td style={{ padding: '15px' }}>{action(order)}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     );

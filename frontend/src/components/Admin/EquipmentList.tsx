@@ -1,132 +1,185 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { Link } from 'react-router-dom';
-import UnitsModal from './UnitsModal';
+import EditEquipmentModal from '../EditEquipmentModal';
+import StockManagerModal from '../StockManagerModal';
 
-interface Equipamento {
-  id: number;
-  nome: string;
-  preco_diaria: number;
-  url_imagem: string;
-  total_quantidade: number;
-  status: string;
+interface Category {
+    id: number;
+    nome: string;
+}
+
+interface Equipment {
+    id: number;
+    nome: string;
+    descricao: string;
+    preco_diaria: string;
+    total_quantidade: number;
+    url_imagem: string;
+    Categoria?: Category;
+    categoriaId?: number;
 }
 
 const EquipmentList: React.FC = () => {
-  const { token } = useAuth();
-  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | null>(null);
+    const { token } = useAuth();
+    const [equipments, setEquipments] = useState<Equipment[]>([]);
+    const [loading, setLoading] = useState(true);
 
-  const openUnitsModal = (equipmentId: number) => {
-    setSelectedEquipmentId(equipmentId);
-    setIsModalOpen(true);
-  };
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const closeUnitsModal = () => {
-    setIsModalOpen(false);
-    setSelectedEquipmentId(null);
-  };
+    const [stockModalData, setStockModalData] = useState<{ id: number | null; nome: string }>({ id: null, nome: '' });
 
-  const fetchEquipments = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('http://localhost:3001/api/equipment');
-      setEquipamentos(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar equipamentos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+    
+    const fetchEquipments = async () => {
+        try {
+            const response = await axios.get('http://localhost:3001/api/equipment');
+            setEquipments(response.data);
+        } catch (error) {
+            console.error('Erro ao buscar equipamentos:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  useEffect(() => {
-    fetchEquipments();
-  }, []);
+    useEffect(() => {
+        fetchEquipments();
+    }, []);
 
-  const handleAddUnits = async (equipmentId: number) => {
-    const quantityStr = prompt("Quantas unidades deseja adicionar?");
-    if (!quantityStr || isNaN(parseInt(quantityStr)) || parseInt(quantityStr) <= 0) {
-      alert("Por favor, insira um número válido e maior que zero.");
-      return;
-    }
-    const quantityToAdd = parseInt(quantityStr);
-    try {
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      const body = { quantityToAdd };
-      const response = await axios.post(`http://localhost:3001/api/equipment/${equipmentId}/units`, body, config);
-      alert(response.data.message || 'Unidades adicionadas com sucesso!');
-      fetchEquipments();
-    } catch (error) {
-      console.error('Erro ao adicionar unidades', error);
-      alert('Falha ao adicionar unidades.');
-    }
-  };
+    const handleDelete = async (id: number) => {
+        if (!confirm('Tem certeza que deseja excluir este equipamento?')) return;
+        try {
+            await axios.delete(`http://localhost:3001/api/equipment/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            alert('Equipamento excluído!');
+            fetchEquipments();
+        } catch (error) {
+            alert('Erro ao excluir.');
+        }
+    };
 
-  const handleDeleteEquipment = async (equipmentId: number) => {
-    if (!window.confirm(`Tem certeza que deseja excluir o equipamento ID #${equipmentId} e TODAS as suas unidades?`)) return;
+    const processarImagemParaExibicao = (urlImagem: string | null) => {
+        if (!urlImagem) return 'https://via.placeholder.com/150';
 
-    try {
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.delete(`http://localhost:3001/api/equipment/${equipmentId}`, config);
-      alert('Equipamento excluído com sucesso!');
-      fetchEquipments();
-    } catch (error) {
-      console.error('Erro ao excluir equipamento:', error);
-      alert('Falha ao excluir.');
-    }
-  };
+        try {
+            const parsed = JSON.parse(urlImagem);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return `http://localhost:3001${parsed[0]}`;
+            }
+        } catch (e) {
+            if (urlImagem.startsWith('http')) return urlImagem;
+            return `http://localhost:3001${urlImagem}`;
+        }
 
-  if (loading) return <p>Carregando equipamentos...</p>;
+        return 'https://via.placeholder.com/150';
+    };
 
-  return (
-    <>
-      <div style={{ marginTop: '3rem' }}>
-        <h2>Equipamentos Cadastrados</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Imagem</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>ID</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Nome</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Qtd. Total</th>
-              <th style={{ border: '1px solid #ddd', padding: '8px' }}>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {equipamentos.map(eq => (
-              <tr key={eq.id}>
-                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
-                  <img src={eq.url_imagem} alt={eq.nome} style={{ width: '100px', height: 'auto' }} />
-                </td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{eq.id}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{eq.nome}</td>
-                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
-                  {eq.total_quantidade || 0}
-                </td>
-                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
-                  <button onClick={() => openUnitsModal(eq.id)}>Gerenciar Unidades</button>
-                  <button onClick={() => handleAddUnits(eq.id)} style={{ marginLeft: '8px' }}>Adicionar Unidades</button>
-                  <Link to={`/admin/equipment/${eq.id}/edit`}><button style={{ marginLeft: '8px' }}>Editar</button></Link>
-                  <button onClick={() => handleDeleteEquipment(eq.id)} style={{ marginLeft: '8px', backgroundColor: '#dc3545', color: 'white' }}>Excluir</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    const handleEditClick = (id: number) => {
+        setSelectedId(id);
+        setIsModalOpen(true);
+    };
 
-      {selectedEquipmentId && (
-        <UnitsModal
-          equipmentId={selectedEquipmentId}
-          isOpen={isModalOpen}
-          onClose={closeUnitsModal}
-        />
-      )}
-    </>
-  );
+    if (loading) return <p>Carregando catálogo...</p>;
+
+    return (
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, color: '#333' }}>Catálogo de Equipamentos</h3>
+                <button onClick={fetchEquipments} style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer', fontSize: '0.9rem' }}>↻ Atualizar</button>
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                    <tr style={{ backgroundColor: '#f8f9fa', color: '#555', fontSize: '0.9rem', textAlign: 'left' }}>
+                        <th style={thStyle}>Imagem</th>
+                        <th style={thStyle}>Nome</th>
+                        <th style={thStyle}>Categoria</th>
+                        <th style={thStyle}>Preço Diária</th>
+                        <th style={thStyle}>Estoque Total</th>
+                        <th style={thStyle}>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {equipments.map((equip, index) => (
+                        <tr key={equip.id} style={{ borderBottom: '1px solid #eee', backgroundColor: index % 2 === 0 ? '#fff' : '#fcfcfc' }}>
+                            <td style={tdStyle}>
+                                <img
+                                    src={processarImagemParaExibicao(equip.url_imagem)}
+                                    alt={equip.nome}
+                                    style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ddd' }}
+                                />
+                            </td>
+                            <td style={{ ...tdStyle, fontWeight: 'bold', color: '#333' }}>{equip.nome}</td>
+                            <td style={tdStyle}>
+                                <span style={{ backgroundColor: '#eef2f7', padding: '4px 8px', borderRadius: '12px', fontSize: '0.8rem', color: '#444' }}>
+                                    {equip.Categoria?.nome || 'Geral'}
+                                </span>
+                            </td>
+                            <td style={{ ...tdStyle, color: '#28a745', fontWeight: 'bold' }}>
+                                R$ {Number(equip.preco_diaria).toFixed(2)}
+                            </td>
+                            <td style={tdStyle}>
+                                <span style={{ fontWeight: 'bold', color: '#666' }}>{equip.total_quantidade} un.</span>
+                            </td>
+                            <td>
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                    <button
+                                        onClick={() => handleEditClick(equip.id)}
+                                        style={editBtnStyle}
+                                    >
+                                        ✏️
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setStockModalData({ id: equip.id, nome: equip.nome });
+                                            setIsStockModalOpen(true);
+                                        }}
+                                        title="Gerenciar Estoque"
+                                        style={{ ...editBtnStyle, borderColor: '#17a2b8', color: '#17a2b8' }}
+                                    >
+                                        📦
+                                    </button>
+
+                                    <button onClick={() => handleDelete(equip.id)} style={deleteBtnStyle}>🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                    {equipments.length === 0 && (
+                        <tr>
+                            <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>Nenhum equipamento cadastrado.</td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+            <EditEquipmentModal
+                isOpen={isModalOpen}
+                equipmentId={selectedId}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={() => {
+                    setIsModalOpen(false);
+                    fetchEquipments();
+                }}
+            />
+            <StockManagerModal
+                isOpen={isStockModalOpen}
+                equipmentId={stockModalData.id}
+                equipmentName={stockModalData.nome}
+                onClose={() => {
+                    setIsStockModalOpen(false);
+                    fetchEquipments();
+                }}
+            />
+        </div>
+    );
 };
+
+const thStyle: React.CSSProperties = { padding: '15px', fontWeight: '600' };
+const tdStyle: React.CSSProperties = { padding: '12px' };
+const editBtnStyle: React.CSSProperties = { padding: '6px 10px', border: '1px solid #ddd', backgroundColor: 'white', borderRadius: '4px', cursor: 'pointer' };
+const deleteBtnStyle: React.CSSProperties = { padding: '6px 10px', border: '1px solid #dc3545', backgroundColor: '#fff', color: '#dc3545', borderRadius: '4px', cursor: 'pointer' };
 
 export default EquipmentList;

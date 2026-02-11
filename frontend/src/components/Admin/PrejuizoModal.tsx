@@ -20,7 +20,7 @@ interface PrejuizoModalProps {
 
 const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess }) => {
     const { token } = useAuth();
-    
+
     const [tipo, setTipo] = useState('ROUBO');
     const [valor, setValor] = useState('');
     const [observacao, setObservacao] = useState('');
@@ -34,7 +34,7 @@ const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess 
         setLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            
+
             await axios.post('http://localhost:3001/api/prejuizos', {
                 item_reserva_id: item.id,
                 tipo,
@@ -60,31 +60,30 @@ const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess 
                     <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
                 </div>
 
-                <p style={{marginBottom: '1rem'}}>
+                <p style={{ marginBottom: '1rem' }}>
                     Item: <strong>{item.Unidade.Equipamento.nome} (ID: {item.Unidade.id})</strong>
                 </p>
 
                 <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '5px' }}>Tipo da Ocorrência:</label>
-                        <select 
-                            value={tipo} 
+                        <select
+                            value={tipo}
                             onChange={(e) => setTipo(e.target.value)}
                             style={inputStyle}
                         >
-                            <option value="ROUBO">Roubo (Baixa de Estoque)</option>
-                            <option value="EXTRAVIO">Extravio (Baixa de Estoque)</option>
-                            <option value="AVARIA">Avaria Total (Baixa de Estoque)</option>
-                            <option value="CALOTE">Calote / Inadimplência (Item Devolvido)</option>
-                            <option value="OUTRO">Outro</option>
+                            <option value="ROUBO">Não Devolvido / Extraviado (Baixa de Estoque)</option>
+                            <option value="AVARIA">Perda Total / Dano Irreversível</option>
+                            <option value="CALOTE">Inadimplência (Item Devolvido, mas não pago)</option>
+                            <option value="OUTRO">Outro Motivo</option>
                         </select>
                     </div>
 
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '5px' }}>Valor do Prejuízo (R$):</label>
-                        <input 
-                            type="number" 
-                            step="0.01" 
+                        <input
+                            type="number"
+                            step="0.01"
                             value={valor}
                             onChange={(e) => setValor(e.target.value)}
                             placeholder="Ex: 2500.00"
@@ -95,7 +94,7 @@ const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess 
 
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '5px' }}>Observação / Justificativa:</label>
-                        <textarea 
+                        <textarea
                             value={observacao}
                             onChange={(e) => setObservacao(e.target.value)}
                             placeholder="Descreva o que aconteceu..."
@@ -106,8 +105,8 @@ const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess 
 
                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                         <button type="button" onClick={onClose} style={{ padding: '10px', background: '#ccc', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancelar</button>
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={loading}
                             style={{ padding: '10px 20px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
                         >

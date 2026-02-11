@@ -2,16 +2,29 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const UPLOAD_DIRECTORY = 'public/uploads/vistorias/';
-
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        fs.mkdirSync(UPLOAD_DIRECTORY, { recursive: true });
-        cb(null, UPLOAD_DIRECTORY);
+        let uploadPath = 'public/uploads/others/';
+
+        // Se o campo do formulário se chamar 'image', é equipamento
+        if (file.fieldname === 'image' || file.fieldname === 'images') {
+            uploadPath = 'public/uploads/equipments/';
+        }
+        // Se for 'fotos' é vistoria
+        else if (file.fieldname.includes('foto')) {
+            uploadPath = 'public/uploads/vistorias/';
+        }
+
+        // Cria a pasta se não existir
+        fs.mkdirSync(uploadPath, { recursive: true });
+
+        cb(null, uploadPath);
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname.replace(/\[|\]/g, '') + '-' + uniqueSuffix + path.extname(file.originalname));
+        // Limpa caracteres estranhos do nome do campo
+        const fieldNameClean = file.fieldname.replace(/\[|\]/g, '');
+        cb(null, fieldNameClean + '-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
 
@@ -26,7 +39,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 1024 * 1024 * 5 }
+    limits: { fileSize: 1024 * 1024 * 5 } // Limita em 5MB o arquivo
 });
 
-module.exports = upload;
+module.exports = upload; 1

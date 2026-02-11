@@ -10,9 +10,9 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       data: {
-        type: Sequelize.DATEONLY, // Usar DATEONLY é melhor que DATE para "dia inteiro"
+        type: Sequelize.DATEONLY,
         allowNull: false,
-        unique: true // Só pode existir uma exceção por dia
+        unique: true
       },
       tipo: {
         type: Sequelize.ENUM('feriado', 'parada', 'extra', 'outro'),
@@ -20,7 +20,7 @@ module.exports = {
         defaultValue: 'outro'
       },
       funcionamento: {
-        type: Sequelize.BOOLEAN, // tinyint(1) é mapeado para BOOLEAN
+        type: Sequelize.BOOLEAN,
         allowNull: false,
         comment: '1 (true) = ABERTO, 0 (false) = FECHADO'
       },
@@ -36,7 +36,7 @@ module.exports = {
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') 
       }
     });
   },

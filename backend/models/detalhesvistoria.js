@@ -1,21 +1,26 @@
 'use strict';
 const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class DetalhesVistoria extends Model {
     static associate(models) {
       DetalhesVistoria.belongsTo(models.Vistoria, {
         foreignKey: 'id_vistoria',
       });
+      
+      
       DetalhesVistoria.belongsTo(models.Unidade, {
         foreignKey: 'id_unidade',
-        field: 'id_item_equipamento'
+        as: 'unidade'
       });
+
       DetalhesVistoria.hasMany(models.AvariasEncontradas, {
         foreignKey: 'id_detalhe_vistoria',
         as: 'avariasEncontradas'
       });
     }
   }
+
   DetalhesVistoria.init({
     id_vistoria: {
       type: DataTypes.INTEGER,
@@ -23,7 +28,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     id_unidade: {
       type: DataTypes.INTEGER,
-      field: 'id_item_equipamento',
+      allowNull: false,
       references: {
         model: 'Unidades',
         key: 'id',
@@ -40,6 +45,6 @@ module.exports = (sequelize, DataTypes) => {
     modelName: 'DetalhesVistoria',
     tableName: 'DetalhesVistoria'
   });
+
   return DetalhesVistoria;
 };
-

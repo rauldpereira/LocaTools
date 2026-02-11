@@ -26,7 +26,7 @@ const createVistoria = async (req, res) => {
 
                 const novoDetalhe = await DetalhesVistoria.create({
                     id_vistoria: novaVistoria.id,
-                    id_item_equipamento: detalhe.id_unidade,
+                    id_unidade: detalhe.id_unidade,
                     condicao: detalhe.condicao,
                     foto: fotosDaUnidade,
                     comentarios: detalhe.comentarios
@@ -57,7 +57,7 @@ const createVistoria = async (req, res) => {
                     }
                 }
             }
-  
+
             const ordemDeServico = await OrdemDeServico.findByPk(id_ordem_servico, { transaction: t });
             if (ordemDeServico) {
                 if (tipo_vistoria === 'entrega') {

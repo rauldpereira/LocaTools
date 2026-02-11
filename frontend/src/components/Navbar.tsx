@@ -34,11 +34,6 @@ const Navbar: React.FC = () => {
                                     <Link to="/admin">Painel Admin   </Link>
                                 </li>
                             )}
-                            {user?.tipo_usuario === 'admin' && (
-                                <li>
-                                    <Link to="/admin/reports">Relatórios</Link>
-                                </li>
-                            )}
                             <li>
                                 <Link to="/cart">Carrinho ({totalItems})</Link>
                             </li>

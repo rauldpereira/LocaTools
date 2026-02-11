@@ -17,7 +17,6 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import ReservationDetailsPage from './pages/ReservationDetailsPage';
 import VistoriaPage from './pages/VistoriaPage';
 import FinalizePaymentPage from './pages/FinalizePaymentPage';
-import EditEquipmentPage from './pages/EditEquipmentPage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import GerenciamentoCalendario from './components/Admin/GerenciamentoCalendario';
 
@@ -44,10 +43,8 @@ function App() {
                 <Route path="my-reservations/:orderId" element={<ReservationDetailsPage />} />
                 <Route path="admin/vistoria/:orderId" element={<VistoriaPage />} />
                 <Route path="admin/finalize-payment/:orderId" element={<FinalizePaymentPage />} />
-                <Route path="admin/equipment/:id/edit" element={<EditEquipmentPage />} />
                 <Route path="admin/reports" element={<AdminReportsPage />} />
                 <Route path="admin/calendario" element={<GerenciamentoCalendario />} />
-
               </Route>
             </Routes>
           </Router>

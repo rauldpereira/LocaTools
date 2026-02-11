@@ -3,8 +3,11 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
+    await queryInterface.removeColumn('OrdensDeServico', 'status');
 
-    return queryInterface.changeColumn('OrdensDeServico', 'status', {
+    await queryInterface.sequelize.query('DROP TYPE IF EXISTS "enum_OrdensDeServico_status";');
+
+    await queryInterface.addColumn('OrdensDeServico', 'status', {
       type: Sequelize.ENUM(
         'pendente',
         'aprovada',
@@ -12,10 +15,10 @@ module.exports = {
         'entregue',
         'devolvida',
         'finalizada',
-        // novos
+        // Novos 
         'aguardando_assinatura',
         'aguardando_pagamento_final',
-        'em_andamento' 
+        'em_andamento'
       ),
       allowNull: false,
       defaultValue: 'pendente'
@@ -23,8 +26,10 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-  
-    return queryInterface.changeColumn('OrdensDeServico', 'status', {
+    await queryInterface.removeColumn('OrdensDeServico', 'status');
+    await queryInterface.sequelize.query('DROP TYPE IF EXISTS "enum_OrdensDeServico_status";');
+
+    await queryInterface.addColumn('OrdensDeServico', 'status', {
       type: Sequelize.ENUM(
         'pendente',
         'aprovada',

@@ -11,18 +11,29 @@ const parseDateStringAsLocal = (dateString) => {
 };
 
 const diasSemanaMap = [
-    'domingo', 
-    'segunda', 
-    'terca',   
-    'quarta',  
-    'quinta',  
-    'sexta',   
-    'sabado'   
+    'domingo',
+    'segunda',
+    'terca',
+    'quarta',
+    'quinta',
+    'sexta',
+    'sabado'
 ];
 
 const createEquipment = async (req, res) => {
-    const { nome, descricao, preco_diaria, id_categoria, status, url_imagem, quantidade_inicial, avarias } = req.body;
+    const { nome, descricao, preco_diaria, id_categoria, status, quantidade_inicial, avarias } = req.body;
 
+    let urls_imagens = [];
+
+    if (req.files && req.files.length > 0) {
+        urls_imagens = req.files.map(file => {
+            return file.path.replace(/\\/g, '/').replace('public', '');
+        });
+    } else if (req.body.url_imagem) {
+        urls_imagens.push(req.body.url_imagem);
+    }
+
+    const urlImagemParaSalvar = JSON.stringify(urls_imagens);
     try {
         if (req.user.tipo_usuario !== 'admin') {
             return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem criar equipamentos.' });
@@ -38,11 +49,11 @@ const createEquipment = async (req, res) => {
             const equipamentoCriado = await Equipamento.create({
                 nome,
                 descricao,
-                preco_diaria,
-                id_categoria,
+                preco_diaria: parseFloat(preco_diaria),
+                id_categoria: parseInt(id_categoria),
                 status: status || 'disponivel',
-                url_imagem,
-                total_quantidade: qtdInicialNum
+                url_imagem: urlImagemParaSalvar,
+                total_quantidade: parseInt(quantidade_inicial)
             }, { transaction: t });
 
             await TipoAvaria.create({
@@ -83,21 +94,38 @@ const createEquipment = async (req, res) => {
     }
 };
 
-const getEquipments = async (req, res) => {
+const getEquipment = async (req, res) => {
     try {
-        const equipamentos = await Equipamento.findAll({
-            include: [{
-                model: Categoria,
-                as: 'Categoria',
-                attributes: ['id', 'nome']
-            }]
+        const equipments = await Equipamento.findAll({
+            include: [
+                {
+                    model: Categoria,
+                    as: 'Categoria',
+                    attributes: ['id', 'nome']
+                },
+                {
+                    model: Unidade,
+                    as: 'Unidades',
+                    attributes: ['id', 'status']
+                }
+            ],
+            order: [['nome', 'ASC']]
         });
 
-        res.status(200).json(equipamentos);
+        const response = equipments.map(equip => {
+            const json = equip.toJSON();
+            return {
+                ...json,
+                total_quantidade: json.Unidades ? json.Unidades.length : 0,
+                
+                disponiveis: json.Unidades ? json.Unidades.filter(u => u.status === 'disponivel').length : 0
+            };
+        });
 
+        res.status(200).json(response);
     } catch (error) {
         console.error('Erro ao buscar equipamentos:', error);
-        res.status(500).json({ error: 'Erro interno do servidor.' });
+        res.status(500).json({ error: 'Erro ao buscar equipamentos.' });
     }
 };
 
@@ -127,25 +155,44 @@ const getEquipmentById = async (req, res) => {
 
 const updateEquipment = async (req, res) => {
     const { id } = req.params;
+    const { nome, descricao, preco_diaria, id_categoria, existing_images } = req.body;
 
     try {
-        if (req.user.tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem atualizar equipamentos.' });
-        }
-
         const equipamento = await Equipamento.findByPk(id);
+        if (!equipamento) return res.status(404).json({ error: 'Equipamento não encontrado.' });
 
-        if (!equipamento) {
-            return res.status(404).json({ error: 'Equipamento não encontrado.' });
+        let listaFinalImagens = [];
+
+        if (existing_images) {
+            listaFinalImagens = JSON.parse(existing_images);
         }
 
-        await equipamento.update(req.body);
+        if (req.files && req.files.length > 0) {
+            const novosCaminhos = req.files.map(file => {
+                 return file.path.replace(/\\/g, '/').replace('public', '');
+            });
+            listaFinalImagens = [...listaFinalImagens, ...novosCaminhos];
+        }
 
-        res.status(200).json({ message: 'Equipamento atualizado com sucesso.', equipamento });
+        let urlImagemParaSalvar = equipamento.url_imagem;
+        
+        if (existing_images !== undefined) {
+             urlImagemParaSalvar = JSON.stringify(listaFinalImagens);
+        }
+
+        await equipamento.update({
+            nome,
+            descricao,
+            preco_diaria: parseFloat(preco_diaria),
+            id_categoria: id_categoria ? parseInt(id_categoria) : null,
+            url_imagem: urlImagemParaSalvar
+        });
+
+        res.status(200).json({ message: 'Atualizado com sucesso!', equipamento });
 
     } catch (error) {
-        console.error('Erro ao atualizar equipamento:', error);
-        res.status(500).json({ error: 'Erro interno do servidor.' });
+        console.error('Erro ao atualizar:', error);
+        res.status(500).json({ error: 'Erro interno.' });
     }
 };
 
@@ -175,37 +222,84 @@ const deleteEquipment = async (req, res) => {
 
 const checkAvailability = async (req, res) => {
     const { id } = req.params;
-    const { startDate, endDate } = req.query;
-
-    if (!startDate || !endDate) {
-        return res.status(400).json({ error: 'As datas de início e fim são obrigatórias.' });
-    }
+    const { start, end } = req.query;
 
     try {
-        const unidadesDoEquipamento = await Unidade.findAll({ where: { id_equipamento: id } });
+        const totalUnits = await Unidade.count({ where: { id_equipamento: id } });
 
-        const unidadesReservadas = await ItemReserva.findAll({
+        if (totalUnits === 0) return res.json({ unavailableDates: [], total: 0 });
+
+        const bookings = await ItemReserva.findAll({
             where: {
-                [Op.or]: [
-                    { data_inicio: { [Op.between]: [startDate, endDate] } },
-                    { data_fim: { [Op.between]: [startDate, endDate] } },
-                    { data_inicio: { [Op.lte]: startDate }, data_fim: { [Op.gte]: endDate } },
-                ],
+                '$Unidade.id_equipamento$': id,
+                
+                data_inicio: { [Op.lte]: end }, 
+                data_fim: { [Op.gte]: start },
             },
             include: [
-                { model: Unidade, where: { id_equipamento: id }, required: true },
-                { model: OrdemDeServico, where: { status: ['pendente', 'aprovada'] }, required: true }
-            ],
+                { 
+                    model: Unidade, 
+                    required: true, 
+                    attributes: ['id'] 
+                },
+                { 
+                    model: OrdemDeServico, 
+                    required: false,
+                    attributes: ['status']
+                }
+            ]
         });
 
-        const idDasUnidadesReservadas = unidadesReservadas.map(r => r.id_unidade);
-        const unidadesDisponiveis = unidadesDoEquipamento.filter(u => !idDasUnidadesReservadas.includes(u.id));
+        const occupancyMap = {};
 
-        res.status(200).json({ availableQuantity: unidadesDisponiveis.length });
+        bookings.forEach(booking => {
+            // Se for Pedido Cancelado ou Finalizado, IGNORA
+            if (booking.OrdemDeServico && ['cancelada', 'finalizada'].includes(booking.OrdemDeServico.status)) {
+                return;
+            }
+
+            let current = new Date(booking.data_inicio);
+            const last = new Date(booking.data_fim);
+
+            while (current <= last) {
+                const dateStr = current.toISOString().split('T')[0];
+                
+                if (!occupancyMap[dateStr]) occupancyMap[dateStr] = 0;
+                occupancyMap[dateStr]++;
+                
+                current.setDate(current.getDate() + 1);
+            }
+        });
+
+        const unavailableDates = [];
+        const availabilityByDate = {};
+
+        let loopDate = new Date(start);
+        const finalDate = new Date(end);
+
+        while (loopDate <= finalDate) {
+            const dateStr = loopDate.toISOString().split('T')[0];
+            const occupied = occupancyMap[dateStr] || 0;
+            const available = totalUnits - occupied;
+
+            availabilityByDate[dateStr] = available > 0 ? available : 0;
+
+            if (available <= 0) {
+                unavailableDates.push(dateStr);
+            }
+            
+            loopDate.setDate(loopDate.getDate() + 1);
+        }
+
+        res.json({
+            totalUnits,
+            unavailableDates,
+            availabilityByDate
+        });
 
     } catch (error) {
-        console.error('Erro ao verificar disponibilidade:', error);
-        res.status(500).json({ error: 'Erro interno do servidor.' });
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao calcular disponibilidade' });
     }
 };
 
@@ -214,18 +308,14 @@ const getDailyAvailability = async (req, res) => {
     const { startDate, endDate, excludeOrderId } = req.query;
 
     try {
-
         const regrasPadraoRaw = await HorarioFuncionamento.findAll();
         const regrasPadrao = regrasPadraoRaw.reduce((acc, regra) => {
             acc[regra.dia_semana] = { fechado: regra.fechado };
             return acc;
         }, {});
 
-
         const excecoesRaw = await DiasExcecoes.findAll({
-            where: {
-                data: { [Op.gte]: startDate, [Op.lte]: endDate }
-            }
+            where: { data: { [Op.gte]: startDate, [Op.lte]: endDate } }
         });
         const excecoes = excecoesRaw.reduce((acc, exc) => {
             acc[exc.data] = exc;
@@ -234,67 +324,95 @@ const getDailyAvailability = async (req, res) => {
 
         const totalUnits = await Unidade.count({ where: { id_equipamento: id } });
 
-        const orderStatusWhere = {
-            status: { [Op.in]: ['aprovada', 'aguardando_assinatura', 'em_andamento'] }
-        };
-        if (excludeOrderId) {
-            orderStatusWhere.id = { [Op.not]: excludeOrderId };
-        }
-
         const reservations = await ItemReserva.findAll({
             where: {
                 [Op.and]: [
                     { data_inicio: { [Op.lte]: endDate } },
-                    { data_fim: { [Op.gte]: startDate } }
+                    { data_fim: { [Op.gte]: startDate } },
+                    { status: { [Op.in]: ['ativo', 'manutencao'] } }
                 ]
             },
             include: [
-                { model: Unidade, where: { id_equipamento: id }, attributes: [] },
-                { model: OrdemDeServico, where: orderStatusWhere, attributes: [] }
+                { 
+                    model: Unidade, 
+                    where: { id_equipamento: id },
+                    required: true,
+                    attributes: ['id'] 
+                },
+                { 
+                    model: OrdemDeServico, 
+                    required: false, // Permite trazer Manutenção
+                    attributes: ['id', 'status'] 
+                }
             ]
         });
 
         const availabilityByDay = {};
-        const start = parseDateStringAsLocal(startDate);
-        const end = parseDateStringAsLocal(endDate);
+        
+        // Loop pelos dias do calendário
+        let currentDay = parseDateStringAsLocal(startDate);
+        const endDay = parseDateStringAsLocal(endDate);
 
-        for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
-            
-            const dayString = day.toISOString().split('T')[0];
-            const diaSemanaString = diasSemanaMap[day.getDay()];
-            let empresaAberta = true;
+        // Mapa auxiliar para contar ocupações por dia
+        const occupancyMap = {}; 
 
-            const excecao = excecoes[dayString];
-            if (excecao) {
+        reservations.forEach(res => {
+            // Se for Manutenção -> CONTA
+            let deveContar = false;
 
-                empresaAberta = excecao.funcionamento;
-            } else {
-                const regra = regrasPadrao[diaSemanaString];
-                if (regra && regra.fechado) { 
-                    empresaAberta = false;
+            if (res.status === 'manutencao') {
+                deveContar = true;
+            } 
+            // Se for Cliente -> Verifica status do pedido
+            else if (res.OrdemDeServico) {
+                // Se for o pedido que estamos editando, ignora
+                if (excludeOrderId && res.OrdemDeServico.id == excludeOrderId) return;
+                
+                // Só conta pedidos aprovados/pendentes
+                if (['aprovada', 'aguardando_assinatura', 'em_andamento', 'pendente'].includes(res.OrdemDeServico.status)) {
+                    deveContar = true;
                 }
+            }
+
+            if (deveContar) {
+                let rStart = parseDateStringAsLocal(res.data_inicio.toISOString());
+                let rEnd = parseDateStringAsLocal(res.data_fim.toISOString());
+                
+                if (rStart < currentDay) rStart = new Date(currentDay); 
+                if (rEnd > endDay) rEnd = new Date(endDay);
+
+                for (let d = new Date(rStart); d <= rEnd; d.setDate(d.getDate() + 1)) {
+                    const dStr = d.toISOString().split('T')[0];
+                    occupancyMap[dStr] = (occupancyMap[dStr] || 0) + 1;
+                }
+            }
+        });
+
+        // Loop final para montar a resposta
+        while (currentDay <= endDay) {
+            const dayString = currentDay.toISOString().split('T')[0];
+            const diaSemana = diasSemanaMap[currentDay.getDay()];
+            
+            // Lógica de Feriado/Fechado
+            let empresaAberta = true;
+            if (excecoes[dayString]) {
+                if (!excecoes[dayString].funcionamento) empresaAberta = false;
+            } else if (regrasPadrao[diaSemana]?.fechado) {
+                empresaAberta = false;
             }
 
             if (!empresaAberta) {
-                availabilityByDay[dayString] = 0; 
-                continue; 
+                availabilityByDay[dayString] = 0; // Fechado = 0 disponíveis
+            } else {
+                const ocupados = occupancyMap[dayString] || 0;
+                // Garante que não fique negativo
+                availabilityByDay[dayString] = Math.max(0, totalUnits - ocupados);
             }
 
-            let reservedCount = 0;
-            for (const res of reservations) {
-                
-                const resStart = new Date(res.data_inicio); resStart.setHours(0, 0, 0, 0);
-                const resEnd = new Date(res.data_fim); resEnd.setHours(0, 0, 0, 0);
-                
-                if (day >= resStart && day <= resEnd) {
-                    reservedCount++;
-                }
-            }
-            
-            availabilityByDay[dayString] = totalUnits - reservedCount;
+            currentDay.setDate(currentDay.getDate() + 1);
         }
-        
-        res.status(200).json({ totalUnits: totalUnits, availabilityByDay });
+
+        res.status(200).json({ totalUnits, availabilityByDay });
 
     } catch (error) {
         console.error("Erro ao buscar disponibilidade diária:", error);
@@ -304,7 +422,7 @@ const getDailyAvailability = async (req, res) => {
 
 module.exports = {
     createEquipment,
-    getEquipments,
+    getEquipment,
     getEquipmentById,
     updateEquipment,
     deleteEquipment,

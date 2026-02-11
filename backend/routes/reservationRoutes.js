@@ -16,7 +16,8 @@ const {
     rescheduleOrder,
     skipReturnInspection,
     finalizarComPendencia,
-    recoverDebt            
+    recoverDebt, 
+    calcularMultaAtraso          
 } = require('../controllers/reservationController');
 
 const { protect, admin } = require('../middlewares/authMiddleware');
@@ -29,6 +30,7 @@ router.get('/all', protect, admin, getAllOrders);
 router.get('/my', protect, getMyOrders);
 router.get('/contract/:id', protect, generateContract);
 router.get('/:id', protect, getOrderById);
+router.get('/:id/calculate-penalty', protect, admin, calcularMultaAtraso);
 
 router.put('/:id/sign', protect, signContract);
 router.put('/:id/cancel', protect, cancelOrder);

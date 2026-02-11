@@ -98,7 +98,12 @@ module.exports = (sequelize, DataTypes) => {
     },
     taxa_remarcacao: {
       type: DataTypes.DECIMAL(10, 2)
-    }
+    },
+    taxa_atraso: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: 0
+    },
   }, {
     sequelize,
     modelName: 'OrdemDeServico',

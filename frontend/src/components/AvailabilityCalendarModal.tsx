@@ -4,7 +4,7 @@ import Calendar from 'react-calendar';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import HorarioFuncionamento from './HorarioFuncionamento';
+import HorarioFuncionamento from './HorarioFuncionamentoDisplay';
 
 interface IDiaStatus {
     data: string;

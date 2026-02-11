@@ -1,10 +1,54 @@
 const { Op } = require('sequelize');
-const { OrdemDeServico, Prejuizo, ItemReserva, Unidade, Equipamento, Usuario, Pagamento, sequelize } = require('../models');
+const { OrdemDeServico, Prejuizo, ItemReserva, Unidade, Equipamento, Pagamento, Usuario, sequelize } = require('../models');
+
+// Transforma "2025-12-02" em Date Local 00:00:00
+const parseLocalStart = (dateStr) => {
+    const [ano, mes, dia] = dateStr.split('-').map(Number);
+    return new Date(ano, mes - 1, dia, 0, 0, 0, 0);
+};
+
+// Transforma "2025-12-02" em Date Local 23:59:59
+const parseLocalEnd = (dateStr) => {
+    const [ano, mes, dia] = dateStr.split('-').map(Number);
+    return new Date(ano, mes - 1, dia, 23, 59, 59, 999);
+};
+
+// Formata Date para "YYYY-MM-DD"
+const formatLocal = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+// Gera array de todas as datas no intervalo (String YYYY-MM-DD)
+const getDatesInRange = (start, end) => {
+    const arr = [];
+    const dt = new Date(start);
+    const final = new Date(end);
+
+    // Loop dia a dia
+    while (dt <= final) {
+        arr.push(formatLocal(dt));
+        dt.setDate(dt.getDate() + 1);
+    }
+    return arr;
+};
 
 const getFinancialReport = async (req, res) => {
     const { startDate, endDate } = req.query;
 
     try {
+        const start = parseLocalStart(startDate);
+        const end = parseLocalEnd(endDate);
+
+        const dateFilter = (campoData) => ({
+            [campoData]: {
+                [Op.gte]: start,
+                [Op.lte]: end
+            }
+        });
+
         const metrics = await OrdemDeServico.findAll({
             attributes: [
                 [sequelize.fn('COUNT', sequelize.col('id')), 'totalPedidos'],
@@ -12,23 +56,20 @@ const getFinancialReport = async (req, res) => {
                 [sequelize.fn('SUM', sequelize.col('taxa_avaria')), 'totalTaxaAvaria'],
                 [sequelize.fn('SUM', sequelize.col('taxa_remarcacao')), 'totalTaxaRemarcacao']
             ],
-            where: {
-                status: 'finalizada',
-                createdAt: { [Op.between]: [startDate, endDate] }
-            },
+            where: { status: 'finalizada', ...dateFilter('createdAt') },
             raw: true
         });
 
         const data = metrics[0] || {};
         const faturamentoBase = Number(data.faturamentoTotal) || 0;
         const totalPedidos = Number(data.totalPedidos) || 0;
-        
+
         const totalPrejuizoAberto = await Prejuizo.sum('valor_prejuizo', {
-            where: { resolvido: false, createdAt: { [Op.between]: [startDate, endDate] } }
+            where: { resolvido: false, ...dateFilter('createdAt') }
         }) || 0;
 
         const totalPrejuizoRecuperado = await Prejuizo.sum('valor_prejuizo', {
-            where: { resolvido: true, data_resolucao: { [Op.between]: [startDate, endDate] } }
+            where: { resolvido: true, ...dateFilter('data_resolucao') }
         }) || 0;
 
         const faturamentoTotal = faturamentoBase + totalPrejuizoRecuperado;
@@ -36,83 +77,86 @@ const getFinancialReport = async (req, res) => {
 
         const totalMaquinas = await Unidade.count();
         const maquinasAlugadas = await Unidade.count({ where: { status: 'alugado' } });
-        const maquinasManutencao = await Unidade.count({ where: { status: { [Op.in]: ['manutencao', 'MANUTENCAO'] } } });
+        
+        const maquinasManutencao = await Unidade.count({ 
+            where: { status: 'manutencao' }
+        }); 
+        
         const maquinasDisponiveis = totalMaquinas - maquinasAlugadas - maquinasManutencao;
 
-        const receitasPorMes = await OrdemDeServico.findAll({
+        const pgDateFormat = 'YYYY-MM-DD'; 
+
+        const receitasRaw = await OrdemDeServico.findAll({
             attributes: [
-                [sequelize.fn('DATE_FORMAT', sequelize.col('createdAt'), '%Y-%m'), 'mes'],
+                [sequelize.fn('TO_CHAR', sequelize.col('createdAt'), pgDateFormat), 'data'],
                 [sequelize.fn('SUM', sequelize.col('valor_total')), 'total']
             ],
-            where: { status: 'finalizada', createdAt: { [Op.between]: [startDate, endDate] } },
-            group: [sequelize.fn('DATE_FORMAT', sequelize.col('createdAt'), '%Y-%m')],
-            order: [[sequelize.fn('DATE_FORMAT', sequelize.col('createdAt'), '%Y-%m'), 'ASC']],
+            where: { status: 'finalizada', ...dateFilter('createdAt') },
+            group: [sequelize.fn('TO_CHAR', sequelize.col('createdAt'), pgDateFormat)],
             raw: true
         });
 
-        const prejuizosPorMes = await Prejuizo.findAll({
+        const prejuizosRaw = await Prejuizo.findAll({
             attributes: [
-                [sequelize.fn('DATE_FORMAT', sequelize.col('createdAt'), '%Y-%m'), 'mes'],
+                [sequelize.fn('TO_CHAR', sequelize.col('createdAt'), pgDateFormat), 'data'],
                 [sequelize.fn('SUM', sequelize.col('valor_prejuizo')), 'total']
             ],
-            where: { createdAt: { [Op.between]: [startDate, endDate] } },
-            group: [sequelize.fn('DATE_FORMAT', sequelize.col('createdAt'), '%Y-%m')],
-            order: [[sequelize.fn('DATE_FORMAT', sequelize.col('createdAt'), '%Y-%m'), 'ASC']],
+            where: { ...dateFilter('createdAt') },
+            group: [sequelize.fn('TO_CHAR', sequelize.col('createdAt'), pgDateFormat)],
             raw: true
         });
 
-        const itensAlugados = await ItemReserva.findAll({
-            where: { createdAt: { [Op.between]: [startDate, endDate] } },
-            include: [{
-                model: Unidade, as: 'Unidade',
-                include: [{ model: Equipamento, as: 'Equipamento', attributes: ['nome', 'preco_diaria'] }]
-            }]
-        });
+        const receitasMap = {};
+        const prejuizosMap = {};
+        receitasRaw.forEach(r => receitasMap[r.data] = Number(r.total));
+        prejuizosRaw.forEach(p => prejuizosMap[p.data] = Number(p.total));
 
-        const equipamentosMap = {};
-        itensAlugados.forEach(item => {
-            const equip = item.Unidade?.Equipamento;
-            if (!equip) return;
-            const nome = equip.nome;
-            const preco = Number(equip.preco_diaria);
-            const dias = Math.ceil(Math.abs(new Date(item.data_fim) - new Date(item.data_inicio)) / (86400000)) + 1;
-            
-            if (!equipamentosMap[nome]) equipamentosMap[nome] = { nome, alugueis: 0, receita: 0 };
-            equipamentosMap[nome].alugueis += 1;
-            equipamentosMap[nome].receita += (dias * preco);
+        const allDateStrings = getDatesInRange(start, end);
+
+        const receitasFinal = [];
+        const prejuizosFinal = [];
+
+        allDateStrings.forEach(dateStr => {
+            receitasFinal.push({ mes: dateStr, total: receitasMap[dateStr] || 0 });
+            prejuizosFinal.push({ mes: dateStr, total: prejuizosMap[dateStr] || 0 });
         });
-        const topEquipamentos = Object.values(equipamentosMap).sort((a, b) => b.receita - a.receita).slice(0, 5);
 
         const pagamentosDetalhados = await Pagamento.findAll({
-            where: { 
-                createdAt: { [Op.between]: [startDate, endDate] },
-                status_pagamento: 'aprovado'
+            where: {
+                status_pagamento: 'aprovado',
+                ...dateFilter('createdAt')
             },
-            include: [{ 
-                model: OrdemDeServico, 
-                as: 'OrdemDeServico',
-                attributes: ['id'],
+            include: [{
+                model: OrdemDeServico, as: 'OrdemDeServico', attributes: ['id'],
                 include: [{ model: Usuario, as: 'Usuario', attributes: ['nome'] }]
             }],
             order: [['createdAt', 'DESC']]
         });
 
-        const extrato = pagamentosDetalhados.map(p => ({
-            id: p.id,
-            data: p.createdAt,
-            descricao: `Pagamento Pedido #${p.id_ordem_servico} - ${p.OrdemDeServico?.Usuario?.nome || 'Cliente'}`,
-            valor: parseFloat(p.valor),
-            tipo: 'RECEITA'
-        }));
+        const extrato = pagamentosDetalhados.map(p => {
+            let desc = `Pagamento Pedido #${p.id_ordem_servico}`;
+            let tipoRecuperacao = false;
+            if (p.id_transacao_externa && p.id_transacao_externa.includes('recuperacao')) {
+                desc = `RECUPERAÇÃO DE DÍVIDA - Pedido #${p.id_ordem_servico}`;
+                tipoRecuperacao = true;
+            } else {
+                desc += ` - ${p.OrdemDeServico?.Usuario?.nome || 'Cliente'}`;
+            }
+            return {
+                id: p.id,
+                data: p.createdAt,
+                descricao: desc,
+                valor: parseFloat(p.valor),
+                tipo: 'RECEITA',
+                isRecuperacao: tipoRecuperacao
+            };
+        });
 
         const prejuizosDetalhados = await Prejuizo.findAll({
-            where: { 
-                createdAt: { [Op.between]: [startDate, endDate] },
-                resolvido: false
-            },
+            where: { resolvido: false, ...dateFilter('createdAt') },
             include: [{
                 model: ItemReserva, as: 'itemReserva',
-                include: [{ model: Unidade, as: 'Unidade', include: [{model: Equipamento, as: 'Equipamento', attributes: ['nome']}] }]
+                include: [{ model: Unidade, as: 'Unidade', include: [{ model: Equipamento, as: 'Equipamento', attributes: ['nome'] }] }]
             }]
         });
 
@@ -128,22 +172,35 @@ const getFinancialReport = async (req, res) => {
 
         extrato.sort((a, b) => new Date(b.data) - new Date(a.data));
 
+        const itensAlugados = await ItemReserva.findAll({
+            where: { ...dateFilter('createdAt') },
+            include: [{
+                model: Unidade, as: 'Unidade',
+                include: [{ model: Equipamento, as: 'Equipamento', attributes: ['nome', 'preco_diaria'] }]
+            }]
+        });
+        const equipamentosMap = {};
+        itensAlugados.forEach(item => {
+            const equip = item.Unidade?.Equipamento;
+            if (!equip) return;
+            const nome = equip.nome;
+            const preco = Number(equip.preco_diaria);
+            const dias = Math.ceil(Math.abs(new Date(item.data_fim) - new Date(item.data_inicio)) / (86400000));
+            const diasCobrados = dias === 0 ? 1 : dias; 
+            
+            if (!equipamentosMap[nome]) equipamentosMap[nome] = { nome, alugueis: 0, receita: 0 };
+            equipamentosMap[nome].alugueis += 1;
+            equipamentosMap[nome].receita += (diasCobrados * preco);
+        });
+        const topEquipamentos = Object.values(equipamentosMap).sort((a, b) => b.receita - a.receita).slice(0, 5);
+
         res.json({
-            kpis: {
-                faturamentoTotal,
-                lucroLiquido,
-                totalPedidos,
-                ticketMedio: totalPedidos > 0 ? (faturamentoTotal / totalPedidos) : 0,
-                totalPrejuizoAberto,
-                totalPrejuizoRecuperado
+            kpis: { faturamentoTotal, lucroLiquido, totalPedidos, ticketMedio: totalPedidos > 0 ? (faturamentoTotal / totalPedidos) : 0, totalPrejuizoAberto, totalPrejuizoRecuperado },
+            inventory: { total: totalMaquinas, alugadas: maquinasAlugadas, disponiveis: maquinasDisponiveis, manutencao: maquinasManutencao },
+            history: {
+                receitas: receitasFinal,
+                prejuizos: prejuizosFinal
             },
-            inventory: {
-                total: totalMaquinas,
-                alugadas: maquinasAlugadas,
-                disponiveis: maquinasDisponiveis,
-                manutencao: maquinasManutencao
-            },
-            history: { receitas: receitasPorMes, prejuizos: prejuizosPorMes },
             topEquipamentos,
             extrato
         });
@@ -161,7 +218,7 @@ const getOperationalReport = async (req, res) => {
                 model: ItemReserva,
                 as: 'itemReserva',
                 include: [
-                    { 
+                    {
                         model: Unidade, as: 'Unidade',
                         include: [{ model: Equipamento, as: 'Equipamento', attributes: ['nome'] }]
                     },
