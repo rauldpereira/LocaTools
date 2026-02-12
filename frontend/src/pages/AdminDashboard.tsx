@@ -9,10 +9,12 @@ import AdminReservationsList from '../components/Admin/AdminReservationsList';
 import AdminHorariosPage from '../components/HorarioFuncionamento';
 import AdminReportsPage from '../pages/AdminReportsPage';
 import MaintenanceDashboard from '../components/MaintenanceDashboard';
+import AdminFreightConfig from '../pages/AdminFreightConfig';
 
 const Icons = {
   dashboard: "📊",
   reservas: "📅",
+  frete: "🚚",
   equipamentos: "🚜",
   categorias: "🏷️",
   horarios: "⏰",
@@ -40,6 +42,12 @@ const AdminDashboard: React.FC = () => {
           <div style={contentContainerStyle}>
             <h2 style={headerStyle}>Gerenciamento de Reservas</h2>
             <AdminReservationsList />
+          </div>
+        );
+      case 'frete':
+        return (
+          <div style={contentContainerStyle}>
+            <AdminFreightConfig />
           </div>
         );
       case 'equipamentos':
@@ -137,6 +145,7 @@ const AdminDashboard: React.FC = () => {
 
         <nav style={{ marginTop: '10px', padding: '10px' }}>
           <MenuItem label="Reservas & Pedidos" icon={Icons.reservas} isActive={activeTab === 'reservas'} onClick={() => setActiveTab('reservas')} />
+          <MenuItem label="Config. Frete" icon={Icons.frete} isActive={activeTab === 'frete'} onClick={() => setActiveTab('frete')} />
           <MenuItem label="Equipamentos" icon={Icons.equipamentos} isActive={activeTab === 'equipamentos'} onClick={() => setActiveTab('equipamentos')} />
           <MenuItem label="Categorias" icon={Icons.categorias} isActive={activeTab === 'categorias'} onClick={() => setActiveTab('categorias')} />
           <MenuItem label="Horários" icon={Icons.horarios} isActive={activeTab === 'horarios'} onClick={() => setActiveTab('horarios')} />
@@ -160,7 +169,7 @@ const MenuItem = ({ label, icon, isActive, onClick }: any) => (
     onClick={onClick}
     style={{
       ...menuItemStyle,
-      backgroundColor: isActive ? '#e6f7ff' : 'transparent', 
+      backgroundColor: isActive ? '#e6f7ff' : 'transparent',
       color: isActive ? '#007bff' : '#555',
       fontWeight: isActive ? 'bold' : 'normal',
     }}

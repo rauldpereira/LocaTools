@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo } = require('../models');
+const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo, FreteConfig } = require('../models');
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
 
@@ -7,81 +7,103 @@ const { parseDateStringAsLocal } = require('../utils/dateUtils');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+const calcularFreteInterno = async (enderecoDestino) => {
+    try {
+        const config = await FreteConfig.findOne();
+        if (!config) return 15.00;
+
+        // Lat/Lon Loja
+        const urlOrigem = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(config.endereco_origem)}&limit=1`;
+        const resOrigem = await axios.get(urlOrigem, { headers: { 'User-Agent': 'LocaToolsApp/1.0' } });
+        if (!resOrigem.data[0]) return 15.00;
+        const loja = { lat: resOrigem.data[0].lat, lon: resOrigem.data[0].lon };
+
+        // Lat/Lon Cliente
+        const urlDestino = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoDestino)}&limit=1`;
+        const resDestino = await axios.get(urlDestino, { headers: { 'User-Agent': 'LocaToolsApp/1.0' } });
+        if (!resDestino.data[0]) return 15.00;
+        const cliente = { lat: resDestino.data[0].lat, lon: resDestino.data[0].lon };
+
+        //  (Distância Reta) * 1.3 (Margem de manobra)
+        const R = 6371; 
+        const dLat = (cliente.lat - loja.lat) * (Math.PI / 180);
+        const dLon = (cliente.lon - loja.lon) * (Math.PI / 180);
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(loja.lat * (Math.PI/180)) * Math.cos(cliente.lat * (Math.PI/180)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distanciaKm = (R * c) * 1.3;
+
+        const custo = (distanciaKm * 2) * parseFloat(config.preco_km) + parseFloat(config.taxa_fixa);
+        return parseFloat(custo.toFixed(2));
+    } catch (e) {
+        console.error('Erro calc frete back:', e);
+        return 15.00;
+    }
+};
+
 const verificarDisponibilidade = async (item, options, excludeOrderId = null) => {
     const { id_equipamento, data_inicio, data_fim } = item;
 
-    // 1. Pega todas as unidades desse equipamento
+    // Pega todas as unidades desse equipamento
     const unidadesDoEquipamento = await Unidade.findAll({
         where: { id_equipamento },
         ...options
     });
 
-    // 2. Busca TUDO que está ocupando data (seja Aluguel OU Manutenção)
+    // Busca TUDO que está ocupando data (seja Aluguel OU Manutenção)
     const conflitos = await ItemReserva.findAll({
         where: {
             // Verifica choque de datas (se uma começa antes da outra terminar)
             data_inicio: { [Op.lte]: data_fim },
             data_fim: { [Op.gte]: data_inicio },
-            
-            // AQUI TÁ O SEGREDO: Pega status 'ativo' (cliente) OU 'manutencao'
-            // Se você filtrar status aqui, pode perder os bloqueios sem OS, 
-            // então vamos pegar tudo e filtrar no Javascript abaixo.
+
         },
         include: [
-            { 
-                model: Unidade, 
-                where: { id_equipamento }, 
-                required: true 
+            {
+                model: Unidade,
+                where: { id_equipamento },
+                required: true
             },
-            { 
-                model: OrdemDeServico, 
-                // MUITO IMPORTANTE: required: false
-                // Isso diz: "Traz a reserva mesmo se NÃO tiver cliente (Manutenção)"
-                required: false 
+            {
+                model: OrdemDeServico,
+                required: false
             }
         ],
         ...options
     });
 
-    // 3. Agora a gente passa o pente fino pra saber quem tá bloqueado
     const idsBloqueados = [];
 
     conflitos.forEach(reserva => {
-        
-        // BLOQUEIO 1: É Manutenção? (Se o status for 'manutencao', já era)
+
         if (reserva.status === 'manutencao') {
             idsBloqueados.push(reserva.id_unidade);
-            return; // Já bloqueou, vai pro próximo
+            return;
         }
 
-        // BLOQUEIO 2: É Cliente? (Tem OS e ela está ativa)
         if (reserva.OrdemDeServico) {
-            // Se estamos editando um pedido, não conta o próprio pedido como conflito
             if (excludeOrderId && reserva.OrdemDeServico.id == excludeOrderId) return;
 
-            // Status de pedido que realmente ocupa a máquina
-            const statusQueOcupa = ['aprovada', 'aguardando_assinatura', 'em_andamento', 'pendente']; 
-            
+            const statusQueOcupa = ['aprovada', 'aguardando_assinatura', 'em_andamento', 'pendente'];
+
             if (statusQueOcupa.includes(reserva.OrdemDeServico.status)) {
                 idsBloqueados.push(reserva.id_unidade);
             }
         }
     });
 
-    // 4. Retorna só quem SOBROU (Total - Bloqueados)
-    // Remove duplicatas do array de bloqueados antes de filtrar
     const idsUnicosBloqueados = [...new Set(idsBloqueados)];
-    
+
     return unidadesDoEquipamento.filter(u => !idsUnicosBloqueados.includes(u.id));
 };
 
 const createOrder = async (req, res) => {
-    const { itens, tipo_entrega, endereco_entrega } = req.body;
+    const { itens, tipo_entrega, endereco_entrega, valor_frete } = req.body;
     const id_usuario = req.user.id;
-    const CUSTO_FRETE_PADRAO = 15.00;
+    
 
     if (!itens || itens.length === 0) {
-        return res.status(400).json({ error: 'Nenhum item fornecido para a ordem de serviço.' });
+        return res.status(400).json({ error: 'Nenhum item fornecido.' });
     }
 
     try {
@@ -90,34 +112,40 @@ const createOrder = async (req, res) => {
             let data_fim_geral = new Date(itens[0].data_fim);
             let subtotal_itens = 0;
 
-
             for (const item of itens) {
                 const equipamento = await Equipamento.findByPk(item.id_equipamento, { transaction: t });
-                if (!equipamento) throw new Error(`Equipamento com ID ${item.id_equipamento} não encontrado.`);
+                if (!equipamento) throw new Error(`Equipamento ID ${item.id_equipamento} sumiu.`);
 
-                const precoDoEquipamento = parseFloat(equipamento.preco_diaria);
-                if (isNaN(precoDoEquipamento)) throw new Error(`Preço para o equipamento ${equipamento.nome} é inválido.`);
+                const preco = parseFloat(equipamento.preco_diaria);
+                const start = new Date(item.data_inicio);
+                const end = new Date(item.data_fim);
+                const days = Math.round(Math.abs((end - start) / (1000 * 60 * 60 * 24))) + 1;
+                
+                subtotal_itens += preco * item.quantidade * days;
 
-                const startDate = new Date(item.data_inicio);
-                const endDate = new Date(item.data_fim);
-                const oneDay = 24 * 60 * 60 * 1000;
-                const diffDays = Math.round(Math.abs((endDate - startDate) / oneDay)) + 1;
-                subtotal_itens += precoDoEquipamento * item.quantidade * diffDays;
+                if (start < data_inicio_geral) data_inicio_geral = start;
+                if (end > data_fim_geral) data_fim_geral = end;
 
-                if (startDate < data_inicio_geral) data_inicio_geral = startDate;
-                if (endDate > data_fim_geral) data_fim_geral = endDate;
-
-                const unidadesDisponiveis = await verificarDisponibilidade(item, { transaction: t });
-                if (unidadesDisponiveis.length < item.quantidade) {
-                    throw new Error(`Conflito: Apenas ${unidadesDisponiveis.length} unidades do equipamento ${equipamento.nome} estão disponíveis.`);
+                const disponiveis = await verificarDisponibilidade(item, { transaction: t });
+                if (disponiveis.length < item.quantidade) {
+                    throw new Error(`Conflito: Estoque insuficiente para ${equipamento.nome}.`);
                 }
             }
 
+            let custo_frete = 0;
 
-            const custo_frete = tipo_entrega === 'entrega' ? CUSTO_FRETE_PADRAO : 0;
+            if (tipo_entrega === 'entrega') {
+                if (valor_frete && Number(valor_frete) > 0) {
+                    custo_frete = Number(valor_frete);
+                } 
+
+                else if (endereco_entrega) {
+                    custo_frete = await calcularFreteInterno(endereco_entrega);
+                }
+            }
+
             const valor_total = subtotal_itens + custo_frete;
             const valor_sinal = valor_total * 0.5;
-
 
             const ordemDeServico = await OrdemDeServico.create({
                 id_usuario,
@@ -131,14 +159,12 @@ const createOrder = async (req, res) => {
                 valor_sinal
             }, { transaction: t });
 
-
-
             for (const item of itens) {
-                const unidadesDisponiveis = await verificarDisponibilidade(item, { transaction: t });
+                const disponiveis = await verificarDisponibilidade(item, { transaction: t });
                 for (let i = 0; i < item.quantidade; i++) {
                     await ItemReserva.create({
                         id_ordem_servico: ordemDeServico.id,
-                        id_unidade: unidadesDisponiveis[i].id,
+                        id_unidade: disponiveis[i].id,
                         data_inicio: item.data_inicio,
                         data_fim: item.data_fim,
                     }, { transaction: t });
@@ -148,14 +174,12 @@ const createOrder = async (req, res) => {
             return ordemDeServico;
         });
 
-        res.status(201).json({ message: 'Ordem de serviço criada com sucesso.', id: resultado.id });
+        res.status(201).json({ message: 'Ordem criada!', id: resultado.id });
 
     } catch (error) {
-        console.error('Erro ao criar ordem de serviço:', error.message);
-        if (error.message.startsWith('Conflito:')) {
-            return res.status(409).json({ error: error.message });
-        }
-        res.status(500).json({ error: 'Erro interno do servidor.', details: error.message });
+        console.error('Erro createOrder:', error.message);
+        const status = error.message.startsWith('Conflito:') ? 409 : 500;
+        res.status(status).json({ error: error.message });
     }
 };
 
@@ -568,7 +592,7 @@ const confirmManualPayment = async (req, res) => {
 
         await Pagamento.create({
             id_ordem_servico: order.id,
-            valor: valorTotalCobrado, 
+            valor: valorTotalCobrado,
             status_pagamento: 'aprovado',
             id_transacao_externa: `manual_${req.user.id}_${Date.now()}`
         });
@@ -810,7 +834,7 @@ const finalizarComPendencia = async (req, res) => {
         }
 
         await order.update({
-            status: 'finalizada', 
+            status: 'finalizada',
         });
 
         res.status(200).json({ message: 'Ordem encerrada com pendências financeiras.' });
