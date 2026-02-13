@@ -73,7 +73,7 @@ const HorarioFuncionamentoDisplay: React.FC = () => {
 
   return (
     <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #eee', marginTop: '20px' }}>
-      <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '1rem' }}>📅 Horários de Retirada</h4>
+      <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '1rem' }}>Horários de Retirada e Devolução</h4>
       <div style={{ fontSize: '0.9rem', color: '#555' }}>
         {linhas.map((linha, index) => (
           <div key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', borderBottom: '1px dotted #ccc', paddingBottom: '2px' }}>

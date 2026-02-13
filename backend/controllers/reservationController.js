@@ -3,6 +3,7 @@ const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, De
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
 
+
 const { parseDateStringAsLocal } = require('../utils/dateUtils');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
@@ -25,12 +26,12 @@ const calcularFreteInterno = async (enderecoDestino) => {
         const cliente = { lat: resDestino.data[0].lat, lon: resDestino.data[0].lon };
 
         //  (Distância Reta) * 1.3 (Margem de manobra)
-        const R = 6371; 
+        const R = 6371;
         const dLat = (cliente.lat - loja.lat) * (Math.PI / 180);
         const dLon = (cliente.lon - loja.lon) * (Math.PI / 180);
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(loja.lat * (Math.PI/180)) * Math.cos(cliente.lat * (Math.PI/180)) * Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(loja.lat * (Math.PI / 180)) * Math.cos(cliente.lat * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const distanciaKm = (R * c) * 1.3;
 
         const custo = (distanciaKm * 2) * parseFloat(config.preco_km) + parseFloat(config.taxa_fixa);
@@ -100,7 +101,7 @@ const verificarDisponibilidade = async (item, options, excludeOrderId = null) =>
 const createOrder = async (req, res) => {
     const { itens, tipo_entrega, endereco_entrega, valor_frete } = req.body;
     const id_usuario = req.user.id;
-    
+
 
     if (!itens || itens.length === 0) {
         return res.status(400).json({ error: 'Nenhum item fornecido.' });
@@ -120,7 +121,7 @@ const createOrder = async (req, res) => {
                 const start = new Date(item.data_inicio);
                 const end = new Date(item.data_fim);
                 const days = Math.round(Math.abs((end - start) / (1000 * 60 * 60 * 24))) + 1;
-                
+
                 subtotal_itens += preco * item.quantidade * days;
 
                 if (start < data_inicio_geral) data_inicio_geral = start;
@@ -137,7 +138,7 @@ const createOrder = async (req, res) => {
             if (tipo_entrega === 'entrega') {
                 if (valor_frete && Number(valor_frete) > 0) {
                     custo_frete = Number(valor_frete);
-                } 
+                }
 
                 else if (endereco_entrega) {
                     custo_frete = await calcularFreteInterno(endereco_entrega);
@@ -229,7 +230,7 @@ const getAllOrders = async (req, res) => {
             }, {
                 model: Usuario,
                 as: 'Usuario',
-                attributes: ['id', 'nome', 'email']
+                attributes: ['id', 'nome', 'email', 'cpf', 'cnpj', 'tipo_pessoa']
             }],
             order: [['data_criacao', 'DESC']]
         });
@@ -359,7 +360,7 @@ const getOrderById = async (req, res) => {
                 {
                     model: Usuario,
                     as: 'Usuario',
-                    attributes: ['id', 'nome', 'email']
+                    attributes: ['id', 'nome', 'email', 'cpf', 'cnpj', 'tipo_pessoa']
                 }
             ]
         });
@@ -388,7 +389,11 @@ const generateContract = async (req, res) => {
 
         const order = await OrdemDeServico.findByPk(id, {
             include: [
-                { model: Usuario, as: 'Usuario', attributes: ['nome', 'email'] },
+                {
+                    model: Usuario,
+                    as: 'Usuario',
+                    attributes: ['id', 'nome', 'email', 'cpf', 'cnpj', 'tipo_pessoa']
+                },
                 {
                     model: ItemReserva,
                     as: 'ItemReservas',

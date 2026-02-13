@@ -18,7 +18,11 @@ const AuthPage: React.FC = () => {
 
   return (
     <div style={pageContainerStyle}>
-      <div style={cardStyle}>
+      <div style={{ 
+          ...cardStyle, 
+          maxWidth: mode === 'register' ? '900px' : '420px',
+          transition: 'max-width 0.3s ease' 
+      }}>
         {/* Cabeçalho do Card */}
         <div style={headerStyle}>
           <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#2c3e50' }}>LocaTools</h1>
@@ -53,9 +57,9 @@ const AuthPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Rodapé simples */}
+      {/* Rodapé */}
       <div style={{ marginTop: '1rem', color: '#999', fontSize: '0.8rem' }}>
-        © 2025 LocaTools System
+        © 2026 LocaTools System
       </div>
     </div>
   );
@@ -76,7 +80,6 @@ const cardStyle: React.CSSProperties = {
   borderRadius: '12px',
   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
   width: '100%',
-  maxWidth: '420px',
   overflow: 'hidden',
   display: 'flex',
   flexDirection: 'column'

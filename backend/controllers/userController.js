@@ -4,35 +4,56 @@ const { Usuario } = require('../models');
 
 
 const registerUser = async (req, res) => {
-  const { nome, email, senha, telefone, cpf, rg } = req.body;
+  const { nome, email, senha, telefone, tipo_pessoa, cpf, rg, cnpj, razao_social } = req.body;
+
   try {
-    if (!nome || !email || !senha) {
-      return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+    if (!nome || !email || !senha || !tipo_pessoa) {
+      return res.status(400).json({ error: 'Preencha os campos obrigatórios.' });
     }
+
     const userExists = await Usuario.findOne({ where: { email } });
     if (userExists) {
-      return res.status(409).json({ error: 'Já existe um usuário com este e-mail.' });
+      return res.status(409).json({ error: 'E-mail já cadastrado.' });
     }
-    if (cpf) {
+
+    if (tipo_pessoa === 'fisica') {
+        if (!cpf || !rg) {
+            return res.status(400).json({ error: 'CPF e RG são obrigatórios para Pessoa Física.' });
+        }
         const cpfExists = await Usuario.findOne({ where: { cpf } });
         if (cpfExists) return res.status(400).json({ error: 'CPF já cadastrado.' });
     }
 
+    if (tipo_pessoa === 'juridica') {
+        if (!cnpj) {
+            return res.status(400).json({ error: 'CNPJ é obrigatório para Empresa.' });
+        }
+        const cnpjExists = await Usuario.findOne({ where: { cnpj } });
+        if (cnpjExists) return res.status(400).json({ error: 'CNPJ já cadastrado.' });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const senha_hash = await bcrypt.hash(senha, salt);
+
     const newUser = await Usuario.create({
       nome,
       email,
       senha_hash,
-      tipo_usuario: 'cliente',
       telefone,
-      cpf,
-      rg
+      tipo_usuario: 'cliente',
+      tipo_pessoa,
+      
+      cpf: tipo_pessoa === 'fisica' ? cpf : null,
+      rg: tipo_pessoa === 'fisica' ? rg : null,
+      cnpj: tipo_pessoa === 'juridica' ? cnpj : null,
+      razao_social: tipo_pessoa === 'juridica' ? razao_social : null
     });
+
     res.status(201).json({
       message: 'Usuário registrado com sucesso.',
-      usuario: { id: newUser.id, nome: newUser.nome, email: newUser.email, tipo_usuario: newUser.tipo_usuario },
+      usuario: { id: newUser.id, nome: newUser.nome, tipo_pessoa: newUser.tipo_pessoa },
     });
+
   } catch (error) {
     console.error('Erro ao registrar usuário:', error);
     res.status(500).json({ error: 'Erro interno do servidor.' });

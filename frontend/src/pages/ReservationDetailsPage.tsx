@@ -122,7 +122,6 @@ const ReservationDetailsPage: React.FC = () => {
         return map[tipo] || tipo;
     };
 
-    // Traduz o código do pagamento pra ficar bonito
     const formatarPagamento = (forma: string | undefined) => {
         if (!forma) return 'Manual';
         const map: any = {
@@ -131,7 +130,7 @@ const ReservationDetailsPage: React.FC = () => {
             'cartao': 'Cartão de Crédito/Débito',
             'dinheiro': 'Dinheiro'
         };
-        return map[forma] || forma; // Se não achar, mostra o original mesmo
+        return map[forma] || forma; 
     };
 
     const VistoriaDetailDisplay = ({ title, detail }: { title: string, detail: DetalheVistoria | DetalheVistoriaFeita | undefined }) => {
@@ -172,29 +171,16 @@ const ReservationDetailsPage: React.FC = () => {
     if (loading) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#333' }}>Carregando...</div>;
     if (!order) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#333' }}>Pedido não encontrado.</div>;
 
-    // --- CÁLCULOS ---
     const vistoriaDeSaida = order?.Vistorias.find(v => v.tipo_vistoria === 'entrega');
     const vistoriaDeDevolucao = order?.Vistorias.find(v => v.tipo_vistoria === 'devolucao');
     const subtotal = order ? Number(order.valor_total) - Number(order.custo_frete) : 0;
     const valorTotalAjustado = order ? Number(order.valor_total) + Number(order.taxa_avaria || 0) + Number(order.taxa_remarcacao || 0) : 0;
     const canReschedule = order ? ['aprovada', 'aguardando_assinatura'].includes(order.status) : false;
 
-    // Lógica de Prejuízo 
     const itensComPrejuizo = order ? order.ItemReservas.filter(i => i.prejuizo) : [];
-
-    // Total Original do B.O. (Tudo que foi registrado)
-    const totalPrejuizoOriginal = itensComPrejuizo.reduce((acc, item) => {
-        return acc + (item.prejuizo ? Number(item.prejuizo.valor_prejuizo) : 0);
-    }, 0);
-
-    // Total Já Pago / Recuperado
-    const totalRecuperado = itensComPrejuizo.reduce((acc, item) => {
-        return acc + (item.prejuizo && item.prejuizo.resolvido ? Number(item.prejuizo.valor_prejuizo) : 0);
-    }, 0);
-
-    // Dívida Ativa (O que falta pagar)
+    const totalPrejuizoOriginal = itensComPrejuizo.reduce((acc, item) => acc + (item.prejuizo ? Number(item.prejuizo.valor_prejuizo) : 0), 0);
+    const totalRecuperado = itensComPrejuizo.reduce((acc, item) => acc + (item.prejuizo && item.prejuizo.resolvido ? Number(item.prejuizo.valor_prejuizo) : 0), 0);
     const totalDividaAtiva = totalPrejuizoOriginal - totalRecuperado;
-
     const saldoAluguel = order ? Number(order.valor_total) - Number(order.valor_sinal) : 0;
     const totalPendenteGeral = totalDividaAtiva + (order?.status === 'PREJUIZO' ? saldoAluguel : 0);
 
@@ -223,9 +209,9 @@ const ReservationDetailsPage: React.FC = () => {
                 }
                 <span style={{
                     padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem',
-                    backgroundColor: order.status === 'PREJUIZO' ? '#ffebee' : '#e8f5e9',
-                    color: order.status === 'PREJUIZO' ? '#c62828' : '#2e7d32',
-                    border: `1px solid ${order.status === 'PREJUIZO' ? '#c62828' : '#2e7d32'}`
+                    backgroundColor: order.status === 'PREJUIZO' ? '#ffebee' : order.status === 'pendente' ? '#fff3cd' : '#e8f5e9',
+                    color: order.status === 'PREJUIZO' ? '#c62828' : order.status === 'pendente' ? '#856404' : '#2e7d32',
+                    border: `1px solid ${order.status === 'PREJUIZO' ? '#c62828' : order.status === 'pendente' ? '#ffeeba' : '#2e7d32'}`
                 }}>
                     {order.status.replace(/_/g, ' ').toUpperCase()}
                 </span>
@@ -233,6 +219,34 @@ const ReservationDetailsPage: React.FC = () => {
 
             <h1 style={{ marginTop: 0, color: '#2c3e50' }}>Pedido #{order.id}</h1>
             <HorarioFuncionamento />
+
+            {/* --- ALERTA DE PAGAMENTO PENDENTE --- */}
+            {order.status === 'pendente' && (
+                <div style={{ 
+                    backgroundColor: '#fff3cd', 
+                    color: '#856404', 
+                    padding: '20px', 
+                    borderRadius: '8px', 
+                    margin: '1.5rem 0',
+                    border: '1px solid #ffeeba',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '15px'
+                }}>
+                    <div>
+                        <h3 style={{ margin: '0 0 5px 0' }}>⚠️ Pagamento Pendente!</h3>
+                        <p style={{ margin: 0 }}>Sua reserva ainda não está garantida. Finalize o pagamento do sinal de <strong>R$ {Number(order.valor_sinal).toFixed(2)}</strong>.</p>
+                    </div>
+                    <button 
+                        onClick={() => navigate(`/payment/${order.id}`)}
+                        style={{ padding: '12px 25px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', boxShadow: '0 4px 6px rgba(40,167,69,0.2)' }}
+                    >
+                        💳 Pagar Agora
+                    </button>
+                </div>
+            )}
 
             {user?.tipo_usuario === 'admin' && (
                 <div style={{ border: '1px solid #007bff', padding: '1.5rem', margin: '2rem 0', borderRadius: '8px', backgroundColor: '#f0f7ff' }}>
@@ -255,7 +269,7 @@ const ReservationDetailsPage: React.FC = () => {
             {itensComPrejuizo.length > 0 && (
                 <div style={{ border: '2px solid #dc3545', borderRadius: '8px', overflow: 'hidden', marginBottom: '2rem', backgroundColor: '#fff' }}>
                     <div style={{ backgroundColor: '#dc3545', color: 'white', padding: '15px' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>🚨 Relatório de Ocorrências (Sinistro / Inadimplência)</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Relatório de Ocorrências (Sinistro / Inadimplência)</h3>
                     </div>
                     <div style={{ padding: '1.5rem' }}>
                         {itensComPrejuizo.map(item => {
@@ -315,27 +329,27 @@ const ReservationDetailsPage: React.FC = () => {
                         <p style={{ margin: 0, color: '#666' }}>Documento assinado e válido juridicamente.</p>
                     </div>
                     <button onClick={handleDownloadContract} disabled={contractLoading} style={btnSecondaryStyle}>
-                        {contractLoading ? '⏳ Gerando PDF...' : '📄 Baixar Contrato (PDF)'}
+                        {contractLoading ? 'Gerando PDF...' : 'Baixar Contrato (PDF)'}
                     </button>
                 </div>
             )}
 
             {user?.tipo_usuario !== 'admin' && canReschedule && (
                 <button onClick={() => setIsRescheduleModalOpen(true)} style={{ backgroundColor: '#ff9800', color: 'white', padding: '12px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', marginBottom: '1rem', fontWeight: 'bold', fontSize: '1rem', width: '100%' }}>
-                    📅 Solicitar Remarcação de Datas
+                    Solicitar Remarcação de Datas
                 </button>
             )}
 
             {user?.tipo_usuario !== 'admin' && order.status === 'aguardando_assinatura' && (
                 <div style={{ border: '2px solid #007bff', padding: '1.5rem', marginBottom: '2rem', borderRadius: '8px', backgroundColor: '#f8f9fa' }}>
-                    <h3 style={{ marginTop: 0, color: '#007bff' }}>⚠️ Assinatura Pendente</h3>
+                    <h3 style={{ marginTop: 0, color: '#007bff' }}>Assinatura Pendente</h3>
                     <p>Por favor, leia o contrato (botão acima) e confirme o aceite dos termos para liberar a retirada do equipamento.</p>
                     <div style={{ margin: '1.5rem 0', padding: '10px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px' }}>
                         <input type="checkbox" id="terms" checked={isChecked} onChange={() => setIsChecked(!isChecked)} style={{ transform: 'scale(1.5)', marginRight: '10px' }} />
                         <label htmlFor="terms" style={{ fontSize: '1.1rem', cursor: 'pointer' }}>Li, compreendi e concordo com os termos do contrato.</label>
                     </div>
                     <button onClick={handleSignContract} disabled={!isChecked || signing} style={btnPrimaryStyle}>
-                        {signing ? 'Processando...' : '✍️ Assinar Digitalmente e Confirmar'}
+                        {signing ? 'Processando...' : 'Assinar Digitalmente e Confirmar'}
                     </button>
                 </div>
             )}
@@ -367,10 +381,12 @@ const ReservationDetailsPage: React.FC = () => {
                         <span>Total do Contrato:</span>
                         <strong>R$ {valorTotalAjustado.toFixed(2)}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', color: '#2e7d32' }}>
-                        <span>Sinal Pago (Reserva):</span>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', color: order.status === 'pendente' ? '#e65100' : '#2e7d32' }}>
+                        <span>{order.status === 'pendente' ? 'Sinal a Pagar (Pendente):' : 'Sinal Pago (Reserva):'}</span>
                         <strong>- R$ {Number(order.valor_sinal).toFixed(2)}</strong>
                     </div>
+
                     {order.status === 'finalizada' && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', padding: '10px', backgroundColor: '#e8f5e9', borderRadius: '6px', color: '#1b5e20', fontWeight: 'bold' }}>
                             <span>Restante Quitado:</span>
@@ -381,7 +397,7 @@ const ReservationDetailsPage: React.FC = () => {
 
                 <div style={{ flex: 1, border: '1px solid #ddd', padding: '1.5rem', borderRadius: '8px', backgroundColor: '#fff' }}>
                     <h3 style={{ marginTop: 0, color: '#2c3e50', borderBottom: '2px solid #f0f0f0', paddingBottom: '10px' }}>Dados Logísticos</h3>
-                    <p><strong>Tipo de Entrega:</strong> {order.tipo_entrega === 'entrega' ? '🚛 Entrega na Obra' : '🏪 Retirada na Loja'}</p>
+                    <p><strong>Tipo de Entrega:</strong> {order.tipo_entrega === 'entrega' ? 'Entrega na Obra' : 'Retirada na Loja'}</p>
                     {order.tipo_entrega === 'entrega' && <p><strong>Endereço:</strong> {order.endereco_entrega}</p>}
                     <div style={{ marginTop: '20px' }}>
                         <p><strong>Data de Saída:</strong> {parseDateStringAsLocal(order.data_inicio).toLocaleDateString()}</p>
@@ -415,19 +431,27 @@ const ReservationDetailsPage: React.FC = () => {
                         {vistoriaDeSaida ? (
                             <VistoriaDetailDisplay title="📋 Vistoria de Saída (Entrega)" detail={detalheSaida} />
                         ) : (
-                            order.status !== 'cancelada' && <div style={{ padding: '15px', backgroundColor: '#fff3cd', color: '#856404', borderRadius: '6px' }}>⏳ Aguardando vistoria de saída...</div>
+                            order.status === 'pendente' ? (
+                                <div style={{ padding: '15px', backgroundColor: '#f8f9fa', color: '#6c757d', borderRadius: '6px', border: '1px dashed #ccc' }}>
+                                    Aguardando confirmação do pagamento para liberar vistoria...
+                                </div>
+                            ) : order.status !== 'cancelada' && (
+                                <div style={{ padding: '15px', backgroundColor: '#fff3cd', color: '#856404', borderRadius: '6px' }}>
+                                    Aguardando vistoria de saída...
+                                </div>
+                            )
                         )}
 
                         <div style={{ marginTop: '20px' }}>
                             {vistoriaDeDevolucao ? (
-                                <VistoriaDetailDisplay title="📋 Vistoria de Devolução (Retorno)" detail={detalheDevolucao} />
+                                <VistoriaDetailDisplay title="Vistoria de Devolução (Retorno)" detail={detalheDevolucao} />
                             ) : (
                                 item.prejuizo ? (
                                     <div style={{ padding: '15px', backgroundColor: '#ffebee', border: '1px solid #ef9a9a', borderRadius: '6px', color: '#c62828' }}>
-                                        <strong>⚠️ Ocorrência Registrada:</strong> Este item não passou pela vistoria de retorno padrão devido ao registro de sinistro (veja detalhes no topo).
+                                        <strong>Ocorrência Registrada:</strong> Este item não passou pela vistoria de retorno padrão devido ao registro de sinistro (veja detalhes no topo).
                                     </div>
                                 ) : (
-                                    order.status === 'em_andamento' && <div style={{ padding: '15px', backgroundColor: '#e3f2fd', color: '#0d47a1', borderRadius: '6px' }}>🔄 Equipamento em locação. Aguardando retorno.</div>
+                                    order.status === 'em_andamento' && <div style={{ padding: '15px', backgroundColor: '#e3f2fd', color: '#0d47a1', borderRadius: '6px' }}>Equipamento em locação. Aguardando retorno.</div>
                                 )
                             )}
                         </div>
