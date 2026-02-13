@@ -102,7 +102,6 @@ const createOrder = async (req, res) => {
     const { itens, tipo_entrega, endereco_entrega, valor_frete } = req.body;
     const id_usuario = req.user.id;
 
-
     if (!itens || itens.length === 0) {
         return res.status(400).json({ error: 'Nenhum item fornecido.' });
     }
@@ -113,6 +112,8 @@ const createOrder = async (req, res) => {
             let data_fim_geral = new Date(itens[0].data_fim);
             let subtotal_itens = 0;
 
+            const unidadesParaAlugar = {}; 
+
             for (const item of itens) {
                 const equipamento = await Equipamento.findByPk(item.id_equipamento, { transaction: t });
                 if (!equipamento) throw new Error(`Equipamento ID ${item.id_equipamento} sumiu.`);
@@ -122,25 +123,27 @@ const createOrder = async (req, res) => {
                 const end = new Date(item.data_fim);
                 const days = Math.round(Math.abs((end - start) / (1000 * 60 * 60 * 24))) + 1;
 
-                subtotal_itens += preco * item.quantidade * days;
+                const quantidadePedida = Number(item.quantidade);
+
+                subtotal_itens += preco * quantidadePedida * days;
 
                 if (start < data_inicio_geral) data_inicio_geral = start;
                 if (end > data_fim_geral) data_fim_geral = end;
 
                 const disponiveis = await verificarDisponibilidade(item, { transaction: t });
-                if (disponiveis.length < item.quantidade) {
-                    throw new Error(`Conflito: Estoque insuficiente para ${equipamento.nome}.`);
+                
+                if (disponiveis.length < quantidadePedida) {
+                    throw new Error(`Conflito: Estoque insuficiente para ${equipamento.nome}. Pedido: ${quantidadePedida}, Disponível: ${disponiveis.length}`);
                 }
+
+                unidadesParaAlugar[item.id_equipamento] = disponiveis.slice(0, quantidadePedida);
             }
 
             let custo_frete = 0;
-
             if (tipo_entrega === 'entrega') {
                 if (valor_frete && Number(valor_frete) > 0) {
                     custo_frete = Number(valor_frete);
-                }
-
-                else if (endereco_entrega) {
+                } else if (endereco_entrega) {
                     custo_frete = await calcularFreteInterno(endereco_entrega);
                 }
             }
@@ -161,11 +164,13 @@ const createOrder = async (req, res) => {
             }, { transaction: t });
 
             for (const item of itens) {
-                const disponiveis = await verificarDisponibilidade(item, { transaction: t });
-                for (let i = 0; i < item.quantidade; i++) {
+                const maquinasLivres = unidadesParaAlugar[item.id_equipamento];
+                const quantidadePedida = Number(item.quantidade);
+
+                for (let i = 0; i < quantidadePedida; i++) {
                     await ItemReserva.create({
                         id_ordem_servico: ordemDeServico.id,
-                        id_unidade: disponiveis[i].id,
+                        id_unidade: maquinasLivres[i].id,
                         data_inicio: item.data_inicio,
                         data_fim: item.data_fim,
                     }, { transaction: t });

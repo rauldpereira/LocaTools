@@ -45,7 +45,7 @@ interface OrderDetails {
     taxa_remarcacao?: string;
     ItemReservas: ItemReserva[];
     Vistorias: Vistoria[];
-    createdAt?: string; // <--- ADICIONADO AQUI
+    createdAt?: string;
 }
 
 const parseDateStringAsLocal = (dateString: string) => {

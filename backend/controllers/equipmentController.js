@@ -117,7 +117,7 @@ const getEquipment = async (req, res) => {
             return {
                 ...json,
                 total_quantidade: json.Unidades ? json.Unidades.length : 0,
-                
+
                 disponiveis: json.Unidades ? json.Unidades.filter(u => u.status === 'disponivel').length : 0
             };
         });
@@ -169,15 +169,15 @@ const updateEquipment = async (req, res) => {
 
         if (req.files && req.files.length > 0) {
             const novosCaminhos = req.files.map(file => {
-                 return file.path.replace(/\\/g, '/').replace('public', '');
+                return file.path.replace(/\\/g, '/').replace('public', '');
             });
             listaFinalImagens = [...listaFinalImagens, ...novosCaminhos];
         }
 
         let urlImagemParaSalvar = equipamento.url_imagem;
-        
+
         if (existing_images !== undefined) {
-             urlImagemParaSalvar = JSON.stringify(listaFinalImagens);
+            urlImagemParaSalvar = JSON.stringify(listaFinalImagens);
         }
 
         await equipamento.update({
@@ -231,19 +231,18 @@ const checkAvailability = async (req, res) => {
 
         const bookings = await ItemReserva.findAll({
             where: {
-                '$Unidade.id_equipamento$': id,
-                
-                data_inicio: { [Op.lte]: end }, 
+                data_inicio: { [Op.lte]: end },
                 data_fim: { [Op.gte]: start },
             },
             include: [
-                { 
-                    model: Unidade, 
-                    required: true, 
-                    attributes: ['id'] 
+                {
+                    model: Unidade,
+                    where: { id_equipamento: id },
+                    required: true,
+                    attributes: ['id']
                 },
-                { 
-                    model: OrdemDeServico, 
+                {
+                    model: OrdemDeServico,
                     required: false,
                     attributes: ['status']
                 }
@@ -253,7 +252,7 @@ const checkAvailability = async (req, res) => {
         const occupancyMap = {};
 
         bookings.forEach(booking => {
-            // Se for Pedido Cancelado ou Finalizado, IGNORA
+            // Ignora o que foi cancelado. Finalizado, Devolvido etc.. não ocupa mais espaço futuro.
             if (booking.OrdemDeServico && ['cancelada', 'finalizada'].includes(booking.OrdemDeServico.status)) {
                 return;
             }
@@ -263,10 +262,10 @@ const checkAvailability = async (req, res) => {
 
             while (current <= last) {
                 const dateStr = current.toISOString().split('T')[0];
-                
+
                 if (!occupancyMap[dateStr]) occupancyMap[dateStr] = 0;
                 occupancyMap[dateStr]++;
-                
+
                 current.setDate(current.getDate() + 1);
             }
         });
@@ -287,7 +286,7 @@ const checkAvailability = async (req, res) => {
             if (available <= 0) {
                 unavailableDates.push(dateStr);
             }
-            
+
             loopDate.setDate(loopDate.getDate() + 1);
         }
 
@@ -326,74 +325,71 @@ const getDailyAvailability = async (req, res) => {
 
         const reservations = await ItemReserva.findAll({
             where: {
-                [Op.and]: [
-                    { data_inicio: { [Op.lte]: endDate } },
-                    { data_fim: { [Op.gte]: startDate } },
-                    { status: { [Op.in]: ['ativo', 'manutencao'] } }
-                ]
+                data_inicio: { [Op.lte]: endDate },
+                data_fim: { [Op.gte]: startDate }
             },
             include: [
-                { 
-                    model: Unidade, 
+                {
+                    model: Unidade,
                     where: { id_equipamento: id },
                     required: true,
-                    attributes: ['id'] 
+                    attributes: ['id']
                 },
-                { 
-                    model: OrdemDeServico, 
-                    required: false, // Permite trazer Manutenção
-                    attributes: ['id', 'status'] 
+                {
+                    model: OrdemDeServico,
+                    required: false,
+                    attributes: ['id', 'status']
                 }
             ]
         });
 
-        const availabilityByDay = {};
-        
-        // Loop pelos dias do calendário
-        let currentDay = parseDateStringAsLocal(startDate);
-        const endDay = parseDateStringAsLocal(endDate);
+        const occupancyMap = {};
 
-        // Mapa auxiliar para contar ocupações por dia
-        const occupancyMap = {}; 
-
-        reservations.forEach(res => {
-            // Se for Manutenção -> CONTA
+        reservations.forEach(reserva => {
             let deveContar = false;
 
-            if (res.status === 'manutencao') {
+            // Se for manutenção, a máquina tá ocupada
+            if (reserva.status === 'manutencao') {
                 deveContar = true;
-            } 
-            // Se for Cliente -> Verifica status do pedido
-            else if (res.OrdemDeServico) {
-                // Se for o pedido que estamos editando, ignora
-                if (excludeOrderId && res.OrdemDeServico.id == excludeOrderId) return;
-                
-                // Só conta pedidos aprovados/pendentes
-                if (['aprovada', 'aguardando_assinatura', 'em_andamento', 'pendente'].includes(res.OrdemDeServico.status)) {
+            }
+            // Se for pedido de cliente
+            else if (reserva.OrdemDeServico) {
+                if (excludeOrderId && reserva.OrdemDeServico.id == excludeOrderId) return;
+
+                // CONTA as máquinas se o pedido for: pendente, aprovada, aguardando assinatura ou andamento.
+                const statusAtivos = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento'];
+                if (statusAtivos.includes(reserva.OrdemDeServico.status)) {
                     deveContar = true;
                 }
             }
 
             if (deveContar) {
-                let rStart = parseDateStringAsLocal(res.data_inicio.toISOString());
-                let rEnd = parseDateStringAsLocal(res.data_fim.toISOString());
-                
-                if (rStart < currentDay) rStart = new Date(currentDay); 
-                if (rEnd > endDay) rEnd = new Date(endDay);
+                let rStart = new Date(reserva.data_inicio);
+                let rEnd = new Date(reserva.data_fim);
+
+                const currentDayStart = new Date(startDate);
+                const currentDayEnd = new Date(endDate);
+
+                if (rStart < currentDayStart) rStart = new Date(currentDayStart);
+                if (rEnd > currentDayEnd) rEnd = new Date(currentDayEnd);
 
                 for (let d = new Date(rStart); d <= rEnd; d.setDate(d.getDate() + 1)) {
                     const dStr = d.toISOString().split('T')[0];
                     occupancyMap[dStr] = (occupancyMap[dStr] || 0) + 1;
                 }
             }
+
+
         });
 
-        // Loop final para montar a resposta
+        const availabilityByDay = {};
+        let currentDay = new Date(startDate);
+        const endDay = new Date(endDate);
+
         while (currentDay <= endDay) {
             const dayString = currentDay.toISOString().split('T')[0];
             const diaSemana = diasSemanaMap[currentDay.getDay()];
-            
-            // Lógica de Feriado/Fechado
+
             let empresaAberta = true;
             if (excecoes[dayString]) {
                 if (!excecoes[dayString].funcionamento) empresaAberta = false;
@@ -402,10 +398,9 @@ const getDailyAvailability = async (req, res) => {
             }
 
             if (!empresaAberta) {
-                availabilityByDay[dayString] = 0; // Fechado = 0 disponíveis
+                availabilityByDay[dayString] = 0;
             } else {
                 const ocupados = occupancyMap[dayString] || 0;
-                // Garante que não fique negativo
                 availabilityByDay[dayString] = Math.max(0, totalUnits - ocupados);
             }
 
