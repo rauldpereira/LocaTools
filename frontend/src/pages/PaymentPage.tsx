@@ -4,6 +4,7 @@ import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
+
 interface UsuarioDaOrdem {
     id: number;
     nome: string;
@@ -15,12 +16,14 @@ interface UsuarioDaOrdem {
 
 interface OrderDetails {
     id: number;
+    status: string;
     valor_total: number;
     valor_sinal: number;
     tipo_entrega: string;
     endereco_entrega?: string;
     custo_frete: number;
     Usuario: UsuarioDaOrdem;
+    createdAt?: string;
 }
 
 const isCPFValido = (cpf: string) => {
@@ -126,7 +129,6 @@ const CheckoutForm = ({ usuario }: { usuario: UsuarioDaOrdem }) => {
             return;
         }
 
-        // validação cpf/cnpj
         const docLimpo = documento.replace(/\D/g, '');
         
         if (tipoDoc === 'cpf' && !isCPFValido(docLimpo)) {
@@ -274,7 +276,7 @@ const CheckoutForm = ({ usuario }: { usuario: UsuarioDaOrdem }) => {
                     color: '#721c24', backgroundColor: '#f8d7da', 
                     padding: '10px', borderRadius: '5px', marginTop: '15px', fontSize: '0.9rem', fontWeight: 'bold'
                 }}>
-                    {error}
+                    ⚠️ {error}
                 </div>
             )}
             
@@ -300,6 +302,7 @@ const PaymentPage: React.FC = () => {
     const [order, setOrder] = useState<OrderDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const { token } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!orderId || !token) return;
@@ -315,15 +318,58 @@ const PaymentPage: React.FC = () => {
             }
         };
         fetchOrder();
+
+        const interval = setInterval(() => {
+            fetchOrder();
+        }, 10000); 
+
+        return () => clearInterval(interval);
+
     }, [orderId, token]);
 
     if (loading) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Carregando...</div>;
     if (!order) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Pedido não encontrado.</div>;
 
+    if (order.status === 'cancelada') {
+        return (
+            <div style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '4rem', marginBottom: '10px' }}>⏱️</div>
+                <h2 style={{ color: '#c62828', marginTop: 0 }}>Tempo Esgotado!</h2>
+                <p style={{ fontSize: '1.1rem', color: '#555', marginBottom: '30px' }}>
+                    O prazo para pagamento expirou e sua reserva foi cancelada. Os equipamentos foram liberados para outros clientes.
+                </p>
+                <button 
+                    onClick={() => navigate('/')} 
+                    style={{ padding: '15px 30px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', transition: '0.3s' }}
+                >
+                    Fazer Nova Reserva
+                </button>
+            </div>
+        );
+    }
+
     const subtotal = Number(order.valor_total) - Number(order.custo_frete);
+
+    let horaLimiteFormatada = '';
+    if (order.createdAt) {
+        const dataCriacao = new Date(order.createdAt);
+        const tempoLimite = new Date(dataCriacao.getTime() + 60 * 60 * 1000);
+        horaLimiteFormatada = tempoLimite.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
 
     return (
         <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
+            
+            {/* AVISO DE TEMPO LIMITE */}
+            {horaLimiteFormatada && (
+                <div style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ffeeba', textAlign: 'center' }}>
+                    <h4 style={{ margin: '0 0 5px 0' }}>⚠️ Pagamento Pendente</h4>
+                    <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#d32f2f' }}>
+                        ⏳ Realize o pagamento até as {horaLimiteFormatada} ou o pedido será cancelado.
+                    </p>
+                </div>
+            )}
+
             <div className="order-summary" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#000' }}>
                 <h4 style={{marginTop: 0, color: '#000', fontSize: '1.2rem'}}>Resumo do Pedido #{orderId}</h4>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>

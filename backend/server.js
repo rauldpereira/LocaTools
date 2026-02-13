@@ -14,6 +14,7 @@ const reportsRoutes = require('./routes/reportsRoutes');
 const calendarioRoutes = require('./routes/calendarioRoutes');
 const prejuizoRoutes = require('./routes/prejuizoRoutes');
 const freteRoutes = require('./routes/freteRoutes');
+const iniciarCronJobs = require('./services/canceladorPedidos');
 
 dotenv.config({ path: '.env', quiet: true });
 
@@ -23,6 +24,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 
 app.use(express.json());
+
+iniciarCronJobs();
 
 app.use('/uploads', express.static('public/uploads'));
 

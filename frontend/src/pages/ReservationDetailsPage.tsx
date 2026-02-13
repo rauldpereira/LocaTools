@@ -45,6 +45,7 @@ interface OrderDetails {
     taxa_remarcacao?: string;
     ItemReservas: ItemReserva[];
     Vistorias: Vistoria[];
+    createdAt?: string; // <--- ADICIONADO AQUI
 }
 
 const parseDateStringAsLocal = (dateString: string) => {
@@ -199,6 +200,14 @@ const ReservationDetailsPage: React.FC = () => {
         }
     };
 
+    // --- CÁLCULO DA HORA LIMITE ---
+    let horaLimiteFormatada = '';
+    if (order.createdAt) {
+        const dataCriacao = new Date(order.createdAt);
+        const tempoLimite = new Date(dataCriacao.getTime() + 60 * 60 * 1000);
+        horaLimiteFormatada = tempoLimite.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+
     return (
         <div style={{ padding: '2rem', marginTop: '60px', maxWidth: '1000px', margin: '80px auto', color: '#333', fontFamily: 'Arial, sans-serif' }}>
 
@@ -220,7 +229,7 @@ const ReservationDetailsPage: React.FC = () => {
             <h1 style={{ marginTop: 0, color: '#2c3e50' }}>Pedido #{order.id}</h1>
             <HorarioFuncionamento />
 
-            {/* --- ALERTA DE PAGAMENTO PENDENTE --- */}
+            {/* --- ALERTA DE PAGAMENTO PENDENTE COM A HORA --- */}
             {order.status === 'pendente' && (
                 <div style={{ 
                     backgroundColor: '#fff3cd', 
@@ -238,12 +247,17 @@ const ReservationDetailsPage: React.FC = () => {
                     <div>
                         <h3 style={{ margin: '0 0 5px 0' }}>⚠️ Pagamento Pendente!</h3>
                         <p style={{ margin: 0 }}>Sua reserva ainda não está garantida. Finalize o pagamento do sinal de <strong>R$ {Number(order.valor_sinal).toFixed(2)}</strong>.</p>
+                        {horaLimiteFormatada && (
+                            <p style={{ margin: '8px 0 0 0', color: '#d32f2f', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                                Realize o pagamento até as {horaLimiteFormatada} ou o pedido será cancelado.
+                            </p>
+                        )}
                     </div>
                     <button 
                         onClick={() => navigate(`/payment/${order.id}`)}
                         style={{ padding: '12px 25px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', boxShadow: '0 4px 6px rgba(40,167,69,0.2)' }}
                     >
-                        💳 Pagar Agora
+                        Pagar Agora
                     </button>
                 </div>
             )}
