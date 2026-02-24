@@ -112,13 +112,54 @@ const getEquipment = async (req, res) => {
             order: [['nome', 'ASC']]
         });
 
+        
+        const dataAtual = new Date();
+        const hojeDataIso = `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}-${String(dataAtual.getDate()).padStart(2, '0')}`;
+
+        const ocupacoesHoje = await ItemReserva.findAll({
+            where: {
+                data_inicio: { [Op.lte]: hojeDataIso },
+                data_fim: { [Op.gte]: hojeDataIso }
+            },
+            include: [{
+                model: OrdemDeServico,
+                as: 'OrdemDeServico',
+                required: false,
+                attributes: ['status']
+            }]
+        });
+
+        const statusRealMap = {};
+        ocupacoesHoje.forEach(ocup => {
+            const idUnidade = ocup.id_unidade;
+            if (ocup.status === 'manutencao') {
+                statusRealMap[idUnidade] = 'manutencao';
+            } else if (ocup.OrdemDeServico && ocup.OrdemDeServico.status) {
+                const osStatus = ocup.OrdemDeServico.status;
+                if (['em_andamento', 'aprovada', 'aguardando_assinatura', 'pendente'].includes(osStatus)) {
+                    statusRealMap[idUnidade] = 'alugado';
+                }
+            }
+        });
         const response = equipments.map(equip => {
             const json = equip.toJSON();
+            let disponiveis = 0;
+
+            if (json.Unidades) {
+                json.Unidades = json.Unidades.map(u => {
+                    u.status = statusRealMap[u.id] || 'disponivel';
+
+                    if (u.status === 'disponivel') {
+                        disponiveis++;
+                    }
+                    return u;
+                });
+            }
+
             return {
                 ...json,
                 total_quantidade: json.Unidades ? json.Unidades.length : 0,
-
-                disponiveis: json.Unidades ? json.Unidades.filter(u => u.status === 'disponivel').length : 0
+                disponiveis: disponiveis
             };
         });
 
@@ -252,7 +293,6 @@ const checkAvailability = async (req, res) => {
         const occupancyMap = {};
 
         bookings.forEach(booking => {
-            // Ignora o que foi cancelado. Finalizado, Devolvido etc.. não ocupa mais espaço futuro.
             if (booking.OrdemDeServico && ['cancelada', 'finalizada'].includes(booking.OrdemDeServico.status)) {
                 return;
             }
@@ -306,6 +346,22 @@ const getDailyAvailability = async (req, res) => {
     const { id } = req.params;
     const { startDate, endDate, excludeOrderId } = req.query;
 
+    const diasSemanaMap = {
+        0: 'domingo', 1: 'segunda', 2: 'terca', 3: 'quarta', 
+        4: 'quinta', 5: 'sexta', 6: 'sabado'
+    };
+
+    const formataDataBanco = (data) => {
+        if (!data) return '';
+        if (data instanceof Date) {
+            const y = data.getFullYear();
+            const m = String(data.getMonth() + 1).padStart(2, '0');
+            const d = String(data.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+        return String(data).substring(0, 10);
+    };
+
     try {
         const regrasPadraoRaw = await HorarioFuncionamento.findAll();
         const regrasPadrao = regrasPadraoRaw.reduce((acc, regra) => {
@@ -348,27 +404,26 @@ const getDailyAvailability = async (req, res) => {
         reservations.forEach(reserva => {
             let deveContar = false;
 
-            // Se for manutenção, a máquina tá ocupada
             if (reserva.status === 'manutencao') {
                 deveContar = true;
-            }
-            // Se for pedido de cliente
-            else if (reserva.OrdemDeServico) {
+            } else if (reserva.OrdemDeServico) {
                 if (excludeOrderId && reserva.OrdemDeServico.id == excludeOrderId) return;
 
-                // CONTA as máquinas se o pedido for: pendente, aprovada, aguardando assinatura ou andamento.
-                const statusAtivos = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento'];
+                const statusAtivos = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'];
                 if (statusAtivos.includes(reserva.OrdemDeServico.status)) {
                     deveContar = true;
                 }
             }
 
             if (deveContar) {
-                let rStart = new Date(reserva.data_inicio);
-                let rEnd = new Date(reserva.data_fim);
+                const rStartStr = formataDataBanco(reserva.data_inicio);
+                const rEndStr = formataDataBanco(reserva.data_fim);
 
-                const currentDayStart = new Date(startDate);
-                const currentDayEnd = new Date(endDate);
+                let rStart = new Date(rStartStr + "T12:00:00");
+                let rEnd = new Date(rEndStr + "T12:00:00");
+
+                const currentDayStart = new Date(startDate + "T12:00:00");
+                const currentDayEnd = new Date(endDate + "T12:00:00");
 
                 if (rStart < currentDayStart) rStart = new Date(currentDayStart);
                 if (rEnd > currentDayEnd) rEnd = new Date(currentDayEnd);
@@ -378,13 +433,12 @@ const getDailyAvailability = async (req, res) => {
                     occupancyMap[dStr] = (occupancyMap[dStr] || 0) + 1;
                 }
             }
-
-
         });
 
         const availabilityByDay = {};
-        let currentDay = new Date(startDate);
-        const endDay = new Date(endDate);
+        
+        let currentDay = new Date(startDate + "T12:00:00");
+        const endDay = new Date(endDate + "T12:00:00");
 
         while (currentDay <= endDay) {
             const dayString = currentDay.toISOString().split('T')[0];

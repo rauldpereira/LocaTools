@@ -37,9 +37,9 @@ const AdminReservationsList: React.FC = () => {
     const ordersForExitInspection = orders.filter(order => order.status === 'aprovada');
     const ordersAwaitingSignature = orders.filter(order => order.status === 'aguardando_assinatura');
     const ordersForReturnInspection = orders.filter(order => order.status === 'em_andamento');
-    const ordersAwaitingFinalPayment = orders.filter(order =>
-        order.status === 'aguardando_pagamento_final'
-    );
+    const ordersAwaitingFinalPayment = orders.filter(order => order.status === 'aguardando_pagamento_final');
+
+    const ordersAbandoned = orders.filter(order => order.status === 'pendente');
 
     const finalizedOrders = orders.filter(order =>
         order.status === 'finalizada' || order.status === 'PREJUIZO'
@@ -70,9 +70,9 @@ const AdminReservationsList: React.FC = () => {
     ) => (
         <div style={{ marginBottom: '3rem' }}>
             <h3 style={{ color: '#444', borderLeft: '4px solid #007bff', paddingLeft: '10px', marginBottom: '1rem' }}>
-                {title} <span style={{fontSize:'0.8rem', color:'#888', fontWeight:'normal'}}>({orderList.length})</span>
+                {title} <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'normal' }}>({orderList.length})</span>
             </h3>
-            
+
             {orderList.length === 0 ? (
                 <div style={{ padding: '2rem', backgroundColor: '#f9f9f9', borderRadius: '8px', textAlign: 'center', color: '#888' }}>
                     Nenhum pedido nesta etapa.
@@ -92,10 +92,10 @@ const AdminReservationsList: React.FC = () => {
                             {orderList.map((order, index) => {
                                 const isPrejuizo = order.status === 'PREJUIZO';
                                 const rowStyle = {
-                                    backgroundColor: isPrejuizo ? '#fff0f0' : (index % 2 === 0 ? '#fff' : '#fcfcfc'), // Zebrado
+                                    backgroundColor: isPrejuizo ? '#fff0f0' : (index % 2 === 0 ? '#fff' : '#fcfcfc'),
                                     borderBottom: '1px solid #eee'
                                 };
-                                
+
                                 return (
                                     <tr key={order.id} style={rowStyle}>
                                         {headers.map(header => {
@@ -106,13 +106,13 @@ const AdminReservationsList: React.FC = () => {
                                                 cellContent = parseDateStringAsLocal(value).toLocaleDateString();
                                             } else if (header.key === 'status') {
                                                 const statusText = String(value).replace(/_/g, ' ').toUpperCase();
-                                                
+
                                                 const color = isPrejuizo ? '#d32f2f' : (value === 'finalizada' ? '#28a745' : '#333');
                                                 const bgBadge = isPrejuizo ? '#ffebee' : (value === 'finalizada' ? '#e6fffa' : 'transparent');
-                                                
+
                                                 cellContent = (
                                                     <span style={{
-                                                        fontWeight: 'bold', color: color, 
+                                                        fontWeight: 'bold', color: color,
                                                         backgroundColor: bgBadge, padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem'
                                                     }}>
                                                         {isPrejuizo ? '🚨 ' : ''}{statusText}
@@ -180,7 +180,7 @@ const AdminReservationsList: React.FC = () => {
                 [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }],
                 order => <Link to={`/admin/finalize-payment/${order.id}`}><button>Finalizar e Cobrar</button></Link>
             )}
-
+            {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)",ordersAbandoned,[{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }],order => (<Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold' }}>Ver Cliente / Resgatar Venda</button></Link>))}
             {renderOrderTable("Histórico de Pedidos Finalizados", finalizedOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Finalização' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver pedido Completo</button></Link>))}
             {renderOrderTable("Histórico de Pedidos Cancelados", cancelledOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver Detalhes</button></Link>))}
         </div>

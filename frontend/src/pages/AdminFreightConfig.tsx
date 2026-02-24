@@ -104,9 +104,9 @@ const AdminFreightConfig: React.FC = () => {
                 cep
             });
 
-        } catch (e) {
-            console.log('Não foi possível fazer o parse automático do endereço.', e);
-        }
+        } catch (error) {
+            console.error('Erro ao preencher campos do endereço:', error);
+         }
     };
 
     const buscarCepNoApi = async (cepParaBuscar: string) => {

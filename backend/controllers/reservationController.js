@@ -108,8 +108,9 @@ const createOrder = async (req, res) => {
 
     try {
         const resultado = await sequelize.transaction(async (t) => {
-            let data_inicio_geral = new Date(itens[0].data_inicio);
-            let data_fim_geral = new Date(itens[0].data_fim);
+            
+            let data_inicio_geral = itens[0].data_inicio.split('T')[0];
+            let data_fim_geral = itens[0].data_fim.split('T')[0];
             let subtotal_itens = 0;
 
             const unidadesParaAlugar = {}; 
@@ -119,18 +120,27 @@ const createOrder = async (req, res) => {
                 if (!equipamento) throw new Error(`Equipamento ID ${item.id_equipamento} sumiu.`);
 
                 const preco = parseFloat(equipamento.preco_diaria);
-                const start = new Date(item.data_inicio);
-                const end = new Date(item.data_fim);
-                const days = Math.round(Math.abs((end - start) / (1000 * 60 * 60 * 24))) + 1;
+                
+                const startStr = item.data_inicio.split('T')[0];
+                const endStr = item.data_fim.split('T')[0];
+
+                const startMath = new Date(startStr + "T12:00:00");
+                const endMath = new Date(endStr + "T12:00:00");
+                const days = Math.round(Math.abs((endMath - startMath) / (1000 * 60 * 60 * 24))) + 1;
 
                 const quantidadePedida = Number(item.quantidade);
-
                 subtotal_itens += preco * quantidadePedida * days;
 
-                if (start < data_inicio_geral) data_inicio_geral = start;
-                if (end > data_fim_geral) data_fim_geral = end;
+                if (startStr < data_inicio_geral) data_inicio_geral = startStr;
+                if (endStr > data_fim_geral) data_fim_geral = endStr;
 
-                const disponiveis = await verificarDisponibilidade(item, { transaction: t });
+                const itemLimpo = {
+                    ...item,
+                    data_inicio: startStr,
+                    data_fim: endStr
+                };
+
+                const disponiveis = await verificarDisponibilidade(itemLimpo, { transaction: t });
                 
                 if (disponiveis.length < quantidadePedida) {
                     throw new Error(`Conflito: Estoque insuficiente para ${equipamento.nome}. Pedido: ${quantidadePedida}, Disponível: ${disponiveis.length}`);
@@ -151,11 +161,14 @@ const createOrder = async (req, res) => {
             const valor_total = subtotal_itens + custo_frete;
             const valor_sinal = valor_total * 0.5;
 
+            const dataInicioGeralSalvar = data_inicio_geral + "T12:00:00";
+            const dataFimGeralSalvar = data_fim_geral + "T12:00:00";
+
             const ordemDeServico = await OrdemDeServico.create({
                 id_usuario,
                 status: 'pendente',
-                data_inicio: data_inicio_geral,
-                data_fim: data_fim_geral,
+                data_inicio: dataInicioGeralSalvar,
+                data_fim: dataFimGeralSalvar,
                 valor_total,
                 tipo_entrega,
                 endereco_entrega: tipo_entrega === 'entrega' ? endereco_entrega : null,
@@ -166,13 +179,21 @@ const createOrder = async (req, res) => {
             for (const item of itens) {
                 const maquinasLivres = unidadesParaAlugar[item.id_equipamento];
                 const quantidadePedida = Number(item.quantidade);
+                
+                const startStr = item.data_inicio.split('T')[0];
+                const endStr = item.data_fim.split('T')[0];
 
                 for (let i = 0; i < quantidadePedida; i++) {
+                    
+                    const startSalvar = startStr + "T12:00:00";
+                    const endSalvar = endStr + "T12:00:00";
+
                     await ItemReserva.create({
                         id_ordem_servico: ordemDeServico.id,
                         id_unidade: maquinasLivres[i].id,
-                        data_inicio: item.data_inicio,
-                        data_fim: item.data_fim,
+                        data_inicio: startSalvar, 
+                        data_fim: endSalvar,      
+                        status: 'ativo'
                     }, { transaction: t });
                 }
             }

@@ -8,7 +8,8 @@ module.exports = {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 5432, 
     dialect: 'postgres', 
-    logging: false 
+    logging: false,
+    timezone: '-03:00'
   },
   test: {
     username: process.env.DB_USER,
@@ -16,7 +17,8 @@ module.exports = {
     database: process.env.DB_NAME_TEST,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 5432,
-    dialect: 'postgres'
+    dialect: 'postgres',
+    timezone: '-03:00'
   },
   production: {
     username: process.env.DB_USER,
@@ -25,5 +27,6 @@ module.exports = {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
+    timezone: '-03:00' 
   }
 };

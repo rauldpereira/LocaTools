@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
       ItemReserva.hasOne(models.Prejuizo, {
         foreignKey: 'item_reserva_id',
         as: 'prejuizo'
-    });
+      });
     }
   }
   ItemReserva.init({
@@ -31,11 +31,11 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     data_inicio: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATEONLY,
       allowNull: false
     },
     data_fim: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATEONLY,
       allowNull: false
     },
     status: {

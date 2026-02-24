@@ -35,7 +35,6 @@ const iniciarCronJobs = () => {
                     }
                 }
 
-                console.log(`❌ Pedido #${pedido.id} cancelado. Máquinas liberadas!`);
             }
 
         } catch (error) {

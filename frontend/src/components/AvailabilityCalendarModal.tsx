@@ -19,8 +19,9 @@ interface IMesPublicado {
     mes: number;
 }
 
-const toISODate = (date: Date): string => date.toISOString().split('T')[0];
-
+const toISODate = (date: Date): string => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
 
 const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void }> = ({ equipment, onClose }) => {
     const { addToCart } = useCart();
@@ -131,15 +132,22 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
     }, [minDate, maxDate, equipment.id]);
 
 
-    useEffect(() => {
+   useEffect(() => {
         if (selectedRange && selectedRange.length === 2) {
             let minAvailability = Infinity;
-            for (let day = new Date(selectedRange[0]); day <= selectedRange[1]; day.setDate(day.getDate() + 1)) {
-                const dayString = day.toISOString().split('T')[0];
+            
+            const startDay = new Date(selectedRange[0].getFullYear(), selectedRange[0].getMonth(), selectedRange[0].getDate(), 12, 0, 0);
+            const endDay = new Date(selectedRange[1].getFullYear(), selectedRange[1].getMonth(), selectedRange[1].getDate(), 12, 0, 0);
+
+            for (let day = new Date(startDay); day <= endDay; day.setDate(day.getDate() + 1)) {
+                const dayString = toISODate(day);
                 const availability = availabilityData[dayString];
-                if (availability < minAvailability) { minAvailability = availability; }
+                
+                if (availability !== undefined && availability < minAvailability) { 
+                    minAvailability = availability; 
+                }
             }
-            setAvailableForRange(minAvailability);
+            setAvailableForRange(minAvailability === Infinity ? 0 : minAvailability);
             setQuantity(1);
         } else {
             setAvailableForRange(null);

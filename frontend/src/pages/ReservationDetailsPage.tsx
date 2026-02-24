@@ -49,9 +49,15 @@ interface OrderDetails {
 }
 
 const parseDateStringAsLocal = (dateString: string) => {
-    const dateOnly = dateString.split('T')[0];
+    if (!dateString) return new Date();
+    
+    const dateOnly = String(dateString).substring(0, 10);
+
     const [year, month, day] = dateOnly.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    const finalDate = new Date(year, month - 1, day);
+    
+
+    return finalDate;
 };
 
 const ReservationDetailsPage: React.FC = () => {
@@ -200,7 +206,6 @@ const ReservationDetailsPage: React.FC = () => {
         }
     };
 
-    // --- CÁLCULO DA HORA LIMITE ---
     let horaLimiteFormatada = '';
     if (order.createdAt) {
         const dataCriacao = new Date(order.createdAt);
@@ -229,7 +234,6 @@ const ReservationDetailsPage: React.FC = () => {
             <h1 style={{ marginTop: 0, color: '#2c3e50' }}>Pedido #{order.id}</h1>
             <HorarioFuncionamento />
 
-            {/* --- ALERTA DE PAGAMENTO PENDENTE COM A HORA --- */}
             {order.status === 'pendente' && (
                 <div style={{ 
                     backgroundColor: '#fff3cd', 
@@ -279,7 +283,6 @@ const ReservationDetailsPage: React.FC = () => {
                 </div>
             )}
 
-            {/* RELATÓRIO DE OCORRÊNCIAS */}
             {itensComPrejuizo.length > 0 && (
                 <div style={{ border: '2px solid #dc3545', borderRadius: '8px', overflow: 'hidden', marginBottom: '2rem', backgroundColor: '#fff' }}>
                     <div style={{ backgroundColor: '#dc3545', color: 'white', padding: '15px' }}>
@@ -309,7 +312,7 @@ const ReservationDetailsPage: React.FC = () => {
                                             {prej.resolvido ? (
                                                 <>
                                                     <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#2e7d32', marginBottom: '5px' }}>✅ PAGO / RECUPERADO</div>
-                                                    <p style={{ margin: 0, fontSize: '0.9rem' }}>Data: {new Date(prej.data_resolucao!).toLocaleDateString()}</p>
+                                                    <p style={{ margin: 0, fontSize: '0.9rem' }}>Data: {parseDateStringAsLocal(prej.data_resolucao!).toLocaleDateString()}</p>
                                                     <p style={{ margin: 0, fontSize: '0.9rem' }}>Forma: {formatarPagamento(prej.forma_recuperacao)}</p>
                                                 </>
                                             ) : (

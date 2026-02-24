@@ -1,51 +1,30 @@
 const { Op } = require('sequelize');
 const { OrdemDeServico, Prejuizo, ItemReserva, Unidade, Equipamento, Pagamento, Usuario, sequelize } = require('../models');
 
-// Transforma "2025-12-02" em Date Local 00:00:00
-const parseLocalStart = (dateStr) => {
-    const [ano, mes, dia] = dateStr.split('-').map(Number);
-    return new Date(ano, mes - 1, dia, 0, 0, 0, 0);
-};
 
-// Transforma "2025-12-02" em Date Local 23:59:59
-const parseLocalEnd = (dateStr) => {
-    const [ano, mes, dia] = dateStr.split('-').map(Number);
-    return new Date(ano, mes - 1, dia, 23, 59, 59, 999);
-};
-
-// Formata Date para "YYYY-MM-DD"
-const formatLocal = (date) => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-};
-
-// Gera array de todas as datas no intervalo (String YYYY-MM-DD)
-const getDatesInRange = (start, end) => {
+const getDatesInRange = (startStr, endStr) => {
     const arr = [];
-    const dt = new Date(start);
-    const final = new Date(end);
+    const dt = new Date(startStr + "T12:00:00");
+    const final = new Date(endStr + "T12:00:00");
 
-    // Loop dia a dia
     while (dt <= final) {
-        arr.push(formatLocal(dt));
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
+        
+        arr.push(`${y}-${m}-${d}`);
         dt.setDate(dt.getDate() + 1);
     }
     return arr;
-};
+}
 
 const getFinancialReport = async (req, res) => {
     const { startDate, endDate } = req.query;
 
     try {
-        const start = parseLocalStart(startDate);
-        const end = parseLocalEnd(endDate);
-
         const dateFilter = (campoData) => ({
             [campoData]: {
-                [Op.gte]: start,
-                [Op.lte]: end
+                [Op.between]: [startDate, endDate]
             }
         });
 
@@ -72,19 +51,71 @@ const getFinancialReport = async (req, res) => {
             where: { resolvido: true, ...dateFilter('data_resolucao') }
         }) || 0;
 
+        const totalAbandonos = await OrdemDeServico.count({
+            where: { status: 'cancelada', ...dateFilter('createdAt') }
+        });
+
+        const valorPerdidoAbandono = await OrdemDeServico.sum('valor_total', {
+            where: { status: 'cancelada', ...dateFilter('createdAt') }
+        }) || 0;
+
+        const totalPedidosGeral = await OrdemDeServico.count({
+            where: { ...dateFilter('createdAt') }
+        });
+        const taxaAbandono = totalPedidosGeral > 0 ? ((totalAbandonos / totalPedidosGeral) * 100) : 0;
+
         const faturamentoTotal = faturamentoBase + totalPrejuizoRecuperado;
         const lucroLiquido = faturamentoTotal - totalPrejuizoAberto;
 
         const totalMaquinas = await Unidade.count();
-        const maquinasAlugadas = await Unidade.count({ where: { status: 'alugado' } });
-        
-        const maquinasManutencao = await Unidade.count({ 
-            where: { status: 'manutencao' }
-        }); 
-        
-        const maquinasDisponiveis = totalMaquinas - maquinasAlugadas - maquinasManutencao;
 
-        const pgDateFormat = 'YYYY-MM-DD'; 
+        const dataAtual = new Date();
+        const hojeDataIso = `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}-${String(dataAtual.getDate()).padStart(2, '0')}`;
+
+        const ocupacoesHoje = await ItemReserva.findAll({
+            where: {
+                data_inicio: { [Op.lte]: hojeDataIso },
+                data_fim: { [Op.gte]: hojeDataIso }
+            },
+            include: [{
+                model: OrdemDeServico,
+                as: 'OrdemDeServico',
+                required: false,
+                attributes: ['status']
+            }]
+        });
+
+        const statusRealMap = {};
+
+        let setManutencao = new Set();
+        let setAlugadas = new Set();
+
+        ocupacoesHoje.forEach(ocup => {
+            const idUnidade = ocup.id_unidade;
+
+            if (ocup.status === 'manutencao') {
+                statusRealMap[idUnidade] = 'manutencao';
+                setManutencao.add(idUnidade);
+            }
+            else if (ocup.OrdemDeServico && ocup.OrdemDeServico.status) {
+                const osStatus = ocup.OrdemDeServico.status;
+
+                if (['em_andamento', 'aprovada', 'aguardando_assinatura'].includes(osStatus)) {
+                    statusRealMap[idUnidade] = 'alugado';
+                    setAlugadas.add(idUnidade);
+                }
+                else if (osStatus === 'pendente') {
+                    statusRealMap[idUnidade] = 'reservado';
+                    setAlugadas.add(idUnidade);
+                }
+            }
+        });
+
+        const maquinasManutencao = setManutencao.size;
+        const maquinasAlugadas = setAlugadas.size;
+        const maquinasDisponiveis = Math.max(0, totalMaquinas - maquinasAlugadas - maquinasManutencao);
+
+        const pgDateFormat = 'YYYY-MM-DD';
 
         const receitasRaw = await OrdemDeServico.findAll({
             attributes: [
@@ -111,8 +142,7 @@ const getFinancialReport = async (req, res) => {
         receitasRaw.forEach(r => receitasMap[r.data] = Number(r.total));
         prejuizosRaw.forEach(p => prejuizosMap[p.data] = Number(p.total));
 
-        const allDateStrings = getDatesInRange(start, end);
-
+        const allDateStrings = getDatesInRange(startDate, endDate);
         const receitasFinal = [];
         const prejuizosFinal = [];
 
@@ -122,10 +152,7 @@ const getFinancialReport = async (req, res) => {
         });
 
         const pagamentosDetalhados = await Pagamento.findAll({
-            where: {
-                status_pagamento: 'aprovado',
-                ...dateFilter('createdAt')
-            },
+            where: { status_pagamento: 'aprovado', ...dateFilter('createdAt') },
             include: [{
                 model: OrdemDeServico, as: 'OrdemDeServico', attributes: ['id'],
                 include: [{ model: Usuario, as: 'Usuario', attributes: ['nome'] }]
@@ -172,36 +199,83 @@ const getFinancialReport = async (req, res) => {
 
         extrato.sort((a, b) => new Date(b.data) - new Date(a.data));
 
-        const itensAlugados = await ItemReserva.findAll({
+        const itensAlugadosRaw = await ItemReserva.findAll({
             where: { ...dateFilter('createdAt') },
-            include: [{
-                model: Unidade, as: 'Unidade',
-                include: [{ model: Equipamento, as: 'Equipamento', attributes: ['nome', 'preco_diaria'] }]
-            }]
+            include: [
+                {
+                    model: OrdemDeServico,
+                    as: 'OrdemDeServico',
+                    where: { status: 'finalizada' },
+                    attributes: []
+                },
+                {
+                    model: Unidade, as: 'Unidade',
+                    include: [{ model: Equipamento, as: 'Equipamento', attributes: ['nome', 'preco_diaria'] }]
+                }
+            ]
         });
+
         const equipamentosMap = {};
-        itensAlugados.forEach(item => {
+        itensAlugadosRaw.forEach(item => {
             const equip = item.Unidade?.Equipamento;
             if (!equip) return;
             const nome = equip.nome;
             const preco = Number(equip.preco_diaria);
             const dias = Math.ceil(Math.abs(new Date(item.data_fim) - new Date(item.data_inicio)) / (86400000));
-            const diasCobrados = dias === 0 ? 1 : dias; 
-            
+            const diasCobrados = dias === 0 ? 1 : dias;
+
             if (!equipamentosMap[nome]) equipamentosMap[nome] = { nome, alugueis: 0, receita: 0 };
             equipamentosMap[nome].alugueis += 1;
             equipamentosMap[nome].receita += (diasCobrados * preco);
         });
-        const topEquipamentos = Object.values(equipamentosMap).sort((a, b) => b.receita - a.receita).slice(0, 5);
+        const topEquipamentos = Object.values(equipamentosMap).sort((a, b) => b.receita - a.receita);
+
+        const itensAbandonadosRaw = await ItemReserva.findAll({
+            where: { ...dateFilter('createdAt') },
+            include: [
+                {
+                    model: OrdemDeServico,
+                    as: 'OrdemDeServico',
+                    where: { status: 'cancelada' },
+                    attributes: []
+                },
+                {
+                    model: Unidade, as: 'Unidade',
+                    include: [{ model: Equipamento, as: 'Equipamento', attributes: ['nome'] }]
+                }
+            ]
+        });
+
+        const abandonosMap = {};
+        itensAbandonadosRaw.forEach(item => {
+            const equip = item.Unidade?.Equipamento;
+            if (!equip) return;
+            const nome = equip.nome;
+
+            if (!abandonosMap[nome]) abandonosMap[nome] = { nome, quantidade: 0 };
+            abandonosMap[nome].quantidade += 1;
+        });
+        const topAbandonados = Object.values(abandonosMap).sort((a, b) => b.quantidade - a.quantidade);
 
         res.json({
-            kpis: { faturamentoTotal, lucroLiquido, totalPedidos, ticketMedio: totalPedidos > 0 ? (faturamentoTotal / totalPedidos) : 0, totalPrejuizoAberto, totalPrejuizoRecuperado },
+            kpis: {
+                faturamentoTotal,
+                lucroLiquido,
+                totalPedidos,
+                ticketMedio: totalPedidos > 0 ? (faturamentoTotal / totalPedidos) : 0,
+                totalPrejuizoAberto,
+                totalPrejuizoRecuperado,
+                totalAbandonos,
+                valorPerdidoAbandono,
+                taxaAbandono
+            },
             inventory: { total: totalMaquinas, alugadas: maquinasAlugadas, disponiveis: maquinasDisponiveis, manutencao: maquinasManutencao },
             history: {
                 receitas: receitasFinal,
                 prejuizos: prejuizosFinal
             },
             topEquipamentos,
+            topAbandonados,
             extrato
         });
 
@@ -238,6 +312,48 @@ const getOperationalReport = async (req, res) => {
             order: [['id', 'ASC']]
         });
 
+        const dataAtual = new Date();
+        const hojeDataIso = `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}-${String(dataAtual.getDate()).padStart(2, '0')}`;
+
+        const ocupacoesHoje = await ItemReserva.findAll({
+            where: {
+                data_inicio: { [Op.lte]: hojeDataIso },
+                data_fim: { [Op.gte]: hojeDataIso }
+            },
+            include: [{
+                model: OrdemDeServico,
+                as: 'OrdemDeServico',
+                required: false,
+                attributes: ['status']
+            }]
+        });
+
+        const statusRealMap = {};
+
+        let setManutencao = new Set();
+        let setAlugadas = new Set();
+
+        ocupacoesHoje.forEach(ocup => {
+            const idUnidade = ocup.id_unidade;
+
+            if (ocup.status === 'manutencao') {
+                statusRealMap[idUnidade] = 'manutencao';
+                setManutencao.add(idUnidade);
+            }
+            else if (ocup.OrdemDeServico && ocup.OrdemDeServico.status) {
+                const osStatus = ocup.OrdemDeServico.status;
+
+                if (['em_andamento', 'aprovada', 'aguardando_assinatura'].includes(osStatus)) {
+                    statusRealMap[idUnidade] = 'alugado';
+                    setAlugadas.add(idUnidade);
+                }
+                else if (osStatus === 'pendente') {
+                    statusRealMap[idUnidade] = 'reservado';
+                    setAlugadas.add(idUnidade);
+                }
+            }
+        });
+
         const listaOcorrencias = ocorrencias.map(bo => ({
             id: bo.id,
             data: bo.createdAt,
@@ -251,12 +367,16 @@ const getOperationalReport = async (req, res) => {
             obs: bo.observacao
         }));
 
-        const listaInventario = inventario.map(uni => ({
-            id: uni.id,
-            equipamento: uni.Equipamento?.nome,
-            status: uni.status,
-            observacao: uni.observacao
-        }));
+        const listaInventario = inventario.map(uni => {
+            const statusVerdadeiro = statusRealMap[uni.id] || 'disponivel';
+
+            return {
+                id: uni.id,
+                equipamento: uni.Equipamento?.nome,
+                status: statusVerdadeiro,
+                observacao: uni.observacao
+            };
+        });
 
         res.json({
             ocorrencias: listaOcorrencias,

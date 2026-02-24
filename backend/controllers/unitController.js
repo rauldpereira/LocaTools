@@ -1,4 +1,4 @@
-const { Unidade, Equipamento, ItemReserva, OrdemDeServico, Manutencao } = require('../models');
+const { Unidade, Equipamento, ItemReserva, OrdemDeServico } = require('../models');
 const { Op } = require('sequelize');
 
 const addUnitsToEquipment = async (req, res) => {
@@ -32,6 +32,10 @@ const addUnitsToEquipment = async (req, res) => {
 
 const getUnitsByEquipment = async (req, res) => {
     try {
+        const localDate = new Date();
+        localDate.setHours(localDate.getHours() - 3);
+        const hojeIso = localDate.toISOString().substring(0, 10);
+
         const units = await Unidade.findAll({
             where: { id_equipamento: req.params.id },
             order: [['id', 'ASC']],
@@ -41,9 +45,8 @@ const getUnitsByEquipment = async (req, res) => {
                     as: 'ItensReserva',
                     required: false,
                     where: { 
-                        data_fim: { [Op.gte]: new Date() },
-                        
-                        status: { [Op.in]: ['ativo', 'manutencao'] } 
+                        data_fim: { [Op.gte]: hojeIso }, 
+                        status: { [Op.in]: ['ATIVO', 'ativo', 'manutencao'] } 
                     },
                     include: [
                         { model: OrdemDeServico, as: 'OrdemDeServico', required: false, attributes: ['id', 'status'] }
@@ -60,68 +63,100 @@ const getUnitsByEquipment = async (req, res) => {
 
 const createMaintenance = async (req, res) => {
     const { id_unidade } = req.params; 
-    const { data_inicio, data_fim, descricao } = req.body;
-
+    const { data_inicio, data_fim, forceReallocation } = req.body;
 
     try {
+        const inicioLimpo = data_inicio.split('T')[0];
+        const fimLimpo = data_fim.split('T')[0];
+
         const todasReservas = await ItemReserva.findAll({
             where: { id_unidade },
             include: [{ model: OrdemDeServico, as: 'OrdemDeServico', required: false }]
         });
 
-        const bInicio = new Date(data_inicio);
-        bInicio.setUTCHours(0, 0, 0, 0); // Começa no primeiro segundo do dia
+        const bInicio = new Date(inicioLimpo + "T12:00:00").getTime();
+        const bFim = new Date(fimLimpo + "T12:00:00").getTime();
 
-        const bFim = new Date(data_fim);
-        bFim.setUTCHours(23, 59, 59, 999); // Vai até o último segundo do dia
+        let conflitoCliente = null;
+        let overlapManutencao = false;
 
-        console.log(`📅 Seu Bloqueio (Normalizado): ${bInicio.toISOString()} até ${bFim.toISOString()}`);
-
-        const conflito = todasReservas.find(reserva => {
-            // Normaliza data da reserva (Ignora hora quebrada, considera dia cheio)
-            const rInicio = new Date(reserva.data_inicio);
-            rInicio.setUTCHours(0, 0, 0, 0);
-
-            const rFim = new Date(reserva.data_fim);
-            //Se a data for igual, esticamos até o final do dia
-            rFim.setUTCHours(23, 59, 59, 999); 
-
-            // Lógica de Colisão: (InicioA <= FimB) E (FimA >= InicioB)
-            const bateuData = (bInicio.getTime() <= rFim.getTime()) && 
-                              (bFim.getTime() >= rInicio.getTime());
-
-            if (!bateuData) return false;
-
-            if (reserva.status === 'manutencao') return true;
-
-            // Se for Cliente -> Verifica se o pedido está ativo
-            if (reserva.OrdemDeServico) {
-                const statusOS = reserva.OrdemDeServico.status;
-                const statusIntocaveis = [
-                    'pendente', 'aprovada', 'aguardando_assinatura', 
-                    'em_andamento', 'aguardando_pagamento_final'
-                ];
-                
-                if (statusIntocaveis.includes(statusOS)) {
-                    console.log(`Bloqueio impedido pelo Pedido #${reserva.OrdemDeServico.id} (${statusOS})`);
-                    return true;
+        for (const reserva of todasReservas) {
+            const rInicio = new Date(reserva.data_inicio + "T12:00:00").getTime();
+            const rFim = new Date(reserva.data_fim + "T12:00:00").getTime();
+            
+            const bateuData = (bInicio <= rFim) && (bFim >= rInicio);
+            if (bateuData) {
+                if (reserva.status === 'manutencao') {
+                    overlapManutencao = true;
+                    break;
+                }
+                if (reserva.OrdemDeServico) {
+                    const statusIntocaveis = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'];
+                    if (statusIntocaveis.includes(reserva.OrdemDeServico.status)) {
+                        conflitoCliente = reserva; 
+                        break; 
+                    }
                 }
             }
-            return false;
-        });
-
-        if (conflito) {
-            return res.status(400).json({ 
-                error: `Impossível bloquear! Unidade já ocupada na data selecionada.` 
-            });
         }
 
-        console.log('✅ Caminho livre (Dia Inteiro). Criando...');
-        
+        if (overlapManutencao) {
+            return res.status(400).json({ error: 'Unidade já possui manutenção nesta data.' });
+        }
+
+        if (conflitoCliente) {
+            const unidadeAtual = await Unidade.findByPk(id_unidade);
+            
+            const outrasUnidades = await Unidade.findAll({
+                where: { id_equipamento: unidadeAtual.id_equipamento, id: { [Op.ne]: id_unidade } }
+            });
+
+            let unidadeSubstituta = null;
+            const cInicio = new Date(conflitoCliente.data_inicio + "T12:00:00").getTime();
+            const cFim = new Date(conflitoCliente.data_fim + "T12:00:00").getTime();
+
+            for (const outra of outrasUnidades) {
+                const reservasOutra = await ItemReserva.findAll({
+                    where: { id_unidade: outra.id },
+                    include: [{ model: OrdemDeServico, as: 'OrdemDeServico', required: false }]
+                });
+
+                let livre = true;
+                for (const ro of reservasOutra) {
+                    const roInicio = new Date(ro.data_inicio + "T12:00:00").getTime();
+                    const roFim = new Date(ro.data_fim + "T12:00:00").getTime();
+                    
+                    if ((cInicio <= roFim) && (cFim >= roInicio)) {
+                        if (ro.status === 'manutencao') livre = false;
+                        else if (ro.OrdemDeServico && ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'].includes(ro.OrdemDeServico.status)) {
+                            livre = false;
+                        }
+                    }
+                }
+                if (livre) {
+                    unidadeSubstituta = outra;
+                    break;
+                }
+            }
+
+            if (!unidadeSubstituta) {
+                return res.status(400).json({ error: `Impossível colocar em manutenção! A máquina está alugada no Pedido #${conflitoCliente.OrdemDeServico.id} e NÃO HÁ outras unidades disponíveis para transferir o cliente.` });
+            }
+
+            if (!forceReallocation) {
+                return res.status(409).json({ 
+                    requiresConfirmation: true,
+                    message: `Atenção: Máquina alugada (Pedido #${conflitoCliente.OrdemDeServico.id}).\n\nDeseja transferir o aluguel do cliente para a Unidade #${unidadeSubstituta.id} (Disponível) e continuar com a manutenção?` 
+                });
+            } else {
+                await conflitoCliente.update({ id_unidade: unidadeSubstituta.id });
+            }
+        }
+
         await ItemReserva.create({
             id_unidade,
-            data_inicio,
-            data_fim,
+            data_inicio: inicioLimpo,
+            data_fim: fimLimpo,
             status: 'manutencao', 
             id_ordem_servico: null
         });
@@ -177,10 +212,12 @@ const deleteUnit = async (req, res) => {
 
 const getAllMaintenances = async (req, res) => {
     try {
+        const hojeIso = new Date().toISOString().split('T')[0];
+
         const manutencoes = await ItemReserva.findAll({
             where: {
                 status: 'manutencao',
-                data_fim: { [Op.gte]: new Date() }
+                data_fim: { [Op.gte]: hojeIso }
             },
             include: [
                 {
