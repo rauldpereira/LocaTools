@@ -123,7 +123,7 @@ const ModalEditarDia: React.FC<ModalEditarDiaProps> = ({ diaInfo, onClose, onSav
                                 checked={funcionamento === 'padrao'}
                                 onChange={() => setFuncionamento('padrao')}
                             />
-                            <label htmlFor="r_padrao">Voltar ao Padrão (Deixar sistema decidir)</label>
+                            <label htmlFor="r_padrao">Voltar ao Padrão (Deixar sistema decidir Automaticamente)</label>
                         </div>
                         <div>
                             <input
@@ -145,7 +145,7 @@ const ModalEditarDia: React.FC<ModalEditarDiaProps> = ({ diaInfo, onClose, onSav
                                 checked={funcionamento === 1}
                                 onChange={() => setFuncionamento(1)}
                             />
-                            <label htmlFor="r_aberto">Forçar Abertura (Dia Extra)</label>
+                            <label htmlFor="r_aberto">Dia Trabalhado (Abrirá)</label>
                         </div>
                     </fieldset>
                     {funcionamento !== 'padrao' && (

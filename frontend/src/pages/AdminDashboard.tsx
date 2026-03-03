@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
-
 import EquipmentForm from '../components/Admin/EquipmentForm';
 import AddCategoryForm from '../components/Admin/AddCategoryForm';
 import EquipmentList from '../components/Admin/EquipmentList';
@@ -10,6 +8,7 @@ import AdminHorariosPage from '../components/HorarioFuncionamento';
 import AdminReportsPage from '../pages/AdminReportsPage';
 import MaintenanceDashboard from '../components/MaintenanceDashboard';
 import AdminFreightConfig from '../pages/AdminFreightConfig';
+import AdminCalendarPage from '../components/Admin/GerenciamentoCalendario';
 
 const Icons = {
   dashboard: "📊",
@@ -119,13 +118,8 @@ const AdminDashboard: React.FC = () => {
       case 'calendario':
         return (
           <div style={contentContainerStyle}>
-            <h2 style={headerStyle}>Calendário de Feriados</h2>
-            <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-              <p style={{ color: '#555', fontSize: '1.1rem' }}>Para gerenciar feriados e dias de bloqueio, acesse o painel dedicado.</p>
-              <Link to="/admin/calendario" style={btnLinkStyle}>
-                Abrir Gerenciador de Calendário ↗
-              </Link>
-            </div>
+            <h2 style={headerStyle}>Calendário e Feriados</h2>
+            <AdminCalendarPage /> 
           </div>
         );
       case 'relatorios':
@@ -243,18 +237,6 @@ const menuItemStyle: React.CSSProperties = {
   textAlign: 'left',
   marginBottom: '5px',
   transition: 'all 0.2s'
-};
-
-const btnLinkStyle: React.CSSProperties = {
-  display: 'inline-block',
-  padding: '12px 24px',
-  backgroundColor: '#007bff',
-  color: 'white',
-  textDecoration: 'none',
-  borderRadius: '6px',
-  fontWeight: 'bold',
-  marginTop: '1rem',
-  boxShadow: '0 2px 5px rgba(0,123,255,0.3)'
 };
 
 export default AdminDashboard;

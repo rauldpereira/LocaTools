@@ -184,6 +184,7 @@ const GerenciamentoCalendario: React.FC = () => {
         onActiveStartDateChange={({ activeStartDate }) => setActiveStartDate(activeStartDate || new Date())}
         tileClassName={getTileClassName}
         onClickDay={handleDiaClick}
+        showNeighboringMonth={false}
       />
       
       <div className="calendario-acoes">

@@ -1,116 +1,241 @@
+/* =========================================
+   CONTAINER PRINCIPAL E TEXTOS
+========================================= */
 .admin-calendario-container {
-  max-width: 800px;
-  margin: 2rem auto;
+  background-color: #ffffff;
   padding: 2rem;
-  background-color: var(--cor-fundo-secundaria);
-  border-radius: 8px;
-  color: var(--cor-texto-principal);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  color: #333; /* Força a cor do texto padrão pra escuro */
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-.admin-calendario-container .react-calendar {
-  width: 100%;
-  border: 1px solid var(--cor-borda);
-  background-color: var(--cor-fundo-modal);
-  border-radius: 8px;
+.admin-calendario-container h2 {
+  margin-top: 0;
+  color: #2c3e50;
+  border-bottom: 2px solid #f4f6f8;
+  padding-bottom: 10px;
 }
 
-
-.react-calendar__month-view__weekdays__weekday,
-.react-calendar__month-view__days__day {
-  color: var(--cor-texto-principal);
+.admin-calendario-container p {
+  color: #666;
+  margin-bottom: 20px;
+  font-size: 1rem;
 }
 
-.react-calendar__navigation button {
-  color: var(--cor-texto-principal);
-}
-
-.react-calendar__navigation button:hover {
-  background-color: var(--cor-fundo-hover);
-}
-
-.react-calendar__tile.dia-normal,
-.legenda-item .dia-normal {
-  background-color: transparent !important;
-}
-
-
-.react-calendar__tile.dia-padrao-fechado,
-.legenda-item .dia-padrao-fechado {
-  background-color: #4A4A4A !important;
-  color: #999 !important;
-  opacity: 0.7;
-}
-
-
-.react-calendar__tile.dia-padrao-fechado:hover {
-  background-color: #555 !important;
-}
-
-
-
-.react-calendar__tile.dia-excecao-fechado,
-.legenda-item .dia-excecao-fechado {
-  background-color: #E53E3E !important;
-  color: white !important;
-  border-radius: 8px;
-  font-weight: bold;
-}
-
-
-.react-calendar__tile.dia-excecao-fechado:hover {
-  background-color: #c53030 !important;
-}
-
-
-.react-calendar__tile.dia-excecao-aberto,
-.legenda-item .dia-excecao-aberto {
-  background-color: #38A169 !important;
-  color: white !important;
-  border-radius: 8px;
-  font-weight: bold;
-}
-
-.react-calendar__tile.dia-excecao-aberto:hover {
-  background-color: #2f855a !important;
-}
-
+/* =========================================
+   LEGENDA DO CALENDÁRIO
+========================================= */
 .calendario-legenda {
   display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin: 1.5rem 0;
-  justify-content: center;
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
 }
 
 .legenda-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #444; /* Letra escura pra aparecer bem */
+  font-weight: 500;
 }
 
 .legenda-item .cor {
-  width: 15px;
-  height: 15px;
-  border: 1px solid #777;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
 }
 
-.btn-importar-feriados {
-  background-color: var(--cor-primaria);
-  color: white;
-  padding: 0.75rem 1.5rem;
+/* =========================================
+   CUSTOMIZAÇÃO DO REACT-CALENDAR
+========================================= */
+.react-calendar {
+  width: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  font-family: inherit;
+  padding: 15px;
+  background: #fff;
+  color: #333; /* Texto padrão do calendário */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+/* Navegação do topo (Mês/Ano) */
+.react-calendar__navigation button {
+  color: #2c3e50;
+  min-width: 44px;
+  background: none;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.react-calendar__navigation button:enabled:hover,
+.react-calendar__navigation button:enabled:focus {
+  background-color: #f4f6f8;
+}
+
+/* Dias da semana (Seg, Ter, Qua...) */
+.react-calendar__month-view__weekdays {
+  text-transform: uppercase;
+  font-weight: bold;
+  font-size: 0.8rem;
+  color: #6c757d;
+  padding: 10px 0;
+}
+
+.react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none; /* Tira aquele sublinhado feio */
+}
+
+/* Cada quadradinho do dia */
+.react-calendar__tile {
+  padding: 15px 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 8px;
+  margin: 2px 0;
+  color: #333; 
+  transition: all 0.2s ease;
+}
+
+/* Efeito ao passar o mouse em dias normais */
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  background-color: #e9ecef;
+  border-radius: 8px;
+}
+
+/* Marca o dia de HOJE */
+.react-calendar__tile--now {
+  background: #fff3cd !important;
+  color: #856404 !important;
+  border: 2px dashed #ffc107;
+}
+
+/* =========================================
+   CORES DOS STATUS (INJETADOS VIA CLASSNAME)
+========================================= */
+
+/* Aberto (Verde Forte) */
+.react-calendar__tile.dia-excecao-aberto, 
+.legenda-item .cor.dia-excecao-aberto {
+  background-color: #38A169 !important;
+  color: white !important;
+  border-radius: 8px;
+  font-weight: bold;
+  border: none;
+}
+
+.react-calendar__tile.dia-excecao-aberto:hover,
+.react-calendar__tile.dia-excecao-aberto:focus {
+  background-color: #2f855a !important;
+}
+
+/* Fechado Padrão - Ex: Finais de semana (Cinza Escuro) */
+.react-calendar__tile.dia-padrao-fechado, 
+.legenda-item .cor.dia-padrao-fechado {
+  background-color: #4A4A4A !important;
+  color: #fff !important; /* Mudei pra branco pra dar mais leitura no cinza! */
+  opacity: 0.8;
+  border-radius: 8px;
+  border: none;
+}
+
+.react-calendar__tile.dia-padrao-fechado:hover,
+.react-calendar__tile.dia-padrao-fechado:focus {
+  background-color: #555 !important;
+}
+
+/* Fechado Exceção - Ex: Feriados e Paradas (Vermelho Forte) */
+.react-calendar__tile.dia-excecao-fechado, 
+.legenda-item .cor.dia-excecao-fechado {
+  background-color: #E53E3E !important;
+  color: white !important;
+  border-radius: 8px;
+  font-weight: bold;
+  border: none;
+}
+
+.react-calendar__tile.dia-excecao-fechado:hover,
+.react-calendar__tile.dia-excecao-fechado:focus {
+  background-color: #c53030 !important;
+}
+
+/* Dias normais (Transparentes) */
+.react-calendar__tile.dia-normal,
+.legenda-item .cor.dia-normal {
+  background-color: transparent !important;
+  color: #333 !important;
+}
+
+/* =========================================
+   BOTÕES DE AÇÃO
+========================================= */
+.calendario-acoes {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+  flex-wrap: wrap;
+}
+
+.calendario-acoes button {
+  padding: 12px 24px;
   border: none;
   border-radius: 6px;
-  font-size: 1rem;
-  margin-top: 1.5rem;
+  font-weight: bold;
   cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.btn-importar-feriados:hover {
-  background-color: var(--cor-primaria-hover);
+/* Efeito de clique */
+.calendario-acoes button:active {
+  transform: scale(0.97);
 }
 
-.btn-importar-feriados:disabled {
-  background-color: #555;
+/* Botão Importar Feriados */
+.btn-importar-feriados {
+  background-color: #17a2b8;
+  color: white;
+}
+.btn-importar-feriados:hover:not(:disabled) {
+  background-color: #138496;
+}
+
+/* Botão Publicar/Despublicar Mês */
+.btn-publicar-mes.publicado {
+  background-color: #dc3545; /* Vermelho pra Despublicar */
+  color: white;
+}
+.btn-publicar-mes.publicado:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.btn-publicar-mes.nao-publicado {
+  background-color: #28a745; /* Verde pra Publicar */
+  color: white;
+}
+.btn-publicar-mes.nao-publicado:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+/* Estado Desabilitado (Carregando) */
+.calendario-acoes button:disabled {
+  background-color: #ced4da;
+  color: #6c757d;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
