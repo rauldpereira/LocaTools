@@ -55,7 +55,7 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
         
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
-        doc.text('DOSSIÊ DE MANUTENÇÃO', 14, 22);
+        doc.text('Histórico de MANUTENÇÃO', 14, 22);
         
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
@@ -86,7 +86,7 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
             headStyles: { fillColor: [44, 62, 80] }
         });
 
-        doc.save(`Dossie_Manutencao_Unidade_${unitId}.pdf`);
+        doc.save(`Histórico_Manutencao_Unidade_${unitId}.pdf`);
     };
 
     if (!isOpen) return null;
