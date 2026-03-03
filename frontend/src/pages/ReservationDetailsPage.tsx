@@ -4,6 +4,8 @@ import axios, { type AxiosRequestConfig } from 'axios';
 import { useAuth } from '../context/AuthContext';
 import RescheduleModal from '../components/RescheduleModal';
 import HorarioFuncionamento from '../components/HorarioFuncionamentoDisplay';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface TipoAvaria { id: number; descricao: string; preco: string; }
 interface Equipamento { nome: string; url_imagem: string; TipoAvarias: TipoAvaria[]; }
@@ -50,12 +52,12 @@ interface OrderDetails {
 
 const parseDateStringAsLocal = (dateString: string) => {
     if (!dateString) return new Date();
-    
+
     const dateOnly = String(dateString).substring(0, 10);
 
     const [year, month, day] = dateOnly.split('-').map(Number);
     const finalDate = new Date(year, month - 1, day);
-    
+
 
     return finalDate;
 };
@@ -71,6 +73,7 @@ const ReservationDetailsPage: React.FC = () => {
     const [contractLoading, setContractLoading] = useState(false);
     const backendUrl = 'http://localhost:3001';
     const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+    const [lojaConfig, setLojaConfig] = useState<any>(null);
 
     const fetchOrderDetails = async () => {
         if (!token || !orderId) return;
@@ -86,7 +89,171 @@ const ReservationDetailsPage: React.FC = () => {
         }
     };
 
-    useEffect(() => { fetchOrderDetails(); }, [orderId, token]);
+    const fetchLojaConfig = async () => {
+        try {
+            const { data } = await axios.get(`${backendUrl}/api/frete/config`);
+            setLojaConfig(data);
+        } catch (error) {
+            console.error("Erro ao buscar dados do frete:", error);
+        }
+    };
+
+    useEffect(() => { 
+        fetchOrderDetails(); 
+        fetchLojaConfig();
+    }, [orderId, token]);
+
+    const handleDownloadFatura = () => {
+        if (!order) return;
+
+        const configLoja = {
+            razaoSocial: "LOCATOOLS LOCAÇÃO DE EQUIPAMENTOS LTDA",
+            cnpj: "00.000.000/0001-00",
+            endereco: lojaConfig?.endereco_origem || "Endereço não cadastrado", 
+            horarios: {
+                segunda: "07:00 às 18:00",
+                tercaASabado: "08:00 às 18:00",
+                domingo: "Fechado"
+            }
+        };
+
+        const dataRetirada = parseDateStringAsLocal(order.data_inicio);
+        const diasDaSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        const diaSemanaIndex = dataRetirada.getDay();
+        const nomeDia = diasDaSemana[diaSemanaIndex];
+
+        let horarioRetiradaDia = configLoja.horarios.tercaASabado;
+        if (diaSemanaIndex === 1) horarioRetiradaDia = configLoja.horarios.segunda;
+        if (diaSemanaIndex === 0) horarioRetiradaDia = configLoja.horarios.domingo;
+
+        const doc = new jsPDF();
+        const marginX = 10;
+        let startY = 10;
+
+        // --- CABEÇALHO
+        doc.rect(marginX, startY, 190, 25);
+        doc.line(marginX + 60, startY, marginX + 60, startY + 25);
+        doc.line(marginX + 140, startY, marginX + 140, startY + 25);
+
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text("LOCATOOLS", marginX + 10, startY + 14);
+
+        doc.setFontSize(14);
+        doc.text("FATURA DE LOCAÇÃO", marginX + 70, startY + 8);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Data de emissão: ${new Date().toLocaleDateString('pt-BR')}`, marginX + 65, startY + 16);
+        doc.text(`Vencimento: ${parseDateStringAsLocal(order.data_inicio).toLocaleDateString('pt-BR')}`, marginX + 65, startY + 22);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(`NÚMERO: ${order.id}`, marginX + 145, startY + 14);
+
+        startY += 28;
+
+        // --- DADOS DA LOCADORA
+
+        doc.rect(marginX, startY, 190, 25);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text("LOCADORA", marginX + 85, startY + 4);
+        
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Razão Social: ${configLoja.razaoSocial}`, marginX + 2, startY + 10);
+        doc.text(`CNPJ: ${configLoja.cnpj}`, marginX + 145, startY + 10);
+        doc.text(`Endereço: ${configLoja.endereco}`, marginX + 2, startY + 16);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Horário de Retirada e Devolução (${nomeDia}):`, marginX + 50, startY + 22);
+        doc.setFont('helvetica', 'normal');
+
+        doc.setTextColor(order.tipo_entrega === 'entrega' ? 150 : 0); 
+        doc.text(horarioRetiradaDia, marginX + 105, startY + 22); 
+        
+        doc.setTextColor(0);
+
+        startY += 28;
+
+        // --- DADOS DO LOCATÁRIO 
+
+        doc.rect(marginX, startY, 190, 25);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text("LOCATÁRIO", marginX + 85, startY + 4);
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        const nomeCliente = (order as any).Usuario?.nome || 'Cliente Padrão';
+        doc.text(`Nome/Razão Social: ${nomeCliente}`, marginX + 2, startY + 10);
+        doc.text(`Endereço/Entrega: ${order.tipo_entrega === 'entrega' ? order.endereco_entrega : 'Retirada na Loja - Locatário assume transporte'}`, marginX + 2, startY + 16);
+        doc.text(`Período de Locação: ${parseDateStringAsLocal(order.data_inicio).toLocaleDateString('pt-BR')} até ${parseDateStringAsLocal(order.data_fim).toLocaleDateString('pt-BR')}`, marginX + 2, startY + 22);
+
+        startY += 28;
+
+        // --- TABELA DE ITENS 
+
+        const tableData = order.ItemReservas.map(item => [
+            "1",
+            `${item.Unidade.Equipamento.nome} (S/N #${item.Unidade.id})`,
+            `${parseDateStringAsLocal(order.data_inicio).toLocaleDateString('pt-BR')} a ${parseDateStringAsLocal(order.data_fim).toLocaleDateString('pt-BR')}`
+        ]);
+
+        autoTable(doc, {
+            startY: startY,
+            head: [['QTD', 'DESCRIÇÃO DO EQUIPAMENTO', 'PERÍODO']],
+            body: tableData,
+            theme: 'grid', 
+            margin: { left: marginX },
+            tableWidth: 190,
+            headStyles: { fillColor: [230, 230, 230], textColor: [0, 0, 0], fontSize: 8, fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: 0 },
+            bodyStyles: { fontSize: 8, textColor: [0, 0, 0], lineWidth: 0.1, lineColor: 0 },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 15 },
+                1: { },
+                2: { halign: 'center', cellWidth: 50 }
+            }
+        });
+
+        const finalY = (doc as any).lastAutoTable.finalY;
+
+        // --- TOTAIS
+
+        doc.rect(marginX, finalY, 190, 15);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+
+        const subtotalAluguel = Number(order.valor_total) - Number(order.custo_frete || 0);
+        const valorTotalAjustado = Number(order.valor_total) + Number(order.taxa_avaria || 0) + Number(order.taxa_remarcacao || 0);
+
+        doc.text(`SUBTOTAL: R$ ${subtotalAluguel.toFixed(2)}`, marginX + 2, finalY + 6);
+        doc.text(`FRETE: R$ ${Number(order.custo_frete || 0).toFixed(2)}`, marginX + 60, finalY + 6);
+        doc.text(`SINAL PAGO: R$ ${Number(order.valor_sinal || 0).toFixed(2)}`, marginX + 110, finalY + 6);
+
+        doc.setFontSize(11);
+        doc.text(`TOTAL GERAL: R$ ${valorTotalAjustado.toFixed(2)}`, marginX + 2, finalY + 12);
+
+        // --- DADOS ADICIONAIS / INFORMAÇÕES LEGAIS
+
+        const termoY = finalY + 18;
+        doc.rect(marginX, termoY, 190, 38);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.text("DADOS ADICIONAIS / INFORMAÇÕES FISCAIS:", marginX + 2, termoY + 6);
+
+        doc.setFont('helvetica', 'normal');
+        doc.text("Natureza da Operação: Locação de Bens Móveis", marginX + 2, termoY + 12);
+        doc.text("Locação de bens móveis sem fornecimento de mão de obra.", marginX + 2, termoY + 17);
+        doc.text("Dispensado da emissão de nota fiscal de serviços conforme Lei Complementar nº 116 de 31/07/2003", marginX + 2, termoY + 22);
+        doc.text("e Súmula Vinculante 31 do Supremo Tribunal Federal (STF).", marginX + 2, termoY + 27);
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text("NÃO É VÁLIDO COMO RECIBO FISCAL. VÁLIDO COMO DOCUMENTO DE TRANSPORTE/COBRANÇA.", marginX + 2, termoY + 34);
+
+        doc.save(`Fatura_Locacao_Pedido_${order.id}.pdf`);
+    };
 
     const handleSignContract = async () => {
         if (!isChecked) return alert("Você precisa concordar com os termos.");
@@ -137,7 +304,7 @@ const ReservationDetailsPage: React.FC = () => {
             'cartao': 'Cartão de Crédito/Débito',
             'dinheiro': 'Dinheiro'
         };
-        return map[forma] || forma; 
+        return map[forma] || forma;
     };
 
     const VistoriaDetailDisplay = ({ title, detail }: { title: string, detail: DetalheVistoria | DetalheVistoriaFeita | undefined }) => {
@@ -216,30 +383,44 @@ const ReservationDetailsPage: React.FC = () => {
     return (
         <div style={{ padding: '2rem', marginTop: '60px', maxWidth: '1000px', margin: '80px auto', color: '#333', fontFamily: 'Arial, sans-serif' }}>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                {user?.tipo_usuario === 'admin' ?
-                    <button onClick={() => navigate('/admin')} style={btnBackStyle}>&larr; Painel</button> :
-                    <button onClick={() => navigate('/my-reservations')} style={btnBackStyle}>&larr; Voltar</button>
-                }
-                <span style={{
-                    padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem',
-                    backgroundColor: order.status === 'PREJUIZO' ? '#ffebee' : order.status === 'pendente' ? '#fff3cd' : '#e8f5e9',
-                    color: order.status === 'PREJUIZO' ? '#c62828' : order.status === 'pendente' ? '#856404' : '#2e7d32',
-                    border: `1px solid ${order.status === 'PREJUIZO' ? '#c62828' : order.status === 'pendente' ? '#ffeeba' : '#2e7d32'}`
-                }}>
-                    {order.status.replace(/_/g, ' ').toUpperCase()}
-                </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                    {user?.tipo_usuario === 'admin' ?
+                        <button onClick={() => navigate('/admin')} style={btnBackStyle}>&larr; Painel</button> :
+                        <button onClick={() => navigate('/my-reservations')} style={btnBackStyle}>&larr; Voltar</button>
+                    }
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {order.status !== 'pendente' && order.status !== 'cancelada' && (
+                        <button
+                            onClick={handleDownloadFatura}
+                            style={{ padding: '8px 16px', backgroundColor: '#2c3e50', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}
+                        >
+                            🖨️ Fatura (PDF)
+                        </button>
+                    )}
+
+                    <span style={{
+                        padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem',
+                        backgroundColor: order.status === 'PREJUIZO' ? '#ffebee' : order.status === 'pendente' ? '#fff3cd' : '#e8f5e9',
+                        color: order.status === 'PREJUIZO' ? '#c62828' : order.status === 'pendente' ? '#856404' : '#2e7d32',
+                        border: `1px solid ${order.status === 'PREJUIZO' ? '#c62828' : order.status === 'pendente' ? '#ffeeba' : '#2e7d32'}`
+                    }}>
+                        {order.status.replace(/_/g, ' ').toUpperCase()}
+                    </span>
+                </div>
             </div>
 
             <h1 style={{ marginTop: 0, color: '#2c3e50' }}>Pedido #{order.id}</h1>
             <HorarioFuncionamento />
 
             {order.status === 'pendente' && (
-                <div style={{ 
-                    backgroundColor: '#fff3cd', 
-                    color: '#856404', 
-                    padding: '20px', 
-                    borderRadius: '8px', 
+                <div style={{
+                    backgroundColor: '#fff3cd',
+                    color: '#856404',
+                    padding: '20px',
+                    borderRadius: '8px',
                     margin: '1.5rem 0',
                     border: '1px solid #ffeeba',
                     display: 'flex',
@@ -257,7 +438,7 @@ const ReservationDetailsPage: React.FC = () => {
                             </p>
                         )}
                     </div>
-                    <button 
+                    <button
                         onClick={() => navigate(`/payment/${order.id}`)}
                         style={{ padding: '12px 25px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', boxShadow: '0 4px 6px rgba(40,167,69,0.2)' }}
                     >
@@ -398,7 +579,7 @@ const ReservationDetailsPage: React.FC = () => {
                         <span>Total do Contrato:</span>
                         <strong>R$ {valorTotalAjustado.toFixed(2)}</strong>
                     </div>
-                    
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', color: order.status === 'pendente' ? '#e65100' : '#2e7d32' }}>
                         <span>{order.status === 'pendente' ? 'Sinal a Pagar (Pendente):' : 'Sinal Pago (Reserva):'}</span>
                         <strong>- R$ {Number(order.valor_sinal).toFixed(2)}</strong>
