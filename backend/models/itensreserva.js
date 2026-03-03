@@ -46,6 +46,10 @@ module.exports = (sequelize, DataTypes) => {
     data_devolucao_real: {
       type: DataTypes.DATE,
       allowNull: true
+    },
+    observacao: {
+      type: DataTypes.TEXT,
+      allowNull: true
     }
   }, {
     sequelize,

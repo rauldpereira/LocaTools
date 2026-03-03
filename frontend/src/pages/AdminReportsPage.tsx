@@ -8,6 +8,8 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+import MaintenanceHistoryModal from '../components/Admin/MaintenanceHistoryModal';
+
 interface KpiData {
     faturamentoTotal: number;
     lucroLiquido: number;
@@ -63,6 +65,7 @@ interface OcorrenciaBO {
 }
 interface InventarioItem {
     id: number;
+    codigo_serial?: string | null;
     equipamento: string;
     status: string;
     observacao: string;
@@ -92,6 +95,14 @@ const AdminReportsPage: React.FC = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+    const [historyModalOpen, setHistoryModalOpen] = useState(false);
+    const [selectedUnitForHistory, setSelectedUnitForHistory] = useState<any>(null);
+
+    const openHistoryModal = (unit: any) => {
+        setSelectedUnitForHistory(unit);
+        setHistoryModalOpen(true);
+    };
 
     const fetchFinancial = async () => {
         if (!token) return;
@@ -528,15 +539,21 @@ const AdminReportsPage: React.FC = () => {
                         <thead style={{ backgroundColor: '#e9ecef', color: '#333' }}>
                             <tr>
                                 <SortableTh label="ID" sortKey="id" />
+                                <SortableTh label="S/N" sortKey="codigo_serial" /> 
                                 <SortableTh label="Equipamento" sortKey="equipamento" />
                                 <SortableTh label="Status" sortKey="status" />
-                                <th>Observações</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {processTableData(operationalData.inventario, ['equipamento', 'status', 'id']).map((item: any) => (
+                            {processTableData(operationalData.inventario, ['equipamento', 'status', 'id', 'codigo_serial']).map((item: any) => (
                                 <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
                                     <td style={tdStyle}>#{item.id}</td>
+                                    
+                                    <td style={{ ...tdStyle, color: item.codigo_serial ? '#333' : '#999', fontWeight: item.codigo_serial ? 'bold' : 'normal' }}>
+                                        {item.codigo_serial || 'Sem S/N'}
+                                    </td>
+
                                     <td style={{ ...tdStyle, fontWeight: 'bold' }}>{item.equipamento}</td>
                                     <td style={tdStyle}>
                                         <span style={{
@@ -547,13 +564,31 @@ const AdminReportsPage: React.FC = () => {
                                             {item.status ? item.status.toUpperCase() : 'DESCONHECIDO'}
                                         </span>
                                     </td>
-                                    <td style={tdStyle}>{item.observacao || '-'}</td>
+                                    <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                        <button 
+                                            onClick={() => openHistoryModal(item)}
+                                            style={{ background: '#f8f9fa', border: '1px solid #ddd', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', color: '#333', fontWeight: 'bold' }}
+                                            title="Ver Histórico de Manutenção"
+                                        >
+                                            Histórico
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
             )}
+
+
+            <MaintenanceHistoryModal
+                isOpen={historyModalOpen}
+                onClose={() => setHistoryModalOpen(false)}
+                unitId={selectedUnitForHistory?.id}
+                unitSerial={selectedUnitForHistory?.codigo_serial}
+                equipmentName={selectedUnitForHistory?.equipamento}
+            />
+
         </div>
     );
 };

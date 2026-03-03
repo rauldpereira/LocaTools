@@ -21,6 +21,7 @@ interface Unit {
   status: 'disponivel' | 'manutencao' | 'alugado';
   avarias_atuais: number[] | null;
   ItensReserva?: any[];
+  total_manutencoes?: number;
 }
 
 interface StockModalProps {
@@ -105,7 +106,14 @@ const UnitItem: React.FC<{
   };
 
   return (
-    <div style={{ border: '1px solid #e0e0e0', backgroundColor: '#fff', borderRadius: '8px', marginBottom: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+    <div style={{
+      border: '1px solid #e0e0e0',
+      backgroundColor: '#fff',
+      borderRadius: '8px',
+      marginBottom: '15px',
+      boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+      overflow: 'hidden'
+    }}>
 
       {/* BARRA SUPERIOR DO ITEM */}
       <div style={{ padding: '15px', display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap', background: '#f8f9fa', borderBottom: '1px solid #eee' }}>
@@ -128,6 +136,22 @@ const UnitItem: React.FC<{
               style={{ cursor: 'pointer', borderBottom: '1px dashed #999', fontWeight: 'bold', color: serial ? '#333' : '#dc3545' }}
             >
               {serial || 'Sem S/N'}
+            </span>
+          )}
+
+          {/* QTD. manutenção */}
+          {unit.total_manutencoes !== undefined && unit.total_manutencoes > 0 && (
+            <span style={{
+              fontSize: '0.75rem',
+              backgroundColor: unit.total_manutencoes >= 3 ? '#ffcccc' : '#fff3cd',
+              color: unit.total_manutencoes >= 3 ? '#c62828' : '#856404',
+              padding: '4px 10px',
+              borderRadius: '12px',
+              fontWeight: 'bold',
+              border: `1px solid ${unit.total_manutencoes >= 3 ? '#ef9a9a' : '#ffeeba'}`,
+              marginLeft: '5px'
+            }}>
+              🔧 {unit.total_manutencoes} Manutenç{unit.total_manutencoes === 1 ? 'ão' : 'ões'}
             </span>
           )}
         </div>
@@ -160,7 +184,7 @@ const UnitItem: React.FC<{
             display: 'flex', alignItems: 'center', gap: '5px'
           }}
         >
-          📅 {showCalendar ? 'Fechar Agenda' : 'Agenda / Bloqueio'}
+          {showCalendar ? 'Fechar Agenda' : 'Agenda / Bloqueio'}
         </button>
 
         {/* BOTÃO EXCLUIR */}
@@ -276,7 +300,7 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
           <span style={{ color: '#0d47a1', fontWeight: 'bold' }}>Total: {units.length} un.</span>
           <div style={{ display: 'flex', gap: '10px' }}>
             <input
-              placeholder="Digite o S/N *"
+              placeholder="Digite o S/N*"
               value={newSerial}
               onChange={e => setNewSerial(e.target.value)}
               style={{ padding: '8px', borderRadius: '4px', border: '1px solid #90caf9', width: '200px' }}

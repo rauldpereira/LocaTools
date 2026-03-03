@@ -6,6 +6,7 @@ interface MaintenanceItem {
   id: number;
   data_inicio: string;
   data_fim: string;
+  observacao?: string;
   Unidade: {
     id: number;
     codigo_serial: string;
@@ -56,7 +57,7 @@ const MaintenanceDashboard: React.FC = () => {
       </h3>
 
       {items.length === 0 ? (
-        <p style={{ color: '#28a745', fontWeight: 'bold' }}>Tudo certo! Nenhuma manutenção pendente. ✅</p>
+        <p style={{ color: '#28a745', fontWeight: 'bold' }}>Tudo certo! Nenhuma manutenção pendente.</p>
       ) : (
         <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -65,6 +66,7 @@ const MaintenanceDashboard: React.FC = () => {
                 <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>Equipamento</th>
                 <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>S/N</th>
                 <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>Período</th>
+                <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>Motivo</th>
                 <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>Status</th>
               </tr>
             </thead>
@@ -91,6 +93,11 @@ const MaintenanceDashboard: React.FC = () => {
                       De: {new Date(item.data_inicio).toLocaleDateString()}<br/>
                       Até: {new Date(item.data_fim).toLocaleDateString()}
                     </td>
+                    
+                    <td style={{ padding: '10px', fontSize: '0.9rem', color: '#555', maxWidth: '200px' }}>
+                        {item.observacao || 'Manutenção Preventiva / Não informado'}
+                    </td>
+
                     <td style={{ padding: '10px' }}>
                         {getStatusLabel(item.data_inicio)}
                     </td>

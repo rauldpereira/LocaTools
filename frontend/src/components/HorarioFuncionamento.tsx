@@ -76,7 +76,7 @@ const AdminHorariosPage: React.FC = () => {
       <h3 style={{ marginBottom: '20px', color: '#333' }}>Configurar Horários de Funcionamento</h3>
       
       <div style={{ padding: '15px', backgroundColor: '#eef2f7', borderRadius: '6px', marginBottom: '20px', fontSize: '0.9rem', color: '#555' }}>
-        ℹ️ Defina os horários padrão. Dias marcados como "Fechado" não permitirão retirada ou devolução no calendário.
+        Defina os horários padrão. Dias marcados como "Fechado" não permitirão retirada ou devolução no calendário.
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -94,7 +94,7 @@ const AdminHorariosPage: React.FC = () => {
             
             return (
               <tr key={item.dia_semana} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={{ ...tdStyle, fontWeight: 'bold' }}>{labelDia}</td>
+                <td style={{ ...tdStyle, fontWeight: 'bold', color: "black" }}>{labelDia}</td>
                 
                 <td style={tdStyle}>
                   <input 

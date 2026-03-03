@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Calendar from 'react-calendar';
 import axios from 'axios';
 import 'react-calendar/dist/Calendar.css';
@@ -18,6 +18,9 @@ interface UnitCalendarProps {
 }
 
 const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token, onUpdate }) => {
+
+    const [pendingSelection, setPendingSelection] = useState<{ start: Date, end: Date } | null>(null);
+    const [maintenanceReason, setMaintenanceReason] = useState('');
 
     const getTileClassName = ({ date, view }: { date: Date, view: string }) => {
         if (view !== 'month') return null;
@@ -75,50 +78,103 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
             return;
         }
 
-        if (window.confirm(`Bloquear unidade para manutenção de ${start.toLocaleDateString()} até ${end.toLocaleDateString()}?`)) {
+        setPendingSelection({ start, end });
+        setMaintenanceReason('');
+    };
 
-            const startStr = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
-            const endStr = end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0');
+    const confirmMaintenanceBlock = async (force = false) => {
+        if (!pendingSelection || !token) return;
 
-            const requestMaintenance = async (force = false) => {
-                try {
-                    await axios.post(`http://localhost:3001/api/units/${unitId}/maintenance`, {
-                        data_inicio: startStr,
-                        data_fim: endStr,
-                        descricao: 'Bloqueio Manual via Calendário',
-                        forceReallocation: force 
-                    }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
+        const { start, end } = pendingSelection;
+        const startStr = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+        const endStr = end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0');
 
-                    alert('✅ Bloqueio realizado com sucesso!');
-                    onUpdate();
-                } catch (error: any) {
-                    if (error.response?.status === 409 && error.response?.data?.requiresConfirmation) {
-                        if (window.confirm(error.response.data.message)) {
-                            requestMaintenance(true);
-                        }
-                    } else {
-                        alert(error.response?.data?.error || 'Erro ao bloquear datas.');
-                    }
+        try {
+            await axios.post(`http://localhost:3001/api/units/${unitId}/maintenance`, {
+                data_inicio: startStr,
+                data_fim: endStr,
+                motivo: maintenanceReason || 'Manutenção Preventiva',
+                forceReallocation: force 
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            alert('✅ Bloqueio realizado com sucesso!');
+            setPendingSelection(null);
+            setMaintenanceReason('');
+            onUpdate();
+            
+        } catch (error: any) {
+            if (error.response?.status === 409 && error.response?.data?.requiresConfirmation) {
+                if (window.confirm(error.response.data.message)) {
+                    confirmMaintenanceBlock(true);
+                } else {
+                    setPendingSelection(null);
                 }
-            };
-
-            requestMaintenance();
+            } else {
+                alert(error.response?.data?.error || 'Erro ao bloquear datas.');
+                setPendingSelection(null);
+            }
         }
     };
 
+
     return (
-        <div style={{ marginTop: '10px' }}>
+        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            
             <Calendar
                 tileClassName={getTileClassName}
                 selectRange={true}
                 onChange={handleDateChange}
             />
-            <div style={{ fontSize: '0.8rem', marginTop: '5px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            
+            <div style={{ fontSize: '0.8rem', marginTop: '5px', display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '15px' }}>
                 <span style={{ color: '#cc0000' }}>■ Alugado</span>
                 <span style={{ color: '#ffc800' }}>■ Manutenção</span>
             </div>
+
+            {pendingSelection && (
+                <div style={{
+                    backgroundColor: '#fff3cd', 
+                    padding: '15px', 
+                    borderRadius: '8px', 
+                    border: '1px solid #ffeeba',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    marginTop: '10px'
+                }}>
+                    <h4 style={{ margin: '0 0 10px 0', color: '#856404' }}>
+                        Bloquear de {pendingSelection.start.toLocaleDateString()} a {pendingSelection.end.toLocaleDateString()}
+                    </h4>
+                    
+                    <label style={{ display: 'block', fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>
+                        Qual o motivo da manutenção?
+                    </label>
+                    <input 
+                        type="text" 
+                        value={maintenanceReason}
+                        onChange={(e) => setMaintenanceReason(e.target.value)}
+                        placeholder="Ex: Troca de óleo, Reparo no motor..."
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', marginBottom: '10px', boxSizing: 'border-box' }}
+                        autoFocus
+                    />
+                    
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button 
+                            onClick={() => confirmMaintenanceBlock(false)}
+                            style={{ flex: 1, backgroundColor: '#dc3545', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                            Confirmar Bloqueio
+                        </button>
+                        <button 
+                            onClick={() => { setPendingSelection(null); setMaintenanceReason(''); }}
+                            style={{ padding: '8px 15px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

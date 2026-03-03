@@ -8,13 +8,15 @@ const {
     updateUnitDetails,
     createMaintenance,
     deleteMaintenance,
-    getAllMaintenances
+    getAllMaintenances,
+    getUnitMaintenanceHistory
 } = require('../controllers/unitController');
 
 const { protect, admin } = require('../middlewares/authMiddleware');
 
 router.get('/equipment/:id', protect, admin, getUnitsByEquipment);
 router.get('/maintenances/dashboard', protect, admin, getAllMaintenances);
+router.get('/:id/history', protect, admin, getUnitMaintenanceHistory);
 
 router.post('/', protect, admin, addUnitsToEquipment);
 router.delete('/:id', protect, admin, deleteUnit);

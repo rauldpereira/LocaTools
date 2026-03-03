@@ -372,6 +372,7 @@ const getOperationalReport = async (req, res) => {
 
             return {
                 id: uni.id,
+                codigo_serial: uni.codigo_serial,
                 equipamento: uni.Equipamento?.nome,
                 status: statusVerdadeiro,
                 observacao: uni.observacao

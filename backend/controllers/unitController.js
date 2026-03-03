@@ -1,4 +1,4 @@
-const { Unidade, Equipamento, ItemReserva, OrdemDeServico } = require('../models');
+const { sequelize, Unidade, Equipamento, ItemReserva, OrdemDeServico } = require('../models');
 const { Op } = require('sequelize');
 
 const addUnitsToEquipment = async (req, res) => {
@@ -39,13 +39,27 @@ const getUnitsByEquipment = async (req, res) => {
         const units = await Unidade.findAll({
             where: { id_equipamento: req.params.id },
             order: [['id', 'ASC']],
+            // 👇 INJEÇÃO SÊNIOR: Subquery para contar TODO o histórico de manutenção 👇
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COUNT(*)
+                            FROM "ItensReserva" AS "ItemReserva"
+                            WHERE "ItemReserva"."id_unidade" = "Unidade"."id"
+                            AND "ItemReserva"."status" = 'manutencao'
+                        )`),
+                        'total_manutencoes'
+                    ]
+                ]
+            },
             include: [
                 {
                     model: ItemReserva,
                     as: 'ItensReserva',
                     required: false,
                     where: { 
-                        data_fim: { [Op.gte]: hojeIso }, 
+                        data_fim: { [Op.gte]: hojeIso },
                         status: { [Op.in]: ['ATIVO', 'ativo', 'manutencao'] } 
                     },
                     include: [
@@ -63,7 +77,7 @@ const getUnitsByEquipment = async (req, res) => {
 
 const createMaintenance = async (req, res) => {
     const { id_unidade } = req.params; 
-    const { data_inicio, data_fim, forceReallocation } = req.body;
+    const { data_inicio, data_fim, forceReallocation, motivo } = req.body;
 
     try {
         const inicioLimpo = data_inicio.split('T')[0];
@@ -158,7 +172,8 @@ const createMaintenance = async (req, res) => {
             data_inicio: inicioLimpo,
             data_fim: fimLimpo,
             status: 'manutencao', 
-            id_ordem_servico: null
+            id_ordem_servico: null,
+            observacao: motivo || 'Manutenção preventiva padrão'
         });
 
         res.status(201).json({ message: 'Bloqueio criado com sucesso.' });
@@ -238,6 +253,34 @@ const getAllMaintenances = async (req, res) => {
     }
 };
 
+const getUnitMaintenanceHistory = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const historico = await ItemReserva.findAll({
+            where: {
+                id_unidade: id,
+                status: 'manutencao'
+            },
+            include: [
+                {
+                    model: Unidade,
+                    as: 'Unidade',
+                    include: [
+                        { model: Equipamento, as: 'Equipamento', attributes: ['nome'] }
+                    ]
+                }
+            ],
+            order: [['data_inicio', 'DESC']]
+        });
+
+        res.status(200).json(historico);
+    } catch (error) {
+        console.error('Erro ao buscar histórico de manutenção:', error);
+        res.status(500).json({ error: 'Erro interno ao buscar o histórico.' });
+    }
+};
+
 module.exports = { 
     addUnitsToEquipment, 
     getUnitsByEquipment, 
@@ -245,5 +288,6 @@ module.exports = {
     updateUnitDetails,
     createMaintenance, 
     deleteMaintenance,
-    getAllMaintenances
+    getAllMaintenances,
+    getUnitMaintenanceHistory
 };
