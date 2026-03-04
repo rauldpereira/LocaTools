@@ -34,17 +34,62 @@ const AdminReservationsList: React.FC = () => {
         fetchAllOrders();
     }, [fetchAllOrders]);
 
-    const ordersForExitInspection = orders.filter(order => order.status === 'aprovada');
-    const ordersAwaitingSignature = orders.filter(order => order.status === 'aguardando_assinatura');
-    const ordersForReturnInspection = orders.filter(order => order.status === 'em_andamento');
-    const ordersAwaitingFinalPayment = orders.filter(order => order.status === 'aguardando_pagamento_final');
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
 
-    const ordersAbandoned = orders.filter(order => order.status === 'pendente');
+    const sortByDateAsc = (a: Order, b: Order) => new Date(a.data_inicio).getTime() - new Date(b.data_inicio).getTime();
+    const sortByIdDesc = (a: Order, b: Order) => b.id - a.id;
 
-    const finalizedOrders = orders.filter(order =>
-        order.status === 'finalizada' || order.status === 'PREJUIZO'
-    );
-    const cancelledOrders = orders.filter(order => order.status === 'cancelada');
+    const ordersToday = orders
+        .filter(order => {
+            if (order.status !== 'aprovada') return false;
+            const dataInicio = parseDateStringAsLocal(order.data_inicio);
+            dataInicio.setHours(0, 0, 0, 0);
+            return dataInicio.getTime() === hoje.getTime();
+        })
+        .sort(sortByDateAsc);
+
+    const ordersDelayed = orders
+        .filter(order => {
+            if (order.status !== 'aprovada') return false;
+            const dataInicio = parseDateStringAsLocal(order.data_inicio);
+            dataInicio.setHours(0, 0, 0, 0);
+            return dataInicio.getTime() < hoje.getTime();
+        })
+        .sort(sortByDateAsc);
+
+    const ordersFutureScheduled = orders
+        .filter(order => {
+            if (order.status !== 'aprovada') return false;
+            const dataInicio = parseDateStringAsLocal(order.data_inicio);
+            dataInicio.setHours(0, 0, 0, 0);
+            return dataInicio > hoje;
+        })
+        .sort(sortByDateAsc);
+
+    const ordersAwaitingSignature = orders
+        .filter(order => order.status === 'aguardando_assinatura')
+        .sort(sortByIdDesc);
+
+    const ordersForReturnInspection = orders
+        .filter(order => order.status === 'em_andamento')
+        .sort(sortByDateAsc);
+
+    const ordersAwaitingFinalPayment = orders
+        .filter(order => order.status === 'aguardando_pagamento_final')
+        .sort(sortByIdDesc);
+
+    const ordersAbandoned = orders
+        .filter(order => order.status === 'pendente')
+        .sort(sortByIdDesc);
+
+    const finalizedOrders = orders
+        .filter(order => order.status === 'finalizada' || order.status === 'PREJUIZO')
+        .sort(sortByIdDesc);
+
+    const cancelledOrders = orders
+        .filter(order => order.status === 'cancelada')
+        .sort(sortByIdDesc);
 
     if (loading) return <p>A carregar reservas...</p>;
 
@@ -141,11 +186,29 @@ const AdminReservationsList: React.FC = () => {
 
     return (
         <div style={{ width: '100%' }}>
-            {renderOrderTable(
-                "Reservas Aguardando Vistoria de Saída",
-                ordersForExitInspection,
+            {ordersDelayed.length > 0 && renderOrderTable(
+                "🚨 Vistorias Atrasadas (Passou da Data)",
+                ordersDelayed,
                 [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Data de Saída' }],
-                order => <Link to={`/admin/vistoria/${order.id}`}><button>Realizar Vistoria</button></Link>
+                order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#dc3545', color: 'white', fontWeight: 'bold' }}>Vistoria Atrasada</button></Link>
+            )}
+
+            {renderOrderTable(
+                "Reservas de Hoje (Aguardando Saída)",
+                ordersToday,
+                [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Data de Saída' }],
+                order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#007bff', color: 'white' }}>Realizar Vistoria</button></Link>
+            )}
+
+            {renderOrderTable(
+                "Reservas Agendadas (Futuro)",
+                ordersFutureScheduled,
+                [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Data de Saída' }],
+                () => (
+                    <button disabled style={{ backgroundColor: '#e9ecef', color: '#6c757d', border: '1px solid #ced4da', cursor: 'not-allowed' }}>
+                        Aguardando Data
+                    </button>
+                )
             )}
 
             {renderOrderTable(
@@ -180,7 +243,7 @@ const AdminReservationsList: React.FC = () => {
                 [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }],
                 order => <Link to={`/admin/finalize-payment/${order.id}`}><button>Finalizar e Cobrar</button></Link>
             )}
-            {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)",ordersAbandoned,[{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }],order => (<Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold' }}>Ver Cliente / Resgatar Venda</button></Link>))}
+            {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)", ordersAbandoned, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], order => (<Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold' }}>Ver Cliente / Resgatar Venda</button></Link>))}
             {renderOrderTable("Histórico de Pedidos Finalizados", finalizedOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Finalização' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver pedido Completo</button></Link>))}
             {renderOrderTable("Histórico de Pedidos Cancelados", cancelledOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver Detalhes</button></Link>))}
         </div>
