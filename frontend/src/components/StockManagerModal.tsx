@@ -18,7 +18,7 @@ interface EquipamentoComAvarias {
 interface Unit {
   id: number;
   codigo_serial: string | null;
-  status: 'disponivel' | 'manutencao' | 'alugado';
+  status: 'disponivel' | 'manutencao' | 'alugado' | 'inativo';
   avarias_atuais: number[] | null;
   ItensReserva?: any[];
   total_manutencoes?: number;
@@ -160,18 +160,19 @@ const UnitItem: React.FC<{
         <select
           value={status}
           onChange={e => setStatus(e.target.value as any)}
-          disabled={status === 'alugado' || status === 'manutencao'}
+          disabled={status === 'alugado'}
           style={{
             padding: '6px',
             borderRadius: '4px',
             borderColor: '#ccc',
-            backgroundColor: (status === 'alugado' || status === 'manutencao') ? '#e9ecef' : '#fff',
-            cursor: (status === 'alugado' || status === 'manutencao') ? 'not-allowed' : 'pointer'
+            backgroundColor: (status === 'alugado') ? '#e9ecef' : '#fff',
+            cursor: (status === 'alugado') ? 'not-allowed' : 'pointer'
           }}
         >
           <option value="disponivel">🟢 Disponível</option>
           <option value="manutencao">🟠 Manutenção</option>
           <option value="alugado">🔴 Alugado</option>
+          <option value="inativo">⚫ Inativo / Vendido</option>
         </select>
 
         {/* BOTÃO AZUL: VER AGENDA */}
@@ -241,6 +242,7 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
   const [equipment, setEquipment] = useState<EquipamentoComAvarias | null>(null);
   const [loading, setLoading] = useState(true);
   const [newSerial, setNewSerial] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!equipmentId || !isOpen) return;
@@ -275,12 +277,14 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Excluir unidade?')) return;
+    if (!window.confirm('Tem certeza que deseja excluir esta unidade?')) return;
+    
     try {
+      setErrorMessage(null);
       await axios.delete(`http://localhost:3001/api/units/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchData();
-    } catch (e) {
-      alert('Erro ao excluir');
+    } catch (e: any) {
+      setErrorMessage(e.response?.data?.error || 'Erro ao excluir a unidade.');
     }
   };
 
@@ -295,6 +299,29 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
           <h2 style={{ margin: 0, color: "#000" }}>Gerenciar: {equipment?.nome || 'Equipamento'}</h2>
           <button onClick={onClose} style={{ border: 'none', color: "#000", background: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
         </div>
+        
+        {errorMessage && (
+          <div style={{
+            backgroundColor: '#f8d7da', 
+            color: '#721c24', 
+            padding: '12px 20px', 
+            borderRadius: '6px', 
+            marginBottom: '15px', 
+            border: '1px solid #f5c6cb',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>
+            <div>
+              <strong style={{ fontSize: '1.1rem', display: 'block', marginBottom: '4px' }}>Ação Bloqueada!</strong>
+              <span>{errorMessage}</span>
+            </div>
+            <button onClick={() => setErrorMessage(null)} style={{ background: 'none', border: 'none', color: '#721c24', fontSize: '1.5rem', cursor: 'pointer', padding: '0 5px' }}>
+              &times;
+            </button>
+          </div>
+        )}
 
         <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '6px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ color: '#0d47a1', fontWeight: 'bold' }}>Total: {units.length} un.</span>

@@ -45,9 +45,12 @@ const calcularFreteInterno = async (enderecoDestino) => {
 const verificarDisponibilidade = async (item, options, excludeOrderId = null) => {
     const { id_equipamento, data_inicio, data_fim } = item;
 
-    // Pega todas as unidades desse equipamento
+    // Pega todas as unidades desse equipamento (Ignorando as Inativas)
     const unidadesDoEquipamento = await Unidade.findAll({
-        where: { id_equipamento },
+        where: { 
+            id_equipamento,
+            status: { [Op.ne]: 'inativo' }
+        },
         ...options
     });
 

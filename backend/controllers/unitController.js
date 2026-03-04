@@ -2,7 +2,7 @@ const { sequelize, Unidade, Equipamento, ItemReserva, OrdemDeServico } = require
 const { Op } = require('sequelize');
 
 const addUnitsToEquipment = async (req, res) => {
-    const equipmentId = req.params.id || req.body.id_equipamento; 
+    const equipmentId = req.params.id || req.body.id_equipamento;
     const { codigo_serial } = req.body;
 
     try {
@@ -21,7 +21,7 @@ const addUnitsToEquipment = async (req, res) => {
             avarias_atuais: [],
             codigo_serial: codigo_serial
         });
-        
+
         await equipment.increment('total_quantidade', { by: 1 });
         res.status(201).json({ message: 'Unidade adicionada.' });
     } catch (error) {
@@ -58,9 +58,9 @@ const getUnitsByEquipment = async (req, res) => {
                     model: ItemReserva,
                     as: 'ItensReserva',
                     required: false,
-                    where: { 
+                    where: {
                         data_fim: { [Op.gte]: hojeIso },
-                        status: { [Op.in]: ['ATIVO', 'ativo', 'manutencao'] } 
+                        status: { [Op.in]: ['ATIVO', 'ativo', 'manutencao'] }
                     },
                     include: [
                         { model: OrdemDeServico, as: 'OrdemDeServico', required: false, attributes: ['id', 'status'] }
@@ -76,7 +76,7 @@ const getUnitsByEquipment = async (req, res) => {
 };
 
 const createMaintenance = async (req, res) => {
-    const { id_unidade } = req.params; 
+    const { id_unidade } = req.params;
     const { data_inicio, data_fim, forceReallocation, motivo } = req.body;
 
     try {
@@ -97,7 +97,7 @@ const createMaintenance = async (req, res) => {
         for (const reserva of todasReservas) {
             const rInicio = new Date(reserva.data_inicio + "T12:00:00").getTime();
             const rFim = new Date(reserva.data_fim + "T12:00:00").getTime();
-            
+
             const bateuData = (bInicio <= rFim) && (bFim >= rInicio);
             if (bateuData) {
                 if (reserva.status === 'manutencao') {
@@ -107,8 +107,8 @@ const createMaintenance = async (req, res) => {
                 if (reserva.OrdemDeServico) {
                     const statusIntocaveis = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'];
                     if (statusIntocaveis.includes(reserva.OrdemDeServico.status)) {
-                        conflitoCliente = reserva; 
-                        break; 
+                        conflitoCliente = reserva;
+                        break;
                     }
                 }
             }
@@ -120,7 +120,7 @@ const createMaintenance = async (req, res) => {
 
         if (conflitoCliente) {
             const unidadeAtual = await Unidade.findByPk(id_unidade);
-            
+
             const outrasUnidades = await Unidade.findAll({
                 where: { id_equipamento: unidadeAtual.id_equipamento, id: { [Op.ne]: id_unidade } }
             });
@@ -139,7 +139,7 @@ const createMaintenance = async (req, res) => {
                 for (const ro of reservasOutra) {
                     const roInicio = new Date(ro.data_inicio + "T12:00:00").getTime();
                     const roFim = new Date(ro.data_fim + "T12:00:00").getTime();
-                    
+
                     if ((cInicio <= roFim) && (cFim >= roInicio)) {
                         if (ro.status === 'manutencao') livre = false;
                         else if (ro.OrdemDeServico && ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'].includes(ro.OrdemDeServico.status)) {
@@ -158,9 +158,9 @@ const createMaintenance = async (req, res) => {
             }
 
             if (!forceReallocation) {
-                return res.status(409).json({ 
+                return res.status(409).json({
                     requiresConfirmation: true,
-                    message: `Atenção: Máquina alugada (Pedido #${conflitoCliente.OrdemDeServico.id}).\n\nDeseja transferir o aluguel do cliente para a Unidade #${unidadeSubstituta.id} (Disponível) e continuar com a manutenção?` 
+                    message: `Atenção: Máquina alugada (Pedido #${conflitoCliente.OrdemDeServico.id}).\n\nDeseja transferir o aluguel do cliente para a Unidade #${unidadeSubstituta.id} (Disponível) e continuar com a manutenção?`
                 });
             } else {
                 await conflitoCliente.update({ id_unidade: unidadeSubstituta.id });
@@ -171,7 +171,7 @@ const createMaintenance = async (req, res) => {
             id_unidade,
             data_inicio: inicioLimpo,
             data_fim: fimLimpo,
-            status: 'manutencao', 
+            status: 'manutencao',
             id_ordem_servico: null,
             observacao: motivo || 'Manutenção preventiva padrão'
         });
@@ -188,7 +188,7 @@ const deleteMaintenance = async (req, res) => {
     try {
         const item = await ItemReserva.findByPk(req.params.id);
         if (!item) return res.status(404).json({ error: 'Agendamento não encontrado.' });
-        
+
         if (item.status !== 'manutencao') {
             return res.status(403).json({ error: 'Este item é um aluguel de cliente, não pode excluir por aqui.' });
         }
@@ -218,11 +218,28 @@ const deleteUnit = async (req, res) => {
     try {
         const unit = await Unidade.findByPk(req.params.id);
         if (!unit) return res.status(404).json({ error: 'Unidade não encontrada.' });
+
+        const historicoCount = await ItemReserva.count({
+            where: { id_unidade: unit.id }
+        });
+
+        if (historicoCount > 0) {
+            return res.status(400).json({
+                error: 'Bloqueado: Esta máquina já possui histórico de aluguéis ou manutenções. Para não corromper os dados da empresa, ela não pode ser apagada. Se ela foi vendida ou virou sucata, mude o status para "Inativo".'
+            });
+        }
+
         const equipment = await Equipamento.findByPk(unit.id_equipamento);
         await unit.destroy();
+
         if (equipment) await equipment.decrement('total_quantidade', { by: 1 });
-        res.status(200).json({ message: 'Deletado.' });
-    } catch (error) { res.status(500).json({ error: 'Erro interno.' }); }
+
+        res.status(200).json({ message: 'Unidade excluída com sucesso (sem histórico vinculado).' });
+
+    } catch (error) {
+        console.error('Erro deleteUnit:', error);
+        res.status(500).json({ error: 'Erro interno ao excluir a unidade.' });
+    }
 };
 
 const getAllMaintenances = async (req, res) => {
@@ -243,7 +260,7 @@ const getAllMaintenances = async (req, res) => {
                     ]
                 }
             ],
-            order: [['data_inicio', 'ASC']] 
+            order: [['data_inicio', 'ASC']]
         });
 
         res.status(200).json(manutencoes);
@@ -281,12 +298,12 @@ const getUnitMaintenanceHistory = async (req, res) => {
     }
 };
 
-module.exports = { 
-    addUnitsToEquipment, 
-    getUnitsByEquipment, 
-    deleteUnit, 
+module.exports = {
+    addUnitsToEquipment,
+    getUnitsByEquipment,
+    deleteUnit,
     updateUnitDetails,
-    createMaintenance, 
+    createMaintenance,
     deleteMaintenance,
     getAllMaintenances,
     getUnitMaintenanceHistory
