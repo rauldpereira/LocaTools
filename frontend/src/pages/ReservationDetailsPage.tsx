@@ -153,7 +153,6 @@ const ReservationDetailsPage: React.FC = () => {
         startY += 28;
 
         // --- DADOS DA LOCADORA
-
         doc.rect(marginX, startY, 190, 25);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
@@ -166,19 +165,14 @@ const ReservationDetailsPage: React.FC = () => {
         doc.text(`Endereço: ${configLoja.endereco}`, marginX + 2, startY + 16);
 
         doc.setFont('helvetica', 'bold');
-        doc.text(`Horário de Retirada e Devolução (${nomeDia}):`, marginX + 50, startY + 22);
-        doc.setFont('helvetica', 'normal');
-
-        doc.setTextColor(order.tipo_entrega === 'entrega' ? 150 : 0); 
-        doc.text(horarioRetiradaDia, marginX + 105, startY + 22); 
-        
         doc.setTextColor(0);
+        const textoHorario = `Horário de Retirada e Devolução (${nomeDia}): ${horarioRetiradaDia}`;
+        doc.text(textoHorario, marginX + 50, startY + 22);
 
         startY += 28;
 
         // --- DADOS DO LOCATÁRIO 
-
-        doc.rect(marginX, startY, 190, 25);
+        doc.rect(marginX, startY, 190, 30); 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.text("LOCATÁRIO", marginX + 85, startY + 4);
@@ -187,13 +181,15 @@ const ReservationDetailsPage: React.FC = () => {
         doc.setFont('helvetica', 'normal');
         const nomeCliente = (order as any).Usuario?.nome || 'Cliente Padrão';
         doc.text(`Nome/Razão Social: ${nomeCliente}`, marginX + 2, startY + 10);
-        doc.text(`Endereço/Entrega: ${order.tipo_entrega === 'entrega' ? order.endereco_entrega : 'Retirada na Loja - Locatário assume transporte'}`, marginX + 2, startY + 16);
-        doc.text(`Período de Locação: ${parseDateStringAsLocal(order.data_inicio).toLocaleDateString('pt-BR')} até ${parseDateStringAsLocal(order.data_fim).toLocaleDateString('pt-BR')}`, marginX + 2, startY + 22);
+        
+        const enderecoTexto = `Endereço/Entrega: ${order.tipo_entrega === 'entrega' ? order.endereco_entrega : 'Retirada na Loja - Locatário assume transporte'}`;
+        doc.text(enderecoTexto, marginX + 2, startY + 16, { maxWidth: 185 }); 
+        
+        doc.text(`Período de Locação: ${parseDateStringAsLocal(order.data_inicio).toLocaleDateString('pt-BR')} até ${parseDateStringAsLocal(order.data_fim).toLocaleDateString('pt-BR')}`, marginX + 2, startY + 26);
 
-        startY += 28;
+        startY += 33;
 
         // --- TABELA DE ITENS 
-
         const tableData = order.ItemReservas.map(item => [
             "1",
             `${item.Unidade.Equipamento.nome} (S/N #${item.Unidade.id})`,
@@ -219,7 +215,6 @@ const ReservationDetailsPage: React.FC = () => {
         const finalY = (doc as any).lastAutoTable.finalY;
 
         // --- TOTAIS
-
         doc.rect(marginX, finalY, 190, 15);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
@@ -235,7 +230,6 @@ const ReservationDetailsPage: React.FC = () => {
         doc.text(`TOTAL GERAL: R$ ${valorTotalAjustado.toFixed(2)}`, marginX + 2, finalY + 12);
 
         // --- DADOS ADICIONAIS / INFORMAÇÕES LEGAIS
-
         const termoY = finalY + 18;
         doc.rect(marginX, termoY, 190, 38);
         doc.setFontSize(8);

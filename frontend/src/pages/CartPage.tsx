@@ -14,7 +14,7 @@ const CartPage: React.FC = () => {
     const { cartItems, removeFromCart, clearCart } = useCart();
     const { token } = useAuth();
     const navigate = useNavigate();
-    
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lojaAddress, setLojaAddress] = useState('Carregando endereço...');
@@ -22,6 +22,7 @@ const CartPage: React.FC = () => {
     const [deliveryType, setDeliveryType] = useState('retirada');
     const [freightCost, setFreightCost] = useState(0);
     const [freightInfo, setFreightInfo] = useState<{ distancia: string } | null>(null);
+    const [complemento, setComplemento] = useState('');
 
     const [address, setAddress] = useState({
         cep: '',
@@ -109,7 +110,7 @@ const CartPage: React.FC = () => {
             setFreightInfo({
                 distancia: distancia_km + ' km'
             });
-            
+
         } catch (err: any) {
             console.error('Erro Frete:', err);
             setFreightCost(0);
@@ -134,7 +135,7 @@ const CartPage: React.FC = () => {
 
     const handleCheckout = async () => {
         if (!token) {
-            navigate('/login');
+            navigate('/auth?mode=login');
             return;
         }
         if (cartItems.length === 0) {
@@ -156,8 +157,8 @@ const CartPage: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const formattedAddress = `${address.rua}, ${address.numero} - ${address.bairro}, ${address.cidade}/${address.estado} - CEP: ${address.cep}`;
-
+        const formattedAddress = `${address.rua}, ${address.numero}${complemento ? ' - ' + complemento : ''} - ${address.bairro}, ${address.cidade}/${address.estado} - CEP: ${address.cep}`;
+        
         const reservationData = {
             itens: cartItems.map(({ cartItemId, ...item }) => item),
             tipo_entrega: deliveryType,
@@ -209,74 +210,81 @@ const CartPage: React.FC = () => {
 
                         <div className="delivery-section" style={{ marginTop: '2rem', borderTop: '1px solid #eee', paddingTop: '2rem' }}>
                             <h3>Opção de Entrega</h3>
-                            
+
                             {/* RETIRADA */}
-                            <div style={{marginBottom: '10px'}}>
-                                <input 
-                                    type="radio" id="retirada" name="delivery" 
-                                    value="retirada" 
-                                    checked={deliveryType === 'retirada'} 
-                                    onChange={() => setDeliveryType('retirada')} 
+                            <div style={{ marginBottom: '10px' }}>
+                                <input
+                                    type="radio" id="retirada" name="delivery"
+                                    value="retirada"
+                                    checked={deliveryType === 'retirada'}
+                                    onChange={() => setDeliveryType('retirada')}
                                 />
                                 <label htmlFor="retirada" style={{ marginLeft: '8px', fontWeight: 'bold' }}>Retirar na Loja</label>
                                 <p style={{ fontSize: '0.9em', color: '#666', margin: '5px 0 0 25px' }}>
-                                {lojaAddress}
+                                    {lojaAddress}
                                 </p>
                             </div>
 
                             {/* ENTREGA */}
                             <div>
-                                <input 
-                                    type="radio" id="entrega" name="delivery" 
-                                    value="entrega" 
-                                    checked={deliveryType === 'entrega'} 
-                                    onChange={() => setDeliveryType('entrega')} 
+                                <input
+                                    type="radio" id="entrega" name="delivery"
+                                    value="entrega"
+                                    checked={deliveryType === 'entrega'}
+                                    onChange={() => setDeliveryType('entrega')}
                                 />
                                 <label htmlFor="entrega" style={{ marginLeft: '8px', fontWeight: 'bold' }}>Entrega</label>
                             </div>
 
                             {/* FORMULÁRIO DE ENTREGA */}
                             {deliveryType === 'entrega' && (
-                                <div style={{ 
-                                    marginTop: '15px', 
-                                    padding: '20px', 
-                                    backgroundColor: '#f8f9fa', 
-                                    borderRadius: '8px', 
-                                    border: '1px solid #e9ecef' 
+                                <div style={{
+                                    marginTop: '15px',
+                                    padding: '20px',
+                                    backgroundColor: '#f8f9fa',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e9ecef'
                                 }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                                         <div style={{ gridColumn: '1 / -1' }}>
-                                            <input 
-                                                name="cep" 
-                                                value={address.cep} 
-                                                onChange={handleAddressChange} 
-                                                onBlur={handleCepBlur} 
-                                                placeholder="CEP (Digite para buscar)" 
+                                            <input
+                                                name="cep"
+                                                value={address.cep}
+                                                onChange={handleAddressChange}
+                                                onBlur={handleCepBlur}
+                                                placeholder="CEP (Digite para buscar)"
                                                 maxLength={9}
-                                                required 
-                                                style={{width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc'}}
+                                                required
+                                                style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
                                             />
                                         </div>
 
                                         <input name="rua" value={address.rua} onChange={handleAddressChange} placeholder="Rua / Avenida" required style={{ gridColumn: '1 / -1', padding: '10px' }} />
-                                        
-                                        <input 
+
+                                        <input
                                             id="input-numero"
-                                            name="numero" 
-                                            value={address.numero} 
-                                            onChange={handleAddressChange} 
-                                            placeholder="Número" 
-                                            required 
+                                            name="numero"
+                                            value={address.numero}
+                                            onChange={handleAddressChange}
+                                            placeholder="Número"
+                                            required
                                             style={{ padding: '10px' }}
                                         />
-                                        
+
                                         <input name="bairro" value={address.bairro} onChange={handleAddressChange} placeholder="Bairro" required style={{ padding: '10px' }} />
                                         <input name="cidade" value={address.cidade} onChange={handleAddressChange} placeholder="Cidade" required style={{ padding: '10px' }} />
                                         <input name="estado" value={address.estado} onChange={handleAddressChange} placeholder="UF" maxLength={2} required style={{ padding: '10px' }} />
+                                        <input
+                                            type="text"
+                                            placeholder="Complemento (Ex: Apto 42, Bloco B)"
+                                            value={complemento}
+                                            onChange={(e) => setComplemento(e.target.value)}
+                                            style={{ flex: 2, padding: '8px' }}
+                                        />
                                     </div>
 
                                     <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                                        <button 
+                                        <button
                                             onClick={calculateFreightCost}
                                             disabled={loading || !address.rua || !address.numero}
                                             style={{
@@ -306,27 +314,27 @@ const CartPage: React.FC = () => {
 
                         <div className="cart-summary">
                             <p>Subtotal dos Itens: R$ {calculateSubtotal().toFixed(2)}</p>
-                            
+
                             {deliveryType === 'entrega' && (
                                 <p style={{ color: freightCost > 0 ? '#333' : 'red' }}>
                                     Frete: {freightCost > 0 ? `R$ ${freightCost.toFixed(2)}` : 'A calcular'}
                                 </p>
                             )}
-                            
+
                             <h2 style={{ borderTop: '1px solid #ccc', paddingTop: '10px' }}>
                                 Total: R$ {valorTotalComFrete.toFixed(2)}
                             </h2>
-                            
+
                             <p style={{ color: 'green', fontWeight: 'bold' }}>
                                 Sinal de 50% a pagar: R$ {(valorTotalComFrete * 0.5).toFixed(2)}
                             </p>
-                            
+
                             {error && (
-                                <div style={{ 
-                                    backgroundColor: '#f8d7da', color: '#721c24', 
-                                    padding: '10px', borderRadius: '5px', marginBottom: '10px', marginTop: '10px' 
+                                <div style={{
+                                    backgroundColor: '#f8d7da', color: '#721c24',
+                                    padding: '10px', borderRadius: '5px', marginBottom: '10px', marginTop: '10px'
                                 }}>
-                                {error}
+                                    {error}
                                 </div>
                             )}
 
