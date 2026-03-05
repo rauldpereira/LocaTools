@@ -31,6 +31,115 @@ interface StockModalProps {
   onClose: () => void;
 }
 
+interface Conflict {
+  reserva: { id: number; pedido_id: number; data_inicio: string; data_fim: string };
+  alternativas: { id: number; codigo_serial: string }[];
+}
+
+const TransplantModal: React.FC<{
+  conflicts: Conflict[];
+  onClose: () => void;
+  onConfirm: (reallocations: { id_reserva: number; id_nova_unidade: number }[]) => void;
+  loading: boolean;
+}> = ({ conflicts, onClose, onConfirm, loading }) => {
+  const [selections, setSelections] = useState<{ [key: number]: number }>({});
+
+  const handleSelect = (reservaId: number, unidadeId: number) => {
+    setSelections(prev => ({ ...prev, [reservaId]: unidadeId }));
+  };
+
+  const handleConfirm = () => {
+    const reallocations = conflicts.map(c => ({
+      id_reserva: c.reserva.id,
+      id_nova_unidade: selections[c.reserva.id]
+    }));
+
+    const missing = reallocations.some(r => !r.id_nova_unidade);
+    if (missing) return alert("Por favor, selecione uma máquina substituta para TODAS as reservas antes de confirmar.");
+
+    onConfirm(reallocations);
+  };
+
+  const formatDate = (dateString: string) => {
+    const [y, m, d] = dateString.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+      <div style={{ background: 'white', width: '700px', maxWidth: '95%', borderRadius: '8px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+        
+        <div style={{ borderBottom: '2px solid #dc3545', paddingBottom: '10px', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, color: '#c62828', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            Gestão de Crise: Conflito de Agenda!
+          </h2>
+          <p style={{ margin: '5px 0 0 0', color: '#666' }}>
+            Esta máquina possui aluguéis agendados e não pode sair de operação até você remanejar os clientes abaixo:
+          </p>
+        </div>
+
+        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
+          {conflicts.map((conflict) => (
+            <div key={conflict.reserva.id} style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '6px', padding: '15px', marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <strong style={{ fontSize: '1.1rem', color: '#333' }}>Pedido #{conflict.reserva.pedido_id}</strong>
+                <span style={{ background: '#e3f2fd', color: '#0d47a1', padding: '4px 8px', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                  {formatDate(conflict.reserva.data_inicio)} até {formatDate(conflict.reserva.data_fim)}
+                </span>
+              </div>
+              
+              {conflict.alternativas.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#555' }}>Selecione a máquina substituta livre nestes dias:</label>
+                  <select 
+                    value={selections[conflict.reserva.id] || ''} 
+                    onChange={e => handleSelect(conflict.reserva.id, Number(e.target.value))}
+                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc', width: '100%', fontSize: '1rem' }}
+                  >
+                    <option value="" disabled>-- Escolha uma unidade --</option>
+                    {conflict.alternativas.map(alt => (
+                      <option key={alt.id} value={alt.id}>Unidade #{alt.id} (S/N: {alt.codigo_serial || 'Sem S/N'})</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div style={{ background: '#ffebee', color: '#c62828', padding: '10px', borderRadius: '4px', border: '1px solid #ffcdd2', fontWeight: 'bold' }}>
+                  Não há nenhuma outra máquina deste modelo disponível nestas datas. Você precisará contatar o cliente para resolver manualmente esta situação antes de conseguir colocar a máquina em manutenção ou inativa.
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
+          
+          <button onClick={onClose} disabled={loading} style={{ color: '#333', padding: '10px 20px', border: '1px solid #ccc', background: 'white', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+            Cancelar Operação
+          </button>
+
+          <button 
+            onClick={handleConfirm} 
+            disabled={loading || conflicts.some(c => c.alternativas.length === 0)} 
+            style={{ 
+              padding: '10px 20px', 
+              border: 'none', 
+              background: (loading || conflicts.some(c => c.alternativas.length === 0)) ? '#6c757d' : '#28a745', 
+              color: 'white', 
+              borderRadius: '6px',
+              cursor: (loading || conflicts.some(c => c.alternativas.length === 0)) ? 'not-allowed' : 'pointer', 
+              fontWeight: 'bold', 
+              boxShadow: (loading || conflicts.some(c => c.alternativas.length === 0)) ? 'none' : '0 2px 4px rgba(40,167,69,0.2)' 
+            }}
+          >
+            {loading ? 'Trocando...' : 'Confirmar Troca e Salvar'}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
 const UnitItem: React.FC<{
   unit: Unit,
   tiposAvaria: TipoAvaria[],
@@ -50,8 +159,12 @@ const UnitItem: React.FC<{
   const [isEditingSerial, setIsEditingSerial] = useState(false);
   const [serial, setSerial] = useState(unit.codigo_serial || '');
 
+  const [conflicts, setConflicts] = useState<Conflict[]>([]);
+  const [showTransplantModal, setShowTransplantModal] = useState(false);
+  const [isTransplanting, setIsTransplanting] = useState(false)
+
   useEffect(() => {
-    let realStatus: 'disponivel' | 'manutencao' | 'alugado' = 'disponivel';
+    let realStatus: 'disponivel' | 'manutencao' | 'alugado' | 'inativo' = unit.status;
 
     if (unit.ItensReserva && unit.ItensReserva.length > 0) {
       const today = new Date();
@@ -84,24 +197,56 @@ const UnitItem: React.FC<{
   };
 
   const handleSave = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      if ((status === 'manutencao' || status === 'inativo') && unit.status !== status) {
+        const confRes = await axios.get(`http://localhost:3001/api/units/${unit.id}/conflicts`, config);
+        
+        if (confRes.data.conflicts && confRes.data.conflicts.length > 0) {
+          setConflicts(confRes.data.conflicts);
+          setShowTransplantModal(true);
+          return;
+        }
+      }
+
+      await saveUnitData(config);
+      
+    } catch (error) {
+      alert('Erro ao checar conflitos ou salvar.');
+    }
+  };
+
+  const saveUnitData = async (config: any) => {
     const avariasIDs = Object.keys(checkedAvarias)
       .filter(k => checkedAvarias[parseInt(k)])
       .map(Number);
 
+    await axios.put(`http://localhost:3001/api/units/${unit.id}`, {
+      status,
+      avarias_atuais: avariasIDs,
+      codigo_serial: serial
+    }, config);
+
+    alert('Unidade salva com sucesso!');
+    setIsEditingSerial(false);
+    onUpdate();
+  };
+
+  const executeTransplantAndSave = async (reallocations: { id_reserva: number; id_nova_unidade: number }[]) => {
+    setIsTransplanting(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
+      
+      await axios.post(`http://localhost:3001/api/units/reallocate`, { reallocations }, config);
 
-      await axios.put(`http://localhost:3001/api/units/${unit.id}/details`, {
-        status,
-        avarias_atuais: avariasIDs,
-        codigo_serial: serial
-      }, config);
-
-      alert('Unidade salva com sucesso!');
-      setIsEditingSerial(false);
-      onUpdate();
-    } catch (error) {
-      alert('Erro ao salvar.');
+      await saveUnitData(config);
+      
+      setShowTransplantModal(false);
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Erro ao Trocar as máquinas.');
+    } finally {
+      setIsTransplanting(false);
     }
   };
 
@@ -230,6 +375,16 @@ const UnitItem: React.FC<{
         <button onClick={handleSave} style={{ marginTop: '15px', width: '100%', padding: '10px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
           Salvar Alterações da Unidade
         </button>
+
+        {showTransplantModal && (
+          <TransplantModal 
+            conflicts={conflicts} 
+            onClose={() => setShowTransplantModal(false)} 
+            onConfirm={executeTransplantAndSave} 
+            loading={isTransplanting}
+          />
+        )}
+
       </div>
     </div>
   );

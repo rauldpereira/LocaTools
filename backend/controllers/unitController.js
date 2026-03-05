@@ -298,6 +298,125 @@ const getUnitMaintenanceHistory = async (req, res) => {
     }
 };
 
+
+const getConflictsAndAlternatives = async (req, res) => {
+    const { id } = req.params;
+    const { data_inicio, data_fim } = req.query;
+
+    try {
+        const unit = await Unidade.findByPk(id);
+        if (!unit) return res.status(404).json({ error: 'Unidade não encontrada.' });
+
+        const hojeIso = new Date().toISOString().substring(0, 10);
+        
+        const start = data_inicio ? new Date(data_inicio + "T12:00:00").getTime() : new Date(hojeIso + "T12:00:00").getTime();
+        const end = data_fim ? new Date(data_fim + "T12:00:00").getTime() : new Date("2099-12-31T12:00:00").getTime();
+
+        const conflitos = await ItemReserva.findAll({
+            where: {
+                id_unidade: id,
+                status: { [Op.not]: 'manutencao' } 
+            },
+            include: [{
+                model: OrdemDeServico,
+                as: 'OrdemDeServico',
+                where: { status: ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'] },
+                required: true
+            }],
+            order: [['data_inicio', 'ASC']]
+        });
+
+        const conflitosReais = conflitos.filter(reserva => {
+            const rStart = new Date(reserva.data_inicio + "T12:00:00").getTime();
+            const rEnd = new Date(reserva.data_fim + "T12:00:00").getTime();
+            return (start <= rEnd) && (end >= rStart);
+        });
+
+        if (conflitosReais.length === 0) {
+            return res.json({ conflicts: [] });
+        }
+
+        const outrasUnidades = await Unidade.findAll({
+            where: {
+                id_equipamento: unit.id_equipamento,
+                id: { [Op.ne]: id },
+                status: { [Op.ne]: 'inativo' }
+            }
+        });
+
+        const result = [];
+
+        for (const reserva of conflitosReais) {
+            const resStart = new Date(reserva.data_inicio + "T12:00:00").getTime();
+            const resEnd = new Date(reserva.data_fim + "T12:00:00").getTime();
+
+            const alternativas = [];
+
+            for (const outra of outrasUnidades) {
+                const reservasOutra = await ItemReserva.findAll({
+                    where: { id_unidade: outra.id },
+                    include: [{ model: OrdemDeServico, as: 'OrdemDeServico', required: false }]
+                });
+
+                let isFree = true;
+                for (const ro of reservasOutra) {
+                    const roStart = new Date(ro.data_inicio + "T12:00:00").getTime();
+                    const roEnd = new Date(ro.data_fim + "T12:00:00").getTime();
+
+                    if ((resStart <= roEnd) && (resEnd >= roStart)) {
+                        if (ro.status === 'manutencao') isFree = false;
+                        else if (ro.OrdemDeServico && ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'].includes(ro.OrdemDeServico.status)) {
+                            isFree = false;
+                        }
+                    }
+                }
+                
+                if (isFree) alternativas.push({ id: outra.id, codigo_serial: outra.codigo_serial });
+            }
+
+            result.push({
+                reserva: {
+                    id: reserva.id,
+                    pedido_id: reserva.OrdemDeServico.id,
+                    data_inicio: reserva.data_inicio,
+                    data_fim: reserva.data_fim
+                },
+                alternativas
+            });
+        }
+
+        res.json({ conflicts: result });
+
+    } catch (error) {
+        console.error("Erro no Olheiro de Transplante:", error);
+        res.status(500).json({ error: 'Erro ao verificar conflitos.' });
+    }
+};
+
+const executeTransplant = async (req, res) => {
+    const { reallocations } = req.body;
+
+    if (!reallocations || reallocations.length === 0) {
+        return res.status(400).json({ error: 'Nenhum transplante enviado.' });
+    }
+
+    const transaction = await sequelize.transaction();
+    try {
+        for (const realloc of reallocations) {
+            await ItemReserva.update(
+                { id_unidade: realloc.id_nova_unidade },
+                { where: { id: realloc.id_reserva }, transaction }
+            );
+        }
+        await transaction.commit();
+        res.json({ message: 'Transplantes realizados com sucesso! Contratos atualizados invisivelmente.' });
+    } catch (error) {
+        await transaction.rollback();
+        console.error("Erro no Cirurgião:", error);
+        res.status(500).json({ error: 'Erro ao executar o transplante de máquinas.' });
+    }
+};
+
 module.exports = {
     addUnitsToEquipment,
     getUnitsByEquipment,
@@ -306,5 +425,7 @@ module.exports = {
     createMaintenance,
     deleteMaintenance,
     getAllMaintenances,
-    getUnitMaintenanceHistory
+    getUnitMaintenanceHistory,
+    getConflictsAndAlternatives,
+    executeTransplant
 };
