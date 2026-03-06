@@ -9,11 +9,15 @@ interface Order {
     status: string;
     data_inicio: string;
     data_fim: string;
+    tipo_entrega?: string;
 }
+
+type TabKey = 'urgentes' | 'saidas' | 'devolucoes' | 'pendencias' | 'historico';
 
 const AdminReservationsList: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<TabKey>('urgentes');
     const { token } = useAuth();
 
     const fetchAllOrders = useCallback(async () => {
@@ -40,63 +44,43 @@ const AdminReservationsList: React.FC = () => {
     const sortByDateAsc = (a: Order, b: Order) => new Date(a.data_inicio).getTime() - new Date(b.data_inicio).getTime();
     const sortByIdDesc = (a: Order, b: Order) => b.id - a.id;
 
-    const ordersToday = orders
-        .filter(order => {
-            if (order.status !== 'aprovada') return false;
-            const dataInicio = parseDateStringAsLocal(order.data_inicio);
-            dataInicio.setHours(0, 0, 0, 0);
-            return dataInicio.getTime() === hoje.getTime();
-        })
+    // --- FILTROS DE CATEGORIA ---
+    const ordersToday = orders.filter(o => 
+        o.status === 'aprovada' 
+        && parseDateStringAsLocal(o.data_inicio)
+        .setHours(0, 0, 0, 0) === hoje.getTime())
         .sort(sortByDateAsc);
 
-    const ordersDelayed = orders
-        .filter(order => {
-            if (order.status !== 'aprovada') return false;
-            const dataInicio = parseDateStringAsLocal(order.data_inicio);
-            dataInicio.setHours(0, 0, 0, 0);
-            return dataInicio.getTime() < hoje.getTime();
-        })
+    const ordersDelayed = orders.filter(o => 
+        o.status === 'aprovada' 
+        && parseDateStringAsLocal(o.data_inicio)
+        .setHours(0, 0, 0, 0) < hoje.getTime())
         .sort(sortByDateAsc);
 
-    const ordersFutureScheduled = orders
-        .filter(order => {
-            if (order.status !== 'aprovada') return false;
-            const dataInicio = parseDateStringAsLocal(order.data_inicio);
-            dataInicio.setHours(0, 0, 0, 0);
-            return dataInicio > hoje;
-        })
+    const ordersFutureScheduled = orders.filter(o => 
+        o.status === 'aprovada' 
+        && parseDateStringAsLocal(o.data_inicio)
+        .setHours(0, 0, 0, 0) > hoje.getTime())
         .sort(sortByDateAsc);
 
-    const ordersAwaitingSignature = orders
-        .filter(order => order.status === 'aguardando_assinatura')
-        .sort(sortByIdDesc);
+    const ordersDelayedReturn = orders.filter(o => {
+        if (o.status !== 'em_andamento') return false;
+        const dataFim = parseDateStringAsLocal(o.data_fim);
+        dataFim.setHours(0, 0, 0, 0);
+        return dataFim.getTime() < hoje.getTime();
+    }).sort(sortByDateAsc);
 
-    const ordersForReturnInspection = orders
-        .filter(order => order.status === 'em_andamento')
-        .sort(sortByDateAsc);
+    const ordersAwaitingSignature = orders.filter(o => o.status === 'aguardando_assinatura').sort(sortByIdDesc);
+    const ordersForReturnInspection = orders.filter(o => o.status === 'em_andamento').sort(sortByDateAsc);
+    const ordersAwaitingFinalPayment = orders.filter(o => o.status === 'aguardando_pagamento_final').sort(sortByIdDesc);
+    const ordersAbandoned = orders.filter(o => o.status === 'pendente').sort(sortByIdDesc);
+    const finalizedOrders = orders.filter(o => o.status === 'finalizada' || o.status === 'PREJUIZO').sort(sortByIdDesc);
+    const cancelledOrders = orders.filter(o => o.status === 'cancelada').sort(sortByIdDesc);
 
-    const ordersAwaitingFinalPayment = orders
-        .filter(order => order.status === 'aguardando_pagamento_final')
-        .sort(sortByIdDesc);
-
-    const ordersAbandoned = orders
-        .filter(order => order.status === 'pendente')
-        .sort(sortByIdDesc);
-
-    const finalizedOrders = orders
-        .filter(order => order.status === 'finalizada' || order.status === 'PREJUIZO')
-        .sort(sortByIdDesc);
-
-    const cancelledOrders = orders
-        .filter(order => order.status === 'cancelada')
-        .sort(sortByIdDesc);
-
-    if (loading) return <p>A carregar reservas...</p>;
+    if (loading) return <p style={{ textAlign: 'center', padding: '20px', fontSize: '1.2rem' }}>A carregar reservas...</p>;
 
     const handleSkipInspection = async (orderId: number) => {
-        if (!window.confirm("Confirmar devolução sem avarias? O pedido irá direto para o pagamento final.")) {
-            return;
-        }
+        if (!window.confirm("Confirmar devolução sem avarias? O pedido irá direto para o pagamento final.")) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             await axios.put(`http://localhost:3001/api/reservations/${orderId}/skip-inspection`, {}, config);
@@ -107,71 +91,51 @@ const AdminReservationsList: React.FC = () => {
         }
     };
 
-    const renderOrderTable = (
-        title: string,
-        orderList: Order[],
-        headers: { key: keyof Order, label: string }[],
-        action: (order: Order) => React.ReactNode
-    ) => (
-        <div style={{ marginBottom: '3rem' }}>
+    // --- RENDERIZADOR DA TABELA BASE ---
+    const renderOrderTable = (title: string, orderList: Order[], headers: { key: keyof Order, label: string }[], action: (order: Order) => React.ReactNode) => (
+        <div style={{ marginBottom: '3rem', animation: 'fadeIn 0.3s ease-in-out' }}>
             <h3 style={{ color: '#444', borderLeft: '4px solid #007bff', paddingLeft: '10px', marginBottom: '1rem' }}>
                 {title} <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'normal' }}>({orderList.length})</span>
             </h3>
 
             {orderList.length === 0 ? (
-                <div style={{ padding: '2rem', backgroundColor: '#f9f9f9', borderRadius: '8px', textAlign: 'center', color: '#888' }}>
-                    Nenhum pedido nesta etapa.
+                <div style={{ padding: '2rem', backgroundColor: '#f8f9fa', border: '1px dashed #ccc', borderRadius: '8px', textAlign: 'center', color: '#666' }}>
+                    Nenhum pedido nesta etapa no momento.
                 </div>
             ) : (
-                <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+                <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
                         <thead>
-                            <tr style={{ backgroundColor: '#f8f9fa', color: '#555', textTransform: 'uppercase', fontSize: '0.85rem' }}>
-                                {headers.map(header => (
-                                    <th key={header.key} style={{ padding: '15px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>{header.label}</th>
-                                ))}
-                                <th style={{ padding: '15px', borderBottom: '2px solid #ddd' }}>Ação</th>
+                            <tr style={{ backgroundColor: '#f1f3f5', color: '#495057', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                                {headers.map(h => <th key={h.key} style={{ padding: '15px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>{h.label}</th>)}
+                                <th style={{ padding: '15px', borderBottom: '2px solid #dee2e6' }}>Ação</th>
                             </tr>
                         </thead>
                         <tbody>
                             {orderList.map((order, index) => {
                                 const isPrejuizo = order.status === 'PREJUIZO';
-                                const rowStyle = {
-                                    backgroundColor: isPrejuizo ? '#fff0f0' : (index % 2 === 0 ? '#fff' : '#fcfcfc'),
-                                    borderBottom: '1px solid #eee'
-                                };
-
                                 return (
-                                    <tr key={order.id} style={rowStyle}>
+                                    <tr key={order.id} style={{ backgroundColor: isPrejuizo ? '#fff0f0' : (index % 2 === 0 ? '#fff' : '#fcfcfc'), borderBottom: '1px solid #eee' }}>
                                         {headers.map(header => {
-                                            let cellContent: React.ReactNode;
-                                            const value = order[header.key];
-
-                                            if (typeof value === 'string' && header.key.includes('data')) {
-                                                cellContent = parseDateStringAsLocal(value).toLocaleDateString();
+                                            let cellContent: React.ReactNode = order[header.key];
+                                            if (typeof cellContent === 'string' && header.key.includes('data')) {
+                                                cellContent = parseDateStringAsLocal(cellContent).toLocaleDateString();
                                             } else if (header.key === 'status') {
-                                                const statusText = String(value).replace(/_/g, ' ').toUpperCase();
+                                                const statusText = String(cellContent).replace(/_/g, ' ').toUpperCase();
+                                                const color = isPrejuizo ? '#d32f2f' : (cellContent === 'finalizada' ? '#28a745' : '#495057');
+                                                const bgBadge = isPrejuizo ? '#ffebee' : (cellContent === 'finalizada' ? '#e6fffa' : '#e9ecef');
+                                                cellContent = <span style={{ fontWeight: 'bold', color, backgroundColor: bgBadge, padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>{isPrejuizo ? '🚨 ' : ''}{statusText}</span>;
 
-                                                const color = isPrejuizo ? '#d32f2f' : (value === 'finalizada' ? '#28a745' : '#333');
-                                                const bgBadge = isPrejuizo ? '#ffebee' : (value === 'finalizada' ? '#e6fffa' : 'transparent');
-
+                                            } else if (header.key === 'tipo_entrega') {
+                                                const texto = String(cellContent || 'Não Informado');
+                                                const isLoja = texto.toLowerCase().includes('loja') || texto.toLowerCase().includes('retirada');
                                                 cellContent = (
-                                                    <span style={{
-                                                        fontWeight: 'bold', color: color,
-                                                        backgroundColor: bgBadge, padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem'
-                                                    }}>
-                                                        {isPrejuizo ? '🚨 ' : ''}{statusText}
+                                                    <span style={{ color: '#555', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                        {isLoja ? '🏪 ' : '🚚 '} {texto}
                                                     </span>
                                                 );
-                                            } else {
-                                                cellContent = value;
                                             }
-
-                                            return (
-                                                <td key={header.key} style={{ padding: '15px', color: '#333' }}>
-                                                    {cellContent}
-                                                </td>
-                                            );
+                                            return <td key={header.key} style={{ padding: '15px', color: '#333' }}>{cellContent}</td>;
                                         })}
                                         <td style={{ padding: '15px' }}>{action(order)}</td>
                                     </tr>
@@ -184,68 +148,135 @@ const AdminReservationsList: React.FC = () => {
         </div>
     );
 
+    const getTabStyle = (isActive: boolean, isAlert: boolean = false) => ({
+        padding: '12px 24px',
+        border: 'none',
+        background: isActive ? (isAlert ? '#dc3545' : '#007bff') : 'transparent',
+        color: isActive ? '#fff' : '#6c757d',
+        borderBottom: isActive ? 'none' : '3px solid transparent',
+        borderTopLeftRadius: '8px',
+        borderTopRightRadius: '8px',
+        fontWeight: 'bold',
+        fontSize: '1rem',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        outline: 'none',
+    });
+
     return (
-        <div style={{ width: '100%' }}>
-            {ordersDelayed.length > 0 && renderOrderTable(
-                "🚨 Vistorias Atrasadas (Passou da Data)",
-                ordersDelayed,
-                [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Data de Saída' }],
-                order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#dc3545', color: 'white', fontWeight: 'bold' }}>Vistoria Atrasada</button></Link>
-            )}
+        <div style={{ width: '100%', padding: '20px 0' }}>
 
-            {renderOrderTable(
-                "Reservas de Hoje (Aguardando Saída)",
-                ordersToday,
-                [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Data de Saída' }],
-                order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#007bff', color: 'white' }}>Realizar Vistoria</button></Link>
-            )}
+            {/* MENUS DAS ABAS */}
+            <div style={{ display: 'flex', gap: '5px', borderBottom: '3px solid #dee2e6', marginBottom: '30px', overflowX: 'auto', paddingBottom: '2px' }}>
+                <button onClick={() => setActiveTab('urgentes')} style={getTabStyle(activeTab === 'urgentes', true)}>
+                    🚨 Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})
+                </button>
+                <button onClick={() => setActiveTab('saidas')} style={getTabStyle(activeTab === 'saidas')}>
+                    🚚 Saídas ({ordersToday.length + ordersFutureScheduled.length})
+                </button>
+                <button onClick={() => setActiveTab('devolucoes')} style={getTabStyle(activeTab === 'devolucoes')}>
+                    🔄 Devoluções ({ordersForReturnInspection.length})
+                </button>
+                <button onClick={() => setActiveTab('pendencias')} style={getTabStyle(activeTab === 'pendencias')}>
+                    ✍️ Pendências ({ordersAwaitingSignature.length + ordersAwaitingFinalPayment.length + ordersAbandoned.length})
+                </button>
+                <button onClick={() => setActiveTab('historico')} style={getTabStyle(activeTab === 'historico')}>
+                    ✅ Histórico
+                </button>
+            </div>
 
-            {renderOrderTable(
-                "Reservas Agendadas (Futuro)",
-                ordersFutureScheduled,
-                [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Data de Saída' }],
-                () => (
-                    <button disabled style={{ backgroundColor: '#e9ecef', color: '#6c757d', border: '1px solid #ced4da', cursor: 'not-allowed' }}>
-                        Aguardando Data
-                    </button>
-                )
-            )}
+            {/* CONTEÚDO DAS ABAS */}
+            <div className="tab-content">
 
-            {renderOrderTable(
-                "Aguardando Assinatura do Contrato",
-                ordersAwaitingSignature,
-                [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }],
-                order => <Link to={`/my-reservations/${order.id}`}><button>Ver Detalhes</button></Link>
-            )}
+                {/* ABA: URGENTES */}
+                {activeTab === 'urgentes' && (
+                    <>
+                        {renderOrderTable(
+                            "🚨 Vistorias de Saída Atrasadas",
+                            ordersDelayed,
+                            [
+                                { key: 'id', label: 'Pedido ID' },
+                                { key: 'tipo_entrega', label: 'Logística' },
+                                { key: 'data_inicio', label: 'Data de Saída' }
+                            ],
+                            order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#dc3545', color: 'white', fontWeight: 'bold' }}>Vistoria Atrasada</button></Link>
+                        )}
 
-            {renderOrderTable(
-                "Equipamentos em Locação (Aguardando Devolução)",
-                ordersForReturnInspection,
-                [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Devolução' }],
-                order => (
-                    <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
-                        <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
-                            <button style={{ backgroundColor: '#ffc107', color: '#212529' }}>Registrar Vistoria (com avarias)</button>
-                        </Link>
-                        <button
-                            onClick={() => handleSkipInspection(order.id)}
-                            style={{ backgroundColor: '#28a745', color: 'white' }}
-                        >
-                            Devolução Rápida (OK)
-                        </button>
-                    </div>
-                )
-            )}
+                        {renderOrderTable(
+                            "⚠️ Devoluções Atrasadas",
+                            ordersDelayedReturn,
+                            [
+                                { key: 'id', label: 'Pedido ID' },
+                                { key: 'tipo_entrega', label: 'Logística' },
+                                { key: 'data_fim', label: 'Data de Devolução Original' }
+                            ],
+                            order => (
+                                <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
+                                    <button style={{ backgroundColor: '#856404', color: 'white', fontWeight: 'bold' }}>
+                                        Registrar Retorno com Atraso
+                                    </button>
+                                </Link>
+                            )
+                        )}
+                    </>
+                )}
 
-            {renderOrderTable(
-                "Reservas Aguardando Pagamento Final",
-                ordersAwaitingFinalPayment,
-                [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }],
-                order => <Link to={`/admin/finalize-payment/${order.id}`}><button>Finalizar e Cobrar</button></Link>
-            )}
-            {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)", ordersAbandoned, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], order => (<Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold' }}>Ver Cliente / Resgatar Venda</button></Link>))}
-            {renderOrderTable("Histórico de Pedidos Finalizados", finalizedOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Finalização' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver pedido Completo</button></Link>))}
-            {renderOrderTable("Histórico de Pedidos Cancelados", cancelledOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => (<Link to={`/my-reservations/${order.id}`}><button>Ver Detalhes</button></Link>))}
+                {/* ABA: SAÍDAS */}
+                {activeTab === 'saidas' && (
+                    <>
+                        {renderOrderTable(
+                            "Reservas de Hoje (Aguardando Saída)",
+                            ordersToday,
+                            [
+                                { key: 'id', label: 'Pedido ID' },
+                                { key: 'tipo_entrega', label: 'Logística' },
+                                { key: 'data_inicio', label: 'Data de Saída' }
+                            ],
+                            order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#007bff', color: 'white' }}>Realizar Vistoria</button></Link>
+                        )}
+                        {renderOrderTable(
+                            "Reservas Agendadas",
+                            ordersFutureScheduled,
+                            [
+                                { key: 'id', label: 'Pedido ID' },
+                                { key: 'tipo_entrega', label: 'Logística' },
+                                { key: 'data_inicio', label: 'Data de Saída' }
+                            ],
+                            () => <button disabled style={{ backgroundColor: '#e9ecef', color: '#6c757d', border: '1px solid #ced4da', cursor: 'not-allowed' }}>Aguardando Data</button>
+                        )}
+                    </>
+                )}
+
+                {/* ABA: DEVOLUÇÕES */}
+                {activeTab === 'devolucoes' && (
+                    <>
+                        {renderOrderTable("Equipamentos em Locação (Aguardando Devolução)", ordersForReturnInspection, [{ key: 'id', label: 'Pedido ID' }, { key: 'tipo_entrega', label: 'Logística' }, { key: 'data_fim', label: 'Data de Devolução' }], order => (
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}><button style={{ backgroundColor: '#ffc107', color: '#212529', fontWeight: 'bold' }}>Vistoria de Retorno</button></Link>
+                                <button onClick={() => handleSkipInspection(order.id)} style={{ backgroundColor: '#28a745', color: 'white' }}>Devolução Rápida (OK)</button>
+                            </div>
+                        ))}
+                    </>
+                )}
+
+                {/* ABA: PENDÊNCIAS */}
+                {activeTab === 'pendencias' && (
+                    <>
+                        {renderOrderTable("Aguardando Assinatura do Contrato", ordersAwaitingSignature, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#17a2b8', color: 'white' }}>Ver Contrato</button></Link>)}
+                        {renderOrderTable("Reservas Aguardando Pagamento Final", ordersAwaitingFinalPayment, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/admin/finalize-payment/${order.id}`}><button style={{ backgroundColor: '#28a745', color: 'white', fontWeight: 'bold' }}>Finalizar e Cobrar</button></Link>)}
+                        {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)", ordersAbandoned, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold' }}>Resgatar Venda</button></Link>)}
+                    </>
+                )}
+
+                {/* ABA: HISTÓRICO */}
+                {activeTab === 'historico' && (
+                    <>
+                        {renderOrderTable("Histórico de Pedidos Finalizados", finalizedOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Finalização' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white' }}>Ver Completo</button></Link>)}
+                        {renderOrderTable("Histórico de Pedidos Cancelados", cancelledOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white' }}>Ver Motivo</button></Link>)}
+                    </>
+                )}
+
+            </div>
         </div>
     );
 };

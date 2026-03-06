@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import '../styles/Navbar.css';
@@ -9,7 +9,13 @@ const Navbar: React.FC = () => {
     const { cartItems } = useCart();
     const totalItems = cartItems.reduce((total, item) => total + item.quantidade, 0);
     const location = useLocation();
+    const navigate = useNavigate();
     const showAuthLinks = location.pathname !== '/auth';
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
     return (
         <nav className="navbar">
@@ -38,7 +44,7 @@ const Navbar: React.FC = () => {
                                 <Link to="/cart">Carrinho ({totalItems})</Link>
                             </li>
                             <li>
-                                <button onClick={logout} className="navbar-button">Sair</button>
+                                <button onClick={handleLogout} className="navbar-button">Sair</button>
                             </li>
                         </>
                     ) : (
