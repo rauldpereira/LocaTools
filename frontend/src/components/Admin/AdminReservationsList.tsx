@@ -271,8 +271,19 @@ const AdminReservationsList: React.FC = () => {
                 {/* ABA: HISTÓRICO */}
                 {activeTab === 'historico' && (
                     <>
-                        {renderOrderTable("Histórico de Pedidos Finalizados", finalizedOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Finalização' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white' }}>Ver Completo</button></Link>)}
-                        {renderOrderTable("Histórico de Pedidos Cancelados", cancelledOrders, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white' }}>Ver Motivo</button></Link>)}
+                        {renderOrderTable(
+                            "Histórico de Pedidos Finalizados", 
+                            finalizedOrders, 
+                            [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Finalização' }], 
+                            order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white', color: '#333', fontWeight: 'bold' }}>Ver Completo</button></Link>
+                        )}
+                        
+                        {renderOrderTable(
+                            "Histórico de Pedidos Cancelados", 
+                            cancelledOrders, 
+                            [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], 
+                            order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white', color: '#333', fontWeight: 'bold' }}>Ver Motivo</button></Link>
+                        )}
                     </>
                 )}
 

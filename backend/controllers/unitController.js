@@ -205,13 +205,35 @@ const updateUnitDetails = async (req, res) => {
     try {
         const unit = await Unidade.findByPk(req.params.id);
         if (!unit) return res.status(404).json({ error: 'Unidade não encontrada.' });
+
+        const statusAntigo = unit.status; // Guarda o status de antes da alteração
+
         await unit.update({
             status: status !== undefined ? status : unit.status,
             avarias_atuais: avarias_atuais !== undefined ? avarias_atuais : unit.avarias_atuais,
             codigo_serial: codigo_serial !== undefined ? codigo_serial : unit.codigo_serial
         });
+
+        const novoStatus = status !== undefined ? status : unit.status;
+        
+        if (statusAntigo !== 'inativo' && novoStatus === 'inativo') {
+            const equipamento = await Equipamento.findByPk(unit.id_equipamento);
+            if (equipamento && equipamento.total_quantidade > 0) {
+                await equipamento.decrement('total_quantidade', { by: 1 });
+            }
+        } 
+        else if (statusAntigo === 'inativo' && novoStatus !== 'inativo') {
+            const equipamento = await Equipamento.findByPk(unit.id_equipamento);
+            if (equipamento) {
+                await equipamento.increment('total_quantidade', { by: 1 });
+            }
+        }
+
         res.status(200).json(unit);
-    } catch (error) { res.status(500).json({ error: 'Erro interno.' }); }
+    } catch (error) { 
+        console.error("Erro no updateUnitDetails:", error);
+        res.status(500).json({ error: 'Erro interno.' }); 
+    }
 };
 
 const deleteUnit = async (req, res) => {
