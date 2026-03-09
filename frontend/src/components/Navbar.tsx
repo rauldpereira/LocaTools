@@ -35,11 +35,13 @@ const Navbar: React.FC = () => {
                             <li>
                                 <Link to="/my-reservations">Minhas Reservas</Link>
                             </li>
-                            {user?.tipo_usuario === 'admin' && (
+                            
+                            {(user?.tipo_usuario === 'admin' || user?.tipo_usuario === 'funcionario') && (
                                 <li>
-                                    <Link to="/admin">Painel Admin   </Link>
+                                    <Link to="/admin">Painel Interno</Link>
                                 </li>
                             )}
+                            
                             <li>
                                 <Link to="/cart">Carrinho ({totalItems})</Link>
                             </li>

@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { createVistoria, getVistoriasByOrder } = require('../controllers/vistoriaController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 const upload = require('../middlewares/multerConfig');
 
-router.post('/', protect, admin, upload.any(), createVistoria);
+router.post('/', protect, checkPermissao('fazer_vistoria'), upload.any(), createVistoria);
 
 router.get('/order/:orderId', protect, getVistoriasByOrder);
 

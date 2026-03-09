@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const freteController = require('../controllers/freteController');
+const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
-// Cliente chama essa pra saber quanto vai pagar
+// Público
 router.post('/calcular', freteController.calcular);
 
-// Admin chama essas pra definir o preço
-router.get('/config', freteController.obterConfig);
-router.put('/config', freteController.configurar);
+// Protegido
+router.get('/config', protect, checkPermissao('configuracoes'), freteController.obterConfig);
+router.put('/config', protect, checkPermissao('configuracoes'), freteController.configurar);
 
 module.exports = router;

@@ -4,6 +4,7 @@ const { protect } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
+// apenas para usuários logados
 router.post('/process', protect, processPayment);
 
 module.exports = router;

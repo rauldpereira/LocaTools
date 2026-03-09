@@ -17,30 +17,32 @@ const {
     skipReturnInspection,
     finalizarComPendencia,
     recoverDebt, 
-    calcularMultaAtraso          
+    calcularMultaAtraso           
 } = require('../controllers/reservationController');
 
-const { protect, admin } = require('../middlewares/authMiddleware');
-
+const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
 router.post('/', protect, createOrder);
-router.post('/:id/check-reschedule', protect, checkRescheduleAvailability);
 
-router.get('/all', protect, admin, getAllOrders);
 router.get('/my', protect, getMyOrders);
+router.get('/all', protect, checkPermissao('gerenciar_reservas', 'fazer_vistoria'), getAllOrders);
+
 router.get('/contract/:id', protect, generateContract);
 router.get('/:id', protect, getOrderById);
-router.get('/:id/calculate-penalty', protect, admin, calcularMultaAtraso);
-
+router.post('/:id/check-reschedule', protect, checkRescheduleAvailability);
 router.put('/:id/sign', protect, signContract);
 router.put('/:id/cancel', protect, cancelOrder);
-router.put('/:id/confirm-manual-payment', protect, admin, confirmManualPayment);
 router.put('/:id/reschedule', protect, rescheduleOrder);
-router.put('/:id', protect, admin, updateOrderStatus);
-router.put('/:id/skip-inspection', protect, admin, skipReturnInspection);
-router.put('/:id/finish-with-debt', protect, admin, finalizarComPendencia);
-router.put('/:id/recover-debt', protect, admin, recoverDebt);
-
 router.delete('/:id', protect, deleteOrder);
+
+// ROTAS DE OPERAÇÃO
+router.get('/:id/calculate-penalty', protect, checkPermissao('gerenciar_reservas'), calcularMultaAtraso);
+router.put('/:id', protect, checkPermissao('gerenciar_reservas'), updateOrderStatus);
+router.put('/:id/skip-inspection', protect, checkPermissao('gerenciar_reservas'), skipReturnInspection);
+
+// ROTAS FINANCEIRAS
+router.put('/:id/confirm-manual-payment', protect, checkPermissao('ver_financeiro'), confirmManualPayment);
+router.put('/:id/finish-with-debt', protect, checkPermissao('ver_financeiro'), finalizarComPendencia);
+router.put('/:id/recover-debt', protect, checkPermissao('ver_financeiro'), recoverDebt);
 
 module.exports = router;

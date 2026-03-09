@@ -5,7 +5,8 @@ interface UserData {
     id: number;
     nome: string;
     email: string;
-    tipo_usuario: 'cliente' | 'admin' | 'motorista';
+    tipo_usuario: 'cliente' | 'admin' | 'funcionario'; 
+    permissoes?: string[];
 }
 
 interface AuthContextType {
@@ -16,11 +17,12 @@ interface AuthContextType {
     login: (token: string) => Promise<void>;
     logout: () => void;
     updateUser: (newUser: { nome: string; email: string }) => void;
+    hasPermission: (permission: string) => boolean; 
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<UserData | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -32,11 +34,20 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const logout = () => {
         delete axios.defaults.headers.common['Authorization'];
-
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
         setIsLoggedIn(false);
+    };
+
+    const hasPermission = (permission: string): boolean => {
+        if (!user) return false;
+        
+        // Se for admin passa em tudo
+        if (user.tipo_usuario === 'admin') return true;
+        
+        // Se for funcionário, checa se a permissão está na lista
+        return Array.isArray(user.permissoes) && user.permissoes.includes(permission);
     };
 
     useEffect(() => {
@@ -64,13 +75,11 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const login = async (newToken: string) => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-
         localStorage.setItem('token', newToken);
         setToken(newToken);
 
         try {
             const response = await axios.get('http://localhost:3001/api/profile');
-
             setUser(response.data);
             setIsLoggedIn(true);
         } catch (error) {
@@ -87,7 +96,8 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             isLoadingAuth,
             login, 
             logout, 
-            updateUser 
+            updateUser,
+            hasPermission
         }}>
             {children}
         </AuthContext.Provider>

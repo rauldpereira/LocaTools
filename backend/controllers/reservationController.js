@@ -259,9 +259,7 @@ const getMyOrders = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
     try {
-        if (req.user.tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado.' });
-        }
+        
 
         const orders = await OrdemDeServico.findAll({
             include: [{
@@ -294,9 +292,6 @@ const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
 
     try {
-        if (req.user.tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem atualizar o status de ordens de serviço.' });
-        }
 
         const order = await OrdemDeServico.findByPk(id);
 
@@ -417,8 +412,8 @@ const getOrderById = async (req, res) => {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
         }
 
-        if (order.id_usuario !== req.user.id && req.user.tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado.' });
+        if (req.user.tipo_usuario !== 'admin' && req.user.tipo_usuario !== 'funcionario' && order.id_usuario !== req.user.id) {
+             return res.status(403).json({ error: 'Acesso negado.' });
         }
 
         res.status(200).json(order);

@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { getTiposAvariaByEquipment, createTipoAvaria, deleteTipoAvaria, updateTipoAvaria } = require('../controllers/tipoAvariaController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
-router.get('/:equipmentId', protect, admin, getTiposAvariaByEquipment);
-router.post('/', protect, admin, createTipoAvaria);
-router.delete('/:id', protect, admin, deleteTipoAvaria);
-router.put('/:id', protect, admin, updateTipoAvaria);
+
+router.get('/:equipmentId', protect, checkPermissao('gerenciar_estoque'), getTiposAvariaByEquipment);
+router.post('/', protect, checkPermissao('gerenciar_estoque'), createTipoAvaria);
+router.delete('/:id', protect, checkPermissao('gerenciar_estoque'), deleteTipoAvaria);
+router.put('/:id', protect, checkPermissao('gerenciar_estoque'), updateTipoAvaria);
 
 module.exports = router;

@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const prejuizoController = require('../controllers/prejuizoController');
-const { protect, admin } = require('../middlewares/authMiddleware'); 
+const { protect, checkPermissao } = require('../middlewares/authMiddleware'); 
 
-router.post('/', protect, admin, prejuizoController.registrar);
-
-router.get('/', protect, admin, prejuizoController.listar);
+// Acesso restrito ao Financeiro
+router.post('/', protect, checkPermissao('ver_financeiro'), prejuizoController.registrar);
+router.get('/', protect, checkPermissao('ver_financeiro'), prejuizoController.listar);
 
 module.exports = router;

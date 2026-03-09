@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { getHorarios, updateHorarios } = require('../controllers/horariosController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
+// Público
 router.get('/', getHorarios); 
-router.post('/', protect, admin, updateHorarios); 
+
+// Protegido
+router.post('/', protect, checkPermissao('configuracoes'), updateHorarios); 
 
 module.exports = router;

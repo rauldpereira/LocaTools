@@ -1,9 +1,10 @@
 const express = require('express');
 const { Categoria } = require('../models');
-const { protect } = require('../middlewares/authMiddleware');
+const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
+// Público
 router.get('/', async (req, res) => {
     try {
         const categorias = await Categoria.findAll();
@@ -14,12 +15,10 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.post('/', protect, async (req, res) => {
+// Protegido
+router.post('/', protect, checkPermissao('gerenciar_estoque'), async (req, res) => {
     const { nome } = req.body;
     try {
-        if (req.user.tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem criar categorias.' });
-        }
         if (!nome) {
             return res.status(400).json({ error: 'O nome da categoria é obrigatório.' });
         }

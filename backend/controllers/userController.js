@@ -132,10 +132,94 @@ const changePassword = async (req, res) => {
   }
 };
 
+const getTeam = async (req, res) => {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acesso negado.' });
+    }
+
+    const team = await Usuario.findAll({
+      where: {
+        tipo_usuario: ['admin', 'funcionario']
+      },
+      attributes: ['id', 'nome', 'email', 'tipo_usuario', 'permissoes']
+    });
+
+    res.json(team);
+  } catch (error) {
+    console.error('Erro ao buscar equipe:', error);
+    res.status(500).json({ error: 'Erro ao buscar equipe.' });
+  }
+};
+
+// Atualiza as permissões de um funcionário
+const updatePermissions = async (req, res) => {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acesso negado.' });
+    }
+
+    const { id } = req.params;
+    const { permissoes } = req.body;
+
+    const usuario = await Usuario.findByPk(id);
+    if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    usuario.permissoes = permissoes;
+    await usuario.save();
+
+    res.json({ message: 'Permissões atualizadas com sucesso!', usuario });
+  } catch (error) {
+    console.error('Erro ao atualizar permissões:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
+
+const createFuncionario = async (req, res) => {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acesso negado.' });
+    }
+
+    const { nome, email, senha } = req.body;
+
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ error: 'Preencha todos os campos.' });
+    }
+
+    // Checa se o email já tá em uso
+    const userExists = await Usuario.findOne({ where: { email } });
+    if (userExists) {
+      return res.status(400).json({ error: 'Este email já está cadastrado.' });
+    }
+
+    // Criptografa a senha
+    const salt = await bcrypt.genSalt(10);
+    const senha_hash = await bcrypt.hash(senha, salt);
+
+    // Cria o colaborador
+    const novoFuncionario = await Usuario.create({
+      nome,
+      email,
+      senha_hash,
+      tipo_usuario: 'funcionario',
+      permissoes: []
+    });
+
+    res.status(201).json({ message: 'Colaborador criado com sucesso!', usuario: { id: novoFuncionario.id, nome, email } });
+  } catch (error) {
+    console.error('Erro ao criar colaborador:', error);
+    res.status(500).json({ error: 'Erro interno ao criar colaborador.' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getProfile,
   updateProfile,
   changePassword,
+  getTeam,
+  updatePermissions,
+  createFuncionario
 };

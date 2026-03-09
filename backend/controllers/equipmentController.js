@@ -35,9 +35,6 @@ const createEquipment = async (req, res) => {
 
     const urlImagemParaSalvar = JSON.stringify(urls_imagens);
     try {
-        if (req.user.tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem criar equipamentos.' });
-        }
 
         const qtdInicialNum = parseInt(quantidade_inicial);
         if (!nome || !preco_diaria || !id_categoria || isNaN(qtdInicialNum) || qtdInicialNum < 0) {
@@ -241,10 +238,6 @@ const deleteEquipment = async (req, res) => {
     const { id } = req.params;
 
     try {
-        if (req.user.tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem deletar equipamentos.' });
-        }
-
         const equipamento = await Equipamento.findByPk(id);
 
         if (!equipamento) {

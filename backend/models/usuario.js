@@ -30,7 +30,7 @@ module.exports = (sequelize, DataTypes) => {
     },
 
     tipo_usuario: {
-      type: DataTypes.ENUM('cliente', 'admin', 'motorista'),
+      type: DataTypes.ENUM('cliente', 'admin', 'funcionario'),
       defaultValue: 'cliente'
     },
     tipo_pessoa: {
@@ -54,7 +54,12 @@ module.exports = (sequelize, DataTypes) => {
     razao_social: {
       type: DataTypes.STRING,
       allowNull: true
-    }
+    },
+    permissoes: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: []
+    },
   }, {
     sequelize,
     modelName: 'Usuario',

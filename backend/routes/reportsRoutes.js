@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { getFinancialReport, getOperationalReport } = require('../controllers/reportsController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
+// Relatório de dinheiro
+router.get('/financial', protect, checkPermissao('ver_financeiro'), getFinancialReport);
 
-router.get('/financial', protect, admin, getFinancialReport);
-router.get('/operational', protect, admin, getOperationalReport);
+// Relatório de fluxo de loja
+router.get('/operational', protect, checkPermissao('gerenciar_reservas'), getOperationalReport);
 
 module.exports = router;

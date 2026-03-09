@@ -14,21 +14,22 @@ const {
     executeTransplant
 } = require('../controllers/unitController');
 
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
-router.get('/equipment/:id', protect, admin, getUnitsByEquipment);
-router.get('/maintenances/dashboard', protect, admin, getAllMaintenances);
-router.get('/:id/history', protect, admin, getUnitMaintenanceHistory);
-router.get('/:id/conflicts', protect, admin, getConflictsAndAlternatives);
+const permissaoEstoque = checkPermissao('gerenciar_estoque');
 
-router.post('/', protect, admin, addUnitsToEquipment);
-router.delete('/:id', protect, admin, deleteUnit);
-router.put('/:id', protect, admin, updateUnitDetails);
+router.get('/equipment/:id', protect, permissaoEstoque, getUnitsByEquipment);
+router.get('/maintenances/dashboard', protect, permissaoEstoque, getAllMaintenances);
+router.get('/:id/history', protect, permissaoEstoque, getUnitMaintenanceHistory);
+router.get('/:id/conflicts', protect, permissaoEstoque, getConflictsAndAlternatives);
 
-router.post('/reallocate', protect, admin, executeTransplant);
-router.post('/:id_unidade/maintenance', protect, admin, createMaintenance);
+router.post('/', protect, permissaoEstoque, addUnitsToEquipment);
+router.delete('/:id', protect, permissaoEstoque, deleteUnit);
+router.put('/:id', protect, permissaoEstoque, updateUnitDetails);
 
-router.delete('/maintenance/:id', protect, admin, deleteMaintenance);
+router.post('/reallocate', protect, permissaoEstoque, executeTransplant);
+router.post('/:id_unidade/maintenance', protect, permissaoEstoque, createMaintenance);
 
+router.delete('/maintenance/:id', protect, permissaoEstoque, deleteMaintenance);
 
 module.exports = router;

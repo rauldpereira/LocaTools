@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const calendarioController = require('../controllers/calendarioController');
 const mesPublicadoController = require('../controllers/mesPublicadoController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
-
+// Rotas de leitura 
 router.get(
     '/calendario/status-mensal', 
     protect,
@@ -17,31 +17,32 @@ router.get(
     mesPublicadoController.getMesesPublicados
 );
 
+// Rotas de Gerenciamento
 router.post(
     '/calendario/excecao',
     protect,
-    admin, 
+    checkPermissao('configuracoes'), 
     calendarioController.criarOuAtualizarExcecao
 );
 
 router.delete(
     '/calendario/excecao',
     protect, 
-    admin,  
+    checkPermissao('configuracoes'),  
     calendarioController.deletarExcecao
 );
 
 router.post(
     '/calendario/importar-feriados',
     protect, 
-    admin,
+    checkPermissao('configuracoes'), 
     calendarioController.importarFeriados
 );
 
 router.post(
   '/calendario/publicar-mes', 
   protect, 
-  admin,
+  checkPermissao('configuracoes'), 
   mesPublicadoController.publicarMes
 );
 

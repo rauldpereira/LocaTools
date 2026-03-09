@@ -18,7 +18,11 @@ const AdminReservationsList: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<TabKey>('urgentes');
-    const { token } = useAuth();
+    
+    const { token, hasPermission } = useAuth();
+
+    // Atalhos para não repetir código
+    const podeGerenciarReservas = hasPermission('gerenciar_reservas');
 
     const fetchAllOrders = useCallback(async () => {
         if (!token) return;
@@ -47,20 +51,17 @@ const AdminReservationsList: React.FC = () => {
     // --- FILTROS DE CATEGORIA ---
     const ordersToday = orders.filter(o => 
         o.status === 'aprovada' 
-        && parseDateStringAsLocal(o.data_inicio)
-        .setHours(0, 0, 0, 0) === hoje.getTime())
+        && parseDateStringAsLocal(o.data_inicio).setHours(0, 0, 0, 0) === hoje.getTime())
         .sort(sortByDateAsc);
 
     const ordersDelayed = orders.filter(o => 
         o.status === 'aprovada' 
-        && parseDateStringAsLocal(o.data_inicio)
-        .setHours(0, 0, 0, 0) < hoje.getTime())
+        && parseDateStringAsLocal(o.data_inicio).setHours(0, 0, 0, 0) < hoje.getTime())
         .sort(sortByDateAsc);
 
     const ordersFutureScheduled = orders.filter(o => 
         o.status === 'aprovada' 
-        && parseDateStringAsLocal(o.data_inicio)
-        .setHours(0, 0, 0, 0) > hoje.getTime())
+        && parseDateStringAsLocal(o.data_inicio).setHours(0, 0, 0, 0) > hoje.getTime())
         .sort(sortByDateAsc);
 
     const ordersDelayedReturn = orders.filter(o => {
@@ -168,6 +169,7 @@ const AdminReservationsList: React.FC = () => {
 
             {/* MENUS DAS ABAS */}
             <div style={{ display: 'flex', gap: '5px', borderBottom: '3px solid #dee2e6', marginBottom: '30px', overflowX: 'auto', paddingBottom: '2px' }}>
+                {/* Essas abas todos veem (Balcão e Vistoriador) */}
                 <button onClick={() => setActiveTab('urgentes')} style={getTabStyle(activeTab === 'urgentes', true)}>
                     🚨 Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})
                 </button>
@@ -177,12 +179,17 @@ const AdminReservationsList: React.FC = () => {
                 <button onClick={() => setActiveTab('devolucoes')} style={getTabStyle(activeTab === 'devolucoes')}>
                     🔄 Devoluções ({ordersForReturnInspection.length})
                 </button>
-                <button onClick={() => setActiveTab('pendencias')} style={getTabStyle(activeTab === 'pendencias')}>
-                    ✍️ Pendências ({ordersAwaitingSignature.length + ordersAwaitingFinalPayment.length + ordersAbandoned.length})
-                </button>
-                <button onClick={() => setActiveTab('historico')} style={getTabStyle(activeTab === 'historico')}>
-                    ✅ Histórico
-                </button>
+
+                {podeGerenciarReservas && (
+                    <>
+                        <button onClick={() => setActiveTab('pendencias')} style={getTabStyle(activeTab === 'pendencias')}>
+                            ✍️ Pendências ({ordersAwaitingSignature.length + ordersAwaitingFinalPayment.length + ordersAbandoned.length})
+                        </button>
+                        <button onClick={() => setActiveTab('historico')} style={getTabStyle(activeTab === 'historico')}>
+                            ✅ Histórico
+                        </button>
+                    </>
+                )}
             </div>
 
             {/* CONTEÚDO DAS ABAS */}
@@ -199,7 +206,7 @@ const AdminReservationsList: React.FC = () => {
                                 { key: 'tipo_entrega', label: 'Tipo de Entrega' },
                                 { key: 'data_inicio', label: 'Data de Saída' }
                             ],
-                            order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#dc3545', color: 'white', fontWeight: 'bold' }}>Vistoria Atrasada</button></Link>
+                            order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#dc3545', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Vistoria Atrasada</button></Link>
                         )}
 
                         {renderOrderTable(
@@ -212,7 +219,7 @@ const AdminReservationsList: React.FC = () => {
                             ],
                             order => (
                                 <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
-                                    <button style={{ backgroundColor: '#856404', color: 'white', fontWeight: 'bold' }}>
+                                    <button style={{ backgroundColor: '#856404', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
                                         Registrar Retorno com Atraso
                                     </button>
                                 </Link>
@@ -232,7 +239,7 @@ const AdminReservationsList: React.FC = () => {
                                 { key: 'tipo_entrega', label: 'Tipo de Entrega' },
                                 { key: 'data_inicio', label: 'Data de Saída' }
                             ],
-                            order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#007bff', color: 'white' }}>Realizar Vistoria</button></Link>
+                            order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#007bff', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Realizar Vistoria</button></Link>
                         )}
                         {renderOrderTable(
                             "Reservas Agendadas",
@@ -242,7 +249,7 @@ const AdminReservationsList: React.FC = () => {
                                 { key: 'tipo_entrega', label: 'Tipo de Entrega' },
                                 { key: 'data_inicio', label: 'Data de Saída' }
                             ],
-                            () => <button disabled style={{ backgroundColor: '#e9ecef', color: '#6c757d', border: '1px solid #ced4da', cursor: 'not-allowed' }}>Aguardando Data</button>
+                            () => <button disabled style={{ backgroundColor: '#e9ecef', color: '#6c757d', border: '1px solid #ced4da', cursor: 'not-allowed', padding: '8px', borderRadius: '4px' }}>Aguardando Data</button>
                         )}
                     </>
                 )}
@@ -252,37 +259,41 @@ const AdminReservationsList: React.FC = () => {
                     <>
                         {renderOrderTable("Equipamentos em Locação (Aguardando Devolução)", ordersForReturnInspection, [{ key: 'id', label: 'Pedido ID' }, { key: 'tipo_entrega', label: 'Tipo de Entrega' }, { key: 'data_fim', label: 'Data de Devolução' }], order => (
                             <div style={{ display: 'flex', gap: '5px' }}>
-                                <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}><button style={{ backgroundColor: '#ffc107', color: '#212529', fontWeight: 'bold' }}>Vistoria de Retorno</button></Link>
-                                <button onClick={() => handleSkipInspection(order.id)} style={{ backgroundColor: '#28a745', color: 'white' }}>Devolução Rápida (OK)</button>
+                                <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}><button style={{ backgroundColor: '#ffc107', color: '#212529', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Vistoria de Retorno</button></Link>
+                                
+                                {/* O botão de devolução rápida (que pula a vistoria) só fica disponível pra quem tem poder de Balcão/Gerência */}
+                                {podeGerenciarReservas && (
+                                    <button onClick={() => handleSkipInspection(order.id)} style={{ backgroundColor: '#28a745', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Devolução Rápida (OK)</button>
+                                )}
                             </div>
                         ))}
                     </>
                 )}
 
                 {/* ABA: PENDÊNCIAS */}
-                {activeTab === 'pendencias' && (
+                {podeGerenciarReservas && activeTab === 'pendencias' && (
                     <>
-                        {renderOrderTable("Aguardando Assinatura do Contrato", ordersAwaitingSignature, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#17a2b8', color: 'white' }}>Ver Contrato</button></Link>)}
-                        {renderOrderTable("Reservas Aguardando Pagamento Final", ordersAwaitingFinalPayment, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/admin/finalize-payment/${order.id}`}><button style={{ backgroundColor: '#28a745', color: 'white', fontWeight: 'bold' }}>Finalizar e Cobrar</button></Link>)}
-                        {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)", ordersAbandoned, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold' }}>Resgatar Venda</button></Link>)}
+                        {renderOrderTable("Aguardando Assinatura do Contrato", ordersAwaitingSignature, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#17a2b8', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ver Contrato</button></Link>)}
+                        {renderOrderTable("Reservas Aguardando Pagamento Final", ordersAwaitingFinalPayment, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/admin/finalize-payment/${order.id}`}><button style={{ backgroundColor: '#28a745', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Finalizar e Cobrar</button></Link>)}
+                        {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)", ordersAbandoned, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Resgatar Venda</button></Link>)}
                     </>
                 )}
 
-                {/* ABA: HISTÓRICO */}
-                {activeTab === 'historico' && (
+                {/* ABA: HISTÓRICO*/}
+                {podeGerenciarReservas && activeTab === 'historico' && (
                     <>
                         {renderOrderTable(
                             "Histórico de Pedidos Finalizados", 
                             finalizedOrders, 
                             [{ key: 'id', label: 'Pedido ID' }, { key: 'data_fim', label: 'Data de Finalização' }], 
-                            order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white', color: '#333', fontWeight: 'bold' }}>Ver Completo</button></Link>
+                            order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white', color: '#333', fontWeight: 'bold', padding: '8px', borderRadius: '4px', cursor: 'pointer' }}>Ver Completo</button></Link>
                         )}
                         
                         {renderOrderTable(
                             "Histórico de Pedidos Cancelados", 
                             cancelledOrders, 
                             [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], 
-                            order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white', color: '#333', fontWeight: 'bold' }}>Ver Motivo</button></Link>
+                            order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white', color: '#333', fontWeight: 'bold', padding: '8px', borderRadius: '4px', cursor: 'pointer' }}>Ver Motivo</button></Link>
                         )}
                     </>
                 )}
