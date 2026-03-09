@@ -38,6 +38,7 @@ function App() {
                 <Route path="equipment/:id" element={<EquipmentDetailsPage />} />
                 <Route path="cart" element={<CartPage />} />
                 <Route path="payment/:orderId" element={<PaymentPage />} />
+                <Route path="/payment-multi" element={<PaymentPage />} />
                 <Route path="my-reservations" element={<MyReservationsPage />} />
                 <Route path="payment/success/:orderId" element={<PaymentSuccessPage />} />
                 <Route path="my-reservations/:orderId" element={<ReservationDetailsPage />} />

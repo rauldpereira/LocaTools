@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -79,11 +79,10 @@ const formatarCNPJ = (v: string) => {
     return v.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2');
 };
 
-const CheckoutForm = ({ usuario }: { usuario: UsuarioDaOrdem }) => {
+const CheckoutForm = ({ usuario, orderIdsList }: { usuario: UsuarioDaOrdem, orderIdsList: number[] }) => {
     const stripe = useStripe();
     const elements = useElements();
     const navigate = useNavigate();
-    const { orderId } = useParams<{ orderId: string }>();
     const { token: authToken } = useAuth();
     
     const [error, setError] = useState<string | null>(null);
@@ -96,11 +95,9 @@ const CheckoutForm = ({ usuario }: { usuario: UsuarioDaOrdem }) => {
     useEffect(() => {
         if (usuario) {
             if (usuario.tipo_pessoa === 'juridica' && usuario.cnpj) {
-                setTipoDoc('cnpj');
-                setDocumento(formatarCNPJ(usuario.cnpj));
+                setTipoDoc('cnpj'); setDocumento(formatarCNPJ(usuario.cnpj));
             } else if (usuario.cpf) {
-                setTipoDoc('cpf');
-                setDocumento(formatarCPF(usuario.cpf));
+                setTipoDoc('cpf'); setDocumento(formatarCPF(usuario.cpf));
             }
         }
     }, [usuario]);
@@ -123,14 +120,9 @@ const CheckoutForm = ({ usuario }: { usuario: UsuarioDaOrdem }) => {
         setProcessing(true);
         setError(null);
 
-        if (!nomeCartao.trim()) {
-            setError('Por favor, digite o nome impresso no cartão.');
-            setProcessing(false);
-            return;
-        }
-
+        if (!nomeCartao.trim()) { setError('Por favor, digite o nome impresso no cartão.'); setProcessing(false); return; }
         const docLimpo = documento.replace(/\D/g, '');
-        
+
         if (tipoDoc === 'cpf' && !isCPFValido(docLimpo)) {
             setError('Por favor, preencha um CPF válido.');
             setProcessing(false);
@@ -142,40 +134,26 @@ const CheckoutForm = ({ usuario }: { usuario: UsuarioDaOrdem }) => {
             setProcessing(false);
             return;
         }
-
-        if (!stripe || !elements || !authToken) {
-            setError('Ocorreu um erro ao carregar o pagamento.');
-            setProcessing(false);
-            return;
-        }
+        
+        if (!stripe || !elements || !authToken) { setError('Erro ao carregar o pagamento.'); setProcessing(false); return; }
 
         const cardElement = elements.getElement(CardElement);
-        if (!cardElement) {
-            setError('Elemento do cartão não encontrado.');
-            setProcessing(false);
-            return;
-        }
+        if (!cardElement) { setError('Elemento do cartão não encontrado.'); setProcessing(false); return; }
 
-        const { error: stripeError, token: stripeToken } = await stripe.createToken(cardElement, {
-            name: nomeCartao, 
-        });
+        const { error: stripeError, token: stripeToken } = await stripe.createToken(cardElement, { name: nomeCartao });
 
-        if (stripeError) {
-            setError(stripeError.message || 'Ocorreu um erro ao validar o cartão.');
-            setProcessing(false);
-            return;
-        }
+        if (stripeError) { setError(stripeError.message || 'Erro ao validar o cartão.'); setProcessing(false); return; }
 
         if (stripeToken) {
             try {
                 const config = { headers: { Authorization: `Bearer ${authToken}` } };
                 await axios.post('http://localhost:3001/api/payments/process', {
-                    orderId: orderId,
+                    orderIds: orderIdsList, 
                     token: stripeToken.id,
                     cpfCnpj: docLimpo 
                 }, config);
 
-                navigate(`/payment/success/${orderId}`);
+                navigate(`/payment/success/${orderIdsList.join(',')}`);
             } catch (err: any) {
                 setError(err.response?.data?.error || 'Falha ao processar o pagamento no servidor.');
                 setProcessing(false);
@@ -184,23 +162,13 @@ const CheckoutForm = ({ usuario }: { usuario: UsuarioDaOrdem }) => {
     };
 
     const cardElementOptions = {
-        style: {
-            base: {
-                color: '#000', 
-                fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
-                fontSmoothing: 'antialiased',
-                fontSize: '16px',
-                '::placeholder': { color: '#888' },
-            },
-            invalid: { color: '#fa755a', iconColor: '#fa755a' },
-        },
+        style: { base: { color: '#000', fontSize: '16px', '::placeholder': { color: '#888' } }, invalid: { color: '#fa755a' } },
         hidePostalCode: true,
     };
 
     return (
         <form onSubmit={handleSubmit}>
             <h3 style={{ marginBottom: '20px', color: '#000' }}>Dados do Pagamento</h3>
-
             <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', color: '#000', fontWeight: 600 }}>
                     Nome impresso no Cartão
@@ -271,129 +239,105 @@ const CheckoutForm = ({ usuario }: { usuario: UsuarioDaOrdem }) => {
                 </div>
             </div>
             
-            {error && (
-                <div style={{ 
-                    color: '#721c24', backgroundColor: '#f8d7da', 
-                    padding: '10px', borderRadius: '5px', marginTop: '15px', fontSize: '0.9rem', fontWeight: 'bold'
-                }}>
-                    ⚠️ {error}
-                </div>
-            )}
+            {error && <div style={{ color: '#721c24', backgroundColor: '#f8d7da', padding: '10px', borderRadius: '5px', marginTop: '15px', fontWeight: 'bold' }}>⚠️ {error}</div>}
             
-            <button
-                disabled={!stripe || processing}
-                type="submit"
-                style={{ 
-                    marginTop: '20px', width: '100%', padding: '15px', 
-                    fontSize: '18px', cursor: 'pointer', 
-                    backgroundColor: processing ? '#ccc' : '#28a745', 
-                    color: 'white', border: 'none', borderRadius: '8px',
-                    fontWeight: 'bold', transition: '0.3s'
-                }}
-            >
+            <button disabled={!stripe || processing} type="submit" style={{ marginTop: '20px', width: '100%', padding: '15px', fontSize: '18px', cursor: 'pointer', backgroundColor: processing ? '#ccc' : '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
                 {processing ? 'Processando...' : 'Pagar Agora'}
             </button>
         </form>
     );
-};
+}; 
 
 const PaymentPage: React.FC = () => {
-    const { orderId } = useParams<{ orderId: string }>();
-    const [order, setOrder] = useState<OrderDetails | null>(null);
+    const { orderId } = useParams<{ orderId: string }>(); 
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const queryIds = searchParams.get('ids'); 
+    
+    const [orders, setOrders] = useState<OrderDetails[]>([]);
     const [loading, setLoading] = useState(true);
     const { token } = useAuth();
     const navigate = useNavigate();
 
+    const rawIds = queryIds || orderId || '';
+    const idList = rawIds.split(',').filter(Boolean).map(Number);
+
     useEffect(() => {
-        if (!orderId || !token) return;
-        const fetchOrder = async () => {
+        if (idList.length === 0 || !token) return;
+
+        const fetchOrders = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const { data } = await axios.get(`http://localhost:3001/api/reservations/${orderId}`, config);
-                setOrder(data);
+                const fetchedOrders = await Promise.all(
+                    idList.map(id => axios.get(`http://localhost:3001/api/reservations/${id}`, config).then(res => res.data))
+                );
+                setOrders(fetchedOrders);
             } catch (error) {
                 console.error("Erro:", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchOrder();
-
-        const interval = setInterval(() => {
-            fetchOrder();
-        }, 10000); 
-
-        return () => clearInterval(interval);
-
-    }, [orderId, token]);
+        fetchOrders();
+    }, [rawIds, token]);
 
     if (loading) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Carregando...</div>;
-    if (!order) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Pedido não encontrado.</div>;
-
-    if (order.status === 'cancelada') {
+    if (orders.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Pedidos não encontrados.</div>;
+    
+    if (orders.some(o => o.status === 'cancelada')) {
         return (
-            <div style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '4rem', marginBottom: '10px' }}>⏱️</div>
-                <h2 style={{ color: '#c62828', marginTop: 0 }}>Tempo Esgotado!</h2>
-                <p style={{ fontSize: '1.1rem', color: '#555', marginBottom: '30px' }}>
-                    O prazo para pagamento expirou e sua reserva foi cancelada. Os equipamentos foram liberados para outros clientes.
-                </p>
-                <button 
-                    onClick={() => navigate('/')} 
-                    style={{ padding: '15px 30px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', transition: '0.3s' }}
-                >
-                    Fazer Nova Reserva
-                </button>
+            <div style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px' }}>
+                <h2 style={{ color: '#c62828' }}>Tempo Esgotado!</h2>
+                <p>Uma ou mais reservas foram canceladas.</p>
+                <button onClick={() => navigate('/')} style={{ padding: '15px 30px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '8px' }}>Fazer Nova Reserva</button>
             </div>
         );
     }
 
-    const subtotal = Number(order.valor_total) - Number(order.custo_frete);
+    const totalGeral = orders.reduce((acc, curr) => acc + Number(curr.valor_total), 0);
+    const totalFrete = orders.reduce((acc, curr) => acc + Number(curr.custo_frete), 0);
+    const totalSubtotal = totalGeral - totalFrete;
+    const totalSinal = orders.reduce((acc, curr) => acc + Number(curr.valor_sinal), 0);
 
-    let horaLimiteFormatada = '';
-    if (order.createdAt) {
-        const dataCriacao = new Date(order.createdAt);
-        const tempoLimite = new Date(dataCriacao.getTime() + 60 * 60 * 1000);
-        horaLimiteFormatada = tempoLimite.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    }
+    const isEntrega = orders[0]?.tipo_entrega === 'entrega';
+    const hasMultiple = idList.length > 1;
+    
+    const textoLogistica = isEntrega 
+        ? (hasMultiple ? 'Entregas' : 'Entrega') 
+        : (hasMultiple ? 'Retiradas na Loja' : 'Retirada na Loja');
 
     return (
         <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
             
-            {/* AVISO DE TEMPO LIMITE */}
-            {horaLimiteFormatada && (
-                <div style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ffeeba', textAlign: 'center' }}>
-                    <h4 style={{ margin: '0 0 5px 0' }}>⚠️ Pagamento Pendente</h4>
-                    <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#d32f2f' }}>
-                        ⏳ Realize o pagamento até as {horaLimiteFormatada} ou o pedido será cancelado.
-                    </p>
-                </div>
-            )}
-
             <div className="order-summary" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#000' }}>
-                <h4 style={{marginTop: 0, color: '#000', fontSize: '1.2rem'}}>Resumo do Pedido #{orderId}</h4>
+                <h4 style={{marginTop: 0, color: '#000', fontSize: '1.2rem'}}>
+                    Resumo do Pedido <small>({idList.length} {textoLogistica})</small>
+                </h4>
+                
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
                     <span style={{fontWeight: 500}}>Itens:</span>
-                    <span style={{fontWeight: 500}}>R$ {subtotal.toFixed(2)}</span>
+                    <span style={{fontWeight: 500}}>R$ {totalSubtotal.toFixed(2)}</span>
                 </div>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
-                    <span style={{fontWeight: 500}}>Entrega:</span>
-                    <span style={{fontWeight: 500}}>{order.tipo_entrega === 'retirada' ? 'Retirada' : (Number(order.custo_frete) > 0 ? `R$ ${Number(order.custo_frete).toFixed(2)}` : 'Grátis')}</span>
+                    <span style={{fontWeight: 500}}>{textoLogistica}:</span>
+                    <span style={{fontWeight: 500}}>{totalFrete > 0 ? `R$ ${totalFrete.toFixed(2)}` : 'Grátis'}</span>
                 </div>
+                
                 <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
+                
                 <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 'bold', color: '#000'}}>
-                    <span>Total:</span>
-                    <span>R$ {Number(order.valor_total).toFixed(2)}</span>
+                    <span>Total dos Contratos:</span>
+                    <span>R$ {totalGeral.toFixed(2)}</span>
                 </div>
                 
                 <div style={{marginTop: '15px', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '8px', color: '#000', textAlign: 'center', border: '1px solid #c8e6c9'}}>
-                    <small style={{display: 'block', marginBottom: '5px', fontWeight: 600}}>Sinal para reservar (50%)</small>
-                    <span style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#000'}}>R$ {Number(order.valor_sinal).toFixed(2)}</span>
+                    <small style={{display: 'block', marginBottom: '5px', fontWeight: 600}}>Sinal para reservar o Lote (50%)</small>
+                    <span style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#000'}}>R$ {totalSinal.toFixed(2)}</span>
                 </div>
             </div>
             
-            <div className="payment-form" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <CheckoutForm usuario={order.Usuario} />
+            <div className="payment-form" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', backgroundColor: '#fff' }}>
+                <CheckoutForm usuario={orders[0].Usuario} orderIdsList={idList} />
             </div>
         </div>
     );

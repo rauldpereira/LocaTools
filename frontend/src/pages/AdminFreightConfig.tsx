@@ -187,7 +187,7 @@ const AdminFreightConfig: React.FC = () => {
     return (
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <h2 style={{ marginBottom: '20px', color: '#2c3e50', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
-                Configuração de Frete e Logística
+                Configuração de Frete e Tipo de Entrega
             </h2>
 
             {message && (

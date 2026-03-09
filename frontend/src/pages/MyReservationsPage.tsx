@@ -21,7 +21,7 @@ const MyReservationsPage: React.FC = () => {
     const [message, setMessage] = useState('');
 
     const [searchTerm, setSearchTerm] = useState('');
-    const [sortBy, setSortBy] = useState('date_asc'); 
+    const [sortBy, setSortBy] = useState('id_desc'); 
 
     const cancellableStatuses = ['aprovada', 'aguardando_assinatura'];
 
@@ -109,7 +109,7 @@ const MyReservationsPage: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
                 <h1 style={{ margin: 0 }}>Minhas Reservas</h1>
                 
-                {/* 👇 BARRA DE CONTROLES (Busca e Ordenação) 👇 */}
+                {/* BARRA DE CONTROLES */}
                 {orders.length > 0 && (
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <input 

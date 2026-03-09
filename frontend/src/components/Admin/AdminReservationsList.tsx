@@ -196,7 +196,7 @@ const AdminReservationsList: React.FC = () => {
                             ordersDelayed,
                             [
                                 { key: 'id', label: 'Pedido ID' },
-                                { key: 'tipo_entrega', label: 'Logística' },
+                                { key: 'tipo_entrega', label: 'Tipo de Entrega' },
                                 { key: 'data_inicio', label: 'Data de Saída' }
                             ],
                             order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#dc3545', color: 'white', fontWeight: 'bold' }}>Vistoria Atrasada</button></Link>
@@ -207,7 +207,7 @@ const AdminReservationsList: React.FC = () => {
                             ordersDelayedReturn,
                             [
                                 { key: 'id', label: 'Pedido ID' },
-                                { key: 'tipo_entrega', label: 'Logística' },
+                                { key: 'tipo_entrega', label: 'Tipo de Entrega' },
                                 { key: 'data_fim', label: 'Data de Devolução Original' }
                             ],
                             order => (
@@ -229,7 +229,7 @@ const AdminReservationsList: React.FC = () => {
                             ordersToday,
                             [
                                 { key: 'id', label: 'Pedido ID' },
-                                { key: 'tipo_entrega', label: 'Logística' },
+                                { key: 'tipo_entrega', label: 'Tipo de Entrega' },
                                 { key: 'data_inicio', label: 'Data de Saída' }
                             ],
                             order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#007bff', color: 'white' }}>Realizar Vistoria</button></Link>
@@ -239,7 +239,7 @@ const AdminReservationsList: React.FC = () => {
                             ordersFutureScheduled,
                             [
                                 { key: 'id', label: 'Pedido ID' },
-                                { key: 'tipo_entrega', label: 'Logística' },
+                                { key: 'tipo_entrega', label: 'Tipo de Entrega' },
                                 { key: 'data_inicio', label: 'Data de Saída' }
                             ],
                             () => <button disabled style={{ backgroundColor: '#e9ecef', color: '#6c757d', border: '1px solid #ced4da', cursor: 'not-allowed' }}>Aguardando Data</button>
@@ -250,7 +250,7 @@ const AdminReservationsList: React.FC = () => {
                 {/* ABA: DEVOLUÇÕES */}
                 {activeTab === 'devolucoes' && (
                     <>
-                        {renderOrderTable("Equipamentos em Locação (Aguardando Devolução)", ordersForReturnInspection, [{ key: 'id', label: 'Pedido ID' }, { key: 'tipo_entrega', label: 'Logística' }, { key: 'data_fim', label: 'Data de Devolução' }], order => (
+                        {renderOrderTable("Equipamentos em Locação (Aguardando Devolução)", ordersForReturnInspection, [{ key: 'id', label: 'Pedido ID' }, { key: 'tipo_entrega', label: 'Tipo de Entrega' }, { key: 'data_fim', label: 'Data de Devolução' }], order => (
                             <div style={{ display: 'flex', gap: '5px' }}>
                                 <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}><button style={{ backgroundColor: '#ffc107', color: '#212529', fontWeight: 'bold' }}>Vistoria de Retorno</button></Link>
                                 <button onClick={() => handleSkipInspection(order.id)} style={{ backgroundColor: '#28a745', color: 'white' }}>Devolução Rápida (OK)</button>
