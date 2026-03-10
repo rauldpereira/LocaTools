@@ -5,9 +5,9 @@ const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
 // Público
 router.post('/calcular', freteController.calcular);
+router.get('/config', freteController.obterConfig); 
 
-// Protegido
-router.get('/config', protect, checkPermissao('configuracoes'), freteController.obterConfig);
+// Protegido 
 router.put('/config', protect, checkPermissao('configuracoes'), freteController.configurar);
 
 module.exports = router;

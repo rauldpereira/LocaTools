@@ -30,8 +30,8 @@ const CartPage: React.FC = () => {
         rua: '',
         numero: '',
         bairro: '',
-        cidade: 'Pindamonhangaba',
-        estado: 'SP'
+        cidade: '',
+        estado: ''
     });
 
     // Conta quantas datas diferentes existem no carrinho
@@ -46,11 +46,14 @@ const CartPage: React.FC = () => {
         return acc;
     }, {} as Record<string, typeof cartItems>);
 
-    // BUSCA O  ENDEREÇO DA LOJA 
+    // BUSCA O ENDEREÇO DA LOJA 
     useEffect(() => {
         const fetchLojaConfig = async () => {
             try {
-                const response = await axios.get('http://localhost:3001/api/frete/config');
+                const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+                
+                const response = await axios.get('http://localhost:3001/api/frete/config', config);
+                
                 if (response.data && response.data.endereco_origem) {
                     setLojaAddress("Nosso endereço: " + response.data.endereco_origem);
                 } else {
@@ -62,7 +65,7 @@ const CartPage: React.FC = () => {
             }
         };
         fetchLojaConfig();
-    }, []);
+    }, [token]); 
 
     // Reseta o frete se mudar para retirada
     useEffect(() => {
@@ -240,28 +243,68 @@ const CartPage: React.FC = () => {
                             <h3>Opção de Entrega / Retirada</h3>
 
                             {/* RETIRADA */}
-                            <div style={{ marginBottom: '10px' }}>
-                                <input
-                                    type="radio" id="retirada" name="delivery"
-                                    value="retirada"
-                                    checked={deliveryType === 'retirada'}
-                                    onChange={() => setDeliveryType('retirada')}
-                                />
-                                <label htmlFor="retirada" style={{ marginLeft: '8px', fontWeight: 'bold' }}>Retirar na Loja</label>
-                                <p style={{ fontSize: '0.9em', color: '#666', margin: '5px 0 0 25px' }}>
-                                    {lojaAddress}
-                                </p>
+                            <div style={{ 
+                                marginBottom: '15px', 
+                                border: deliveryType === 'retirada' ? '2px solid #007bff' : '1px solid #ccc',
+                                borderRadius: '8px',
+                                padding: '15px',
+                                backgroundColor: deliveryType === 'retirada' ? '#f0f7ff' : '#fff',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease-in-out'
+                            }} onClick={() => setDeliveryType('retirada')}>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <input
+                                        type="radio" id="retirada" name="delivery"
+                                        value="retirada"
+                                        checked={deliveryType === 'retirada'}
+                                        onChange={() => setDeliveryType('retirada')}
+                                        style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
+                                    />
+                                    <label htmlFor="retirada" style={{ marginLeft: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', color: '#333' }}>
+                                        🏪 Retirar na Loja
+                                    </label>
+                                </div>
+                                
+                                {/* CAIXA DE ENDEREÇO  */}
+                                {deliveryType === 'retirada' && (
+                                    <div style={{ 
+                                        marginTop: '12px', 
+                                        marginLeft: '25px', 
+                                        padding: '12px', 
+                                        backgroundColor: '#e6f2ff', 
+                                        borderRadius: '6px',
+                                        borderLeft: '4px solid #007bff'
+                                    }}>
+                                        <p style={{ margin: 0, color: '#0056b3', fontWeight: '600', fontSize: '0.9rem' }}>ENDEREÇO PARA RETIRADA:</p>
+                                        <p style={{ margin: '5px 0 0 0', color: '#333', fontSize: '0.95rem', lineHeight: '1.4' }}>
+                                            {lojaAddress.replace('Nosso endereço: ', '')} 
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* ENTREGA */}
-                            <div>
-                                <input
-                                    type="radio" id="entrega" name="delivery"
-                                    value="entrega"
-                                    checked={deliveryType === 'entrega'}
-                                    onChange={() => setDeliveryType('entrega')}
-                                />
-                                <label htmlFor="entrega" style={{ marginLeft: '8px', fontWeight: 'bold' }}>Entrega no Local</label>
+                            <div style={{ 
+                                marginBottom: '10px', 
+                                border: deliveryType === 'entrega' ? '2px solid #28a745' : '1px solid #ccc',
+                                borderRadius: '8px',
+                                padding: '15px',
+                                backgroundColor: deliveryType === 'entrega' ? '#f2fdf5' : '#fff',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease-in-out'
+                            }} onClick={() => setDeliveryType('entrega')}>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <input
+                                        type="radio" id="entrega" name="delivery"
+                                        value="entrega"
+                                        checked={deliveryType === 'entrega'}
+                                        onChange={() => setDeliveryType('entrega')}
+                                        style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
+                                    />
+                                    <label htmlFor="entrega" style={{ marginLeft: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', color: '#333' }}>
+                                        🚚 Entrega no Local
+                                    </label>
+                                </div>
                             </div>
 
                             {/* FORMULÁRIO DE ENTREGA */}
