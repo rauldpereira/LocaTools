@@ -175,20 +175,28 @@ const UnitItem: React.FC<{
         const cleanEnd = String(res.data_fim).substring(0, 10);
         const rStart = new Date(cleanStart + "T12:00:00").getTime();
         const rEnd = new Date(cleanEnd + "T12:00:00").getTime();
+        
+        if (res.status !== 'manutencao' && res.OrdemDeServico) {
+            const statusAtivos = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'];
+            if (!statusAtivos.includes(res.OrdemDeServico.status)) return false; 
+        }
+
         return todayTime >= rStart && todayTime <= rEnd;
       });
 
       if (activeRes) {
-        if (activeRes.status === 'manutencao') {
-          realStatus = 'manutencao';
-        } else if (activeRes.OrdemDeServico) {
-          const statusIntocaveis = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'];
-          if (statusIntocaveis.includes(activeRes.OrdemDeServico.status)) {
-            realStatus = 'alugado';
-          }
+        realStatus = activeRes.status === 'manutencao' ? 'manutencao' : 'alugado';
+      } else {
+        if (unit.status !== 'inativo') {
+            realStatus = 'disponivel';
         }
       }
+    } else {
+      if (unit.status !== 'inativo') {
+          realStatus = 'disponivel';
+      }
     }
+    
     setStatus(realStatus);
   }, [unit]);
 
@@ -348,9 +356,18 @@ const UnitItem: React.FC<{
             <strong style={{ marginBottom: '10px', color: '#007bff' }}>Selecione datas para Bloquear (Manutenção):</strong>
             <UnitCalendar
               unitId={unit.id}
-              reservations={unit.ItensReserva || []}
               token={token}
               onUpdate={onUpdate}
+              
+              reservations={(unit.ItensReserva || []).filter(res => {
+                  if (res.status === 'manutencao') return true; 
+                  
+                  if (res.OrdemDeServico) {
+                      const statusAtivos = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'];
+                      return statusAtivos.includes(res.OrdemDeServico.status);
+                  }
+                  return false;
+              })}
             />
           </div>
         )}
