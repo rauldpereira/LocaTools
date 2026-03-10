@@ -964,18 +964,19 @@ const calcularMultaAtraso = async (req, res) => {
 
         if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
 
-        const dataPrevista = new Date(order.data_fim);
-        const dataHoje = new Date();
 
-        dataPrevista.setHours(0, 0, 0, 0);
-        dataHoje.setHours(0, 0, 0, 0);
+        const dataFimStr = order.data_fim.split('T')[0]; 
+        const dataPrevista = new Date(dataFimStr + "T12:00:00"); 
+        
+        const dataHoje = new Date();
+        dataHoje.setHours(12, 0, 0, 0);
 
         if (dataHoje <= dataPrevista) {
             return res.json({ diasAtraso: 0, valorMulta: 0 });
         }
 
-        const diffTime = Math.abs(dataHoje - dataPrevista);
-        const diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffTime = Math.abs(dataHoje.getTime() - dataPrevista.getTime());
+        const diasAtraso = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
         let valorDiariaTotal = 0;
         order.ItemReservas.forEach(item => {
@@ -985,7 +986,6 @@ const calcularMultaAtraso = async (req, res) => {
         });
 
         const MULTIPLICADOR_PENALIDADE = 2;
-
         const valorMulta = diasAtraso * valorDiariaTotal * MULTIPLICADOR_PENALIDADE;
 
         res.json({
