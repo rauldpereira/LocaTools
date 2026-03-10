@@ -583,46 +583,58 @@ const confirmManualPayment = async (req, res) => {
 
     try {
         const order = await OrdemDeServico.findByPk(req.params.id);
+
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
         }
 
-        const statusPermitidos = ['aguardando_pagamento_final', 'PREJUIZO'];
+        const statusPermitidos = ['aguardando_pagamento_final', 'PREJUIZO', 'em_andamento'];
 
         if (!statusPermitidos.includes(order.status)) {
-            return res.status(400).json({
-                error: `Status inválido para finalizar: ${order.status}. Esperado: aguardando_pagamento_final ou PREJUIZO.`
-            });
+            return res.status(400).json({ error: `Status inválido para finalizar: ${order.status}.` });
         }
 
-        // Converte os valores recebidos
+        // 🚀 RADAR BLINDADO: Fazemos uma contagem DIRETA na tabela de Prejuízos.
+        // Ele vai olhar: "Quantos Prejuízos abertos existem atrelados aos itens desta OS?"
+        const qtdeBoAberto = await Prejuizo.count({
+            where: { resolvido: false },
+            include: [{
+                model: ItemReserva,
+                as: 'itemReserva',
+                where: { id_ordem_servico: order.id },
+                required: true // Só conta se o B.O for desta OS
+            }]
+        });
+
+        // Se a contagem for maior que 0, a OS CAI NA MALHA FINA (Status PREJUIZO)
+        const statusFinal = qtdeBoAberto > 0 ? 'PREJUIZO' : 'finalizada';
+
         const taxaAvariaVal = Number(damageFee) || 0;
         const taxaAtrasoVal = Number(lateFee) || 0;
 
-        // Atualiza o pedido com os status e taxas
+        // Atualiza a OS com o veredito final
         await order.update({
-            status: 'finalizada',
+            status: statusFinal,
             taxa_avaria: taxaAvariaVal,
-            taxa_atraso: taxaAtrasoVal // Salva a multa no histórico do pedido
+            taxa_atraso: taxaAtrasoVal 
         });
 
-        // Calcula o valor base que faltava do aluguel
         const valorRestanteAluguel = Number(order.valor_total) - Number(order.valor_sinal);
-
-        // Soma TUDO para o pagamento (Aluguel + Avarias/B.O. + Multa Atraso)
         const valorTotalCobrado = valorRestanteAluguel + taxaAvariaVal + taxaAtrasoVal;
 
-        await Pagamento.create({
-            id_ordem_servico: order.id,
-            valor: valorTotalCobrado,
-            status_pagamento: 'aprovado',
-            id_transacao_externa: `manual_${req.user.id}_${Date.now()}`
-        });
+        if (valorTotalCobrado > 0) {
+            await Pagamento.create({
+                id_ordem_servico: order.id,
+                valor: valorTotalCobrado,
+                status_pagamento: 'aprovado',
+                id_transacao_externa: `manual_${req.user.id}_${Date.now()}`
+            });
+        }
 
-        res.status(200).json({ message: 'Pagamento manual confirmado e ordem finalizada.' });
+        res.status(200).json({ message: 'Pagamento confirmado!', statusFinal });
     } catch (error) {
         console.error('Erro ao confirmar pagamento manual:', error);
-        res.status(500).json({ error: 'Erro interno do servidor.' });
+        res.status(500).json({ error: 'Erro interno.' });
     }
 };
 
@@ -856,7 +868,7 @@ const finalizarComPendencia = async (req, res) => {
         }
 
         await order.update({
-            status: 'finalizada',
+            status: 'PREJUIZO', 
         });
 
         res.status(200).json({ message: 'Ordem encerrada com pendências financeiras.' });

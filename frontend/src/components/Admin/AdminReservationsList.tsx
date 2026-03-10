@@ -12,7 +12,7 @@ interface Order {
     tipo_entrega?: string;
 }
 
-type TabKey = 'urgentes' | 'saidas' | 'devolucoes' | 'pendencias' | 'historico';
+type TabKey = 'urgentes' | 'saidas' | 'devolucoes' | 'pendencias' | 'historico' | 'inadimplentes';
 
 const AdminReservationsList: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -75,7 +75,8 @@ const AdminReservationsList: React.FC = () => {
     const ordersForReturnInspection = orders.filter(o => o.status === 'em_andamento').sort(sortByDateAsc);
     const ordersAwaitingFinalPayment = orders.filter(o => o.status === 'aguardando_pagamento_final').sort(sortByIdDesc);
     const ordersAbandoned = orders.filter(o => o.status === 'pendente').sort(sortByIdDesc);
-    const finalizedOrders = orders.filter(o => o.status === 'finalizada' || o.status === 'PREJUIZO').sort(sortByIdDesc);
+    const ordersEmPrejuizo = orders.filter(o => o.status === 'PREJUIZO').sort(sortByIdDesc);
+    const finalizedOrders = orders.filter(o => o.status === 'finalizada').sort(sortByIdDesc);
     const cancelledOrders = orders.filter(o => o.status === 'cancelada').sort(sortByIdDesc);
 
     if (loading) return <p style={{ textAlign: 'center', padding: '20px', fontSize: '1.2rem' }}>A carregar reservas...</p>;
@@ -173,6 +174,17 @@ const AdminReservationsList: React.FC = () => {
                 <button onClick={() => setActiveTab('urgentes')} style={getTabStyle(activeTab === 'urgentes', true)}>
                     🚨 Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})
                 </button>
+
+                {ordersEmPrejuizo.length > 0 && (
+                    <button 
+                        onClick={() => setActiveTab('inadimplentes')} 
+                        style={getTabStyle(activeTab === 'inadimplentes', true)}
+                        className="piscar-alerta" // Caso queira meter um CSS piscando depois!
+                    >
+                        💰 Dívidas Ativas ({ordersEmPrejuizo.length})
+                    </button>
+                )}
+
                 <button onClick={() => setActiveTab('saidas')} style={getTabStyle(activeTab === 'saidas')}>
                     🚚 Saídas ({ordersToday.length + ordersFutureScheduled.length})
                 </button>
@@ -294,6 +306,34 @@ const AdminReservationsList: React.FC = () => {
                             cancelledOrders, 
                             [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], 
                             order => <Link to={`/my-reservations/${order.id}`}><button style={{ border: '1px solid #ccc', background: 'white', color: '#333', fontWeight: 'bold', padding: '8px', borderRadius: '4px', cursor: 'pointer' }}>Ver Motivo</button></Link>
+                        )}
+                    </>
+                )}
+
+                {/* ABA: INADIMPLENTES (Radar do Calote) */}
+                {activeTab === 'inadimplentes' && (
+                    <>
+                        <div style={{ backgroundColor: '#fff5f5', border: '1px solid #dc3545', borderLeft: '6px solid #dc3545', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+                            <h3 style={{ margin: '0 0 5px 0', color: '#c62828' }}>⚠️ Clientes com Dívida Ativa</h3>
+                            <p style={{ margin: 0, color: '#333' }}>
+                                Estes pedidos foram encerrados com pendências financeiras (Avarias, multas, ou perda de equipamento). O cliente precisa regularizar a situação.
+                            </p>
+                        </div>
+                        {renderOrderTable(
+                            "Aguardando Pagamento do Prejuízo", 
+                            ordersEmPrejuizo, 
+                            [
+                                { key: 'id', label: 'Pedido ID' }, 
+                                { key: 'status', label: 'Status Financeiro' },
+                                { key: 'data_fim', label: 'Data do Sinistro' }
+                            ], 
+                            order => (
+                                <Link to={`/my-reservations/${order.id}`}>
+                                    <button style={{ backgroundColor: '#28a745', color: 'white', fontWeight: 'bold', padding: '10px 15px', border: 'none', borderRadius: '6px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(40,167,69,0.3)' }}>
+                                        💰 Receber Dívida
+                                    </button>
+                                </Link>
+                            )
                         )}
                     </>
                 )}

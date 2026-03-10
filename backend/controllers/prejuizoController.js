@@ -55,7 +55,7 @@ const prejuizoController = {
 
       if (itensPendentes === 0) {
         await OrdemDeServico.update({
-          status: 'finalizada'
+          status: 'PREJUIZO'
         }, { 
           where: { id: item.id_ordem_servico },
           transaction 
