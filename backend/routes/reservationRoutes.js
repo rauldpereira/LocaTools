@@ -7,7 +7,6 @@ const {
     getAllOrders,
     getOrderById,
     updateOrderStatus,
-    deleteOrder,
     generateContract,
     signContract,
     cancelOrder,
@@ -33,7 +32,6 @@ router.post('/:id/check-reschedule', protect, checkRescheduleAvailability);
 router.put('/:id/sign', protect, signContract);
 router.put('/:id/cancel', protect, cancelOrder);
 router.put('/:id/reschedule', protect, rescheduleOrder);
-router.delete('/:id', protect, deleteOrder);
 
 // ROTAS DE OPERAÇÃO
 router.get('/:id/calculate-penalty', protect, checkPermissao('gerenciar_reservas'), calcularMultaAtraso);

@@ -309,32 +309,6 @@ const updateOrderStatus = async (req, res) => {
     }
 };
 
-const deleteOrder = async (req, res) => {
-    const { id } = req.params;
-    const id_usuario = req.user.id;
-    const tipo_usuario = req.user.tipo_usuario;
-
-    try {
-        const order = await OrdemDeServico.findByPk(id);
-
-        if (!order) {
-            return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
-        }
-
-        if (order.id_usuario !== id_usuario && tipo_usuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado. Você só pode deletar suas próprias ordens de serviço.' });
-        }
-
-        await order.destroy();
-
-        res.status(200).json({ message: 'Ordem de serviço deletada com sucesso.' });
-
-    } catch (error) {
-        console.error('Erro ao deletar ordem de serviço:', error);
-        res.status(500).json({ error: 'Erro interno do servidor.' });
-    }
-};
-
 const getReservationsByUnit = async (req, res) => {
     try {
         const reservations = await ItemReserva.findAll({
@@ -1005,7 +979,6 @@ module.exports = {
     getMyOrders,
     getAllOrders,
     updateOrderStatus,
-    deleteOrder,
     generateContract,
     getReservationsByUnit,
     getOrderById,
