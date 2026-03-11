@@ -110,6 +110,7 @@ const ReservationDetailsPage: React.FC = () => {
   const [showRecoverModal, setShowRecoverModal] = useState(false);
   const [recoverMethod, setRecoverMethod] = useState("pix");
   const [isRecovering, setIsRecovering] = useState(false);
+  const [customDebtAmount, setCustomDebtAmount] = useState<number | string>(0);
 
   const fetchOrderDetails = async () => {
     if (!token || !orderId) return;
@@ -586,15 +587,15 @@ const ReservationDetailsPage: React.FC = () => {
       await axios.put(
         `${backendUrl}/api/reservations/${orderId}/recover-debt`,
         {
-          valor_recebido: totalPendenteGeral,
+          valor_recebido: Number(customDebtAmount),
           forma_pagamento: recoverMethod,
         },
         config,
       );
 
-      alert("✅ Dívida recuperada com sucesso! O nome do cliente está limpo.");
+      alert("Dívida recuperada com sucesso!");
       setShowRecoverModal(false);
-      fetchOrderDetails(); // Recarrega a página pra atualizar os status
+      fetchOrderDetails();
     } catch (error) {
       alert("Erro ao processar o pagamento.");
     } finally {
@@ -715,7 +716,7 @@ const ReservationDetailsPage: React.FC = () => {
           }}
         >
           <div>
-            <h3 style={{ margin: "0 0 5px 0" }}>⚠️ Pagamento Pendente!</h3>
+            <h3 style={{ margin: "0 0 5px 0" }}>Pagamento Pendente!</h3>
             <p style={{ margin: 0 }}>
               Sua reserva ainda não está garantida. Finalize o pagamento do
               sinal de{" "}
@@ -804,7 +805,10 @@ const ReservationDetailsPage: React.FC = () => {
 
             {order.status === "PREJUIZO" && (
               <button
-                onClick={() => setShowRecoverModal(true)}
+                onClick={() => {
+                  setCustomDebtAmount(totalPendenteGeral.toFixed(2));
+                  setShowRecoverModal(true);
+                }}
                 style={{
                   ...btnActionStyle,
                   backgroundColor: "#28a745",
@@ -1376,6 +1380,23 @@ const ReservationDetailsPage: React.FC = () => {
               )
             )}
 
+            {/* AVISO DE DÍVIDA PARA O CLIENTE */}
+            {user?.tipo_usuario !== 'admin' && order.status === 'PREJUIZO' && (
+                <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '20px', borderRadius: '8px', margin: '1.5rem 0', border: '1px solid #ffcdd2', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                    <div>
+                        <h3 style={{ margin: '0 0 5px 0' }}>🚨 Pendência Financeira (B.O.)</h3>
+                        <p style={{ margin: 0 }}>Existem valores em aberto referentes a avarias, perdas ou multas neste pedido.</p>
+                        <p style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>Valor Total Devido: R$ {totalPendenteGeral.toFixed(2)}</p>
+                    </div>
+                    <button
+                        onClick={() => navigate(`/payment/${order.id}`)}
+                        style={{ padding: '12px 25px', backgroundColor: '#c62828', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', boxShadow: '0 4px 6px rgba(198,40,40,0.2)' }}
+                    >
+                        💳 Pagar Dívida Agora
+                    </button>
+                </div>
+            )}
+
             <div style={{ marginTop: "20px" }}>
               {vistoriaDeDevolucao ? (
                 <VistoriaDetailDisplay
@@ -1427,124 +1448,62 @@ const ReservationDetailsPage: React.FC = () => {
       )}
 
       {/* MODAL DE RECUPERAÇÃO DE DÍVIDA */}
-      {showRecoverModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.7)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              background: "white",
-              padding: "2rem",
-              borderRadius: "12px",
-              width: "450px",
-              maxWidth: "90%",
-              boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
-            }}
-          >
-            <h2
-              style={{
-                marginTop: 0,
-                color: "#c62828",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-              }}
-            >
-              💰 Quitar Inadimplência
-            </h2>
-            <p style={{ fontSize: "1.1rem", color: "#333" }}>
-              O cliente está pagando o valor total de{" "}
-              <strong style={{ color: "#c62828", fontSize: "1.3rem" }}>
-                R$ {totalPendenteGeral.toFixed(2)}
-              </strong>{" "}
-              referente às pendências deste pedido?
-            </p>
+            {showRecoverModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '450px', maxWidth: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+                        <h2 style={{ marginTop: 0, color: '#c62828', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            💰 Quitar Inadimplência
+                        </h2>
+                        
+                        <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px dashed #ccc', marginBottom: '20px' }}>
+                            <span style={{ display: 'block', color: '#666', fontSize: '0.9rem' }}>Dívida Total Original:</span>
+                            <strong style={{ fontSize: '1.4rem', color: '#c62828' }}>R$ {totalPendenteGeral.toFixed(2)}</strong>
+                        </div>
 
-            <div style={{ marginTop: "20px", marginBottom: "25px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "bold",
-                  color: "#555",
-                }}
-              >
-                Forma de Pagamento Recebida:
-              </label>
-              <select
-                value={recoverMethod}
-                onChange={(e) => setRecoverMethod(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: "6px",
-                  border: "2px solid #ccc",
-                  fontSize: "1.1rem",
-                  outline: "none",
-                }}
-              >
-                <option value="pix">PIX</option>
-                <option value="cartao">Cartão de Crédito / Débito</option>
-                <option value="dinheiro">Dinheiro Espécie</option>
-                <option value="manual_balcao">Outro (Manual)</option>
-              </select>
-            </div>
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>Valor Negociado / Recebido (R$):</label>
+                            <input 
+                                type="number" 
+                                step="0.01"
+                                value={customDebtAmount} 
+                                onChange={(e) => setCustomDebtAmount(e.target.value)}
+                                style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '2px solid #ccc', fontSize: '1.2rem', outline: 'none', fontWeight: 'bold', color: '#28a745' }}
+                            />
+                        </div>
+                        
+                        <div style={{ marginBottom: '25px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>Forma de Pagamento Recebida:</label>
+                            <select 
+                                value={recoverMethod} 
+                                onChange={(e) => setRecoverMethod(e.target.value)}
+                                style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '2px solid #ccc', fontSize: '1.1rem', outline: 'none' }}
+                            >
+                                <option value="pix">PIX</option>
+                                <option value="cartao">Cartão de Crédito / Débito</option>
+                                <option value="dinheiro">Dinheiro Espécie</option>
+                                <option value="manual_balcao">Outro (Manual)</option>
+                            </select>
+                        </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: "15px",
-                justifyContent: "flex-end",
-                borderTop: "1px solid #eee",
-                paddingTop: "15px",
-              }}
-            >
-              <button
-                onClick={() => setShowRecoverModal(false)}
-                disabled={isRecovering}
-                style={{
-                  padding: "10px 20px",
-                  border: "1px solid #ccc",
-                  background: "#f8f9fa",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  color: "#555",
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={executeRecoverDebt}
-                disabled={isRecovering}
-                style={{
-                  padding: "10px 20px",
-                  border: "none",
-                  background: "#28a745",
-                  color: "white",
-                  borderRadius: "6px",
-                  cursor: isRecovering ? "not-allowed" : "pointer",
-                  fontWeight: "bold",
-                  boxShadow: "0 4px 6px rgba(40,167,69,0.2)",
-                }}
-              >
-                {isRecovering ? "Processando..." : "Confirmar Recebimento"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                        <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                            <button 
+                                onClick={() => setShowRecoverModal(false)} 
+                                disabled={isRecovering}
+                                style={{ padding: '10px 20px', border: '1px solid #ccc', background: '#f8f9fa', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#555' }}
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={executeRecoverDebt} 
+                                disabled={isRecovering || Number(customDebtAmount) <= 0} 
+                                style={{ padding: '10px 20px', border: 'none', background: '#28a745', color: 'white', borderRadius: '6px', cursor: (isRecovering || Number(customDebtAmount) <= 0) ? 'not-allowed' : 'pointer', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(40,167,69,0.2)' }}
+                            >
+                                {isRecovering ? 'Processando...' : 'Confirmar Recebimento'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
     </div>
   );
 };

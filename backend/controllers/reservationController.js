@@ -904,16 +904,42 @@ const recoverDebt = async (req, res) => {
             return res.status(400).json({ error: 'Esta ordem não possui pendência de prejuízo ativa.' });
         }
 
+        const saldoAluguel = Number(order.valor_total) - Number(order.valor_sinal);
+        
+        // Tira o valor do aluguel. O que sobrar é o que o cliente pagou de fato pelo B.O.
+        let valorPagoPeloBO = Number(valor_recebido) - saldoAluguel;
+        if (valorPagoPeloBO < 0) valorPagoPeloBO = 0; 
+
+        let totalPrejuizoOriginal = 0;
+        const prejuizosAbertos = [];
+
+        // Separa todos os B.O.s dessa OS e soma quanto custavam originalmente
         for (const item of order.ItemReservas) {
             if (item.prejuizo && !item.prejuizo.resolvido) {
-                await item.prejuizo.update({
-                    resolvido: true,
-                    data_resolucao: new Date(),
-                    forma_recuperacao: forma_pagamento || 'manual'
-                }, { transaction });
+                prejuizosAbertos.push(item.prejuizo);
+                totalPrejuizoOriginal += Number(item.prejuizo.valor_prejuizo);
             }
         }
 
+        // Dá baixa nos B.O.s atualizando o valor para a realidade negociada!
+        for (const prej of prejuizosAbertos) {
+            let novoValorPrejuizo = Number(prej.valor_prejuizo);
+            
+            // Se teve desconto, a gente distribui o desconto nos itens quebrados
+            if (totalPrejuizoOriginal > 0) {
+                const proporcao = Number(prej.valor_prejuizo) / totalPrejuizoOriginal;
+                novoValorPrejuizo = valorPagoPeloBO * proporcao; 
+            }
+
+            await prej.update({
+                resolvido: true,
+                data_resolucao: new Date(),
+                forma_recuperacao: forma_pagamento || 'manual',
+                valor_prejuizo: novoValorPrejuizo 
+            }, { transaction });
+        }
+
+        // Cria o Recibo Financeiro do valor total
         await Pagamento.create({
             id_ordem_servico: order.id,
             valor: valor_recebido,
@@ -921,6 +947,7 @@ const recoverDebt = async (req, res) => {
             id_transacao_externa: `recuperacao_divida_${Date.now()}`
         }, { transaction });
 
+        // Limpa a OS
         await order.update({ status: 'finalizada' }, { transaction });
 
         await transaction.commit();

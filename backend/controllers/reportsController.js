@@ -31,10 +31,10 @@ const getFinancialReport = async (req, res) => {
 
   try {
     const dateFilter = (campoData) => ({
-    [campoData]: {
-      [Op.between]: [`${startDate} 00:00:00`, `${endDate} 23:59:59.999`],
-    },
-  });
+      [campoData]: {
+        [Op.between]: [`${startDate} 00:00:00`, `${endDate} 23:59:59.999`],
+      },
+    });
 
     const metrics = await OrdemDeServico.findAll({
       attributes: [
@@ -185,19 +185,90 @@ const getFinancialReport = async (req, res) => {
 
     const pedidosFinalizados = await OrdemDeServico.findAll({
       where: { status: "finalizada", ...dateFilter("updatedAt") },
-      include: [{ model: Usuario, as: "Usuario", attributes: ["nome"] }],
+      include: [
+        { model: Usuario, as: "Usuario", attributes: ["nome"] },
+        {
+          model: Pagamento,
+          as: "Pagamentos",
+          where: { status_pagamento: "aprovado" },
+          required: false,
+        },
+      ],
       order: [["updatedAt", "DESC"]],
     });
 
-    const extrato = pedidosFinalizados.map((p) => {
-      return {
-        id: p.id,
-        data: p.updatedAt,
-        descricao: `Pedido Finalizado #${p.id} - ${p.Usuario?.nome || "Cliente"}`,
-        valor: parseFloat(p.valor_total),
-        tipo: "RECEITA",
-        isRecuperacao: false,
-      };
+    let extrato = [];
+
+    // Transforma as strings de data do filtro em objetos Date pra poder comparar
+    const dataInicioFiltro = new Date(`${startDate}T00:00:00`);
+    const dataFimFiltro = new Date(`${endDate}T23:59:59`);
+
+    pedidosFinalizados.forEach((p) => {
+      const clienteNome = p.Usuario?.nome || "Cliente";
+
+      // SE TEM PAGAMENTOS REGISTRADOS NO BANCO:
+      if (p.Pagamentos && p.Pagamentos.length > 0) {
+        
+        p.Pagamentos.forEach((pagamento) => {
+          
+          // Verifica se a data DESTE PAGAMENTO cai dentro do filtro
+          const dataDoPagamento = new Date(pagamento.createdAt);
+          if (dataDoPagamento >= dataInicioFiltro && dataDoPagamento <= dataFimFiltro) {
+
+              let desc = `Pagamento - Pedido #${p.id} - ${clienteNome}`;
+              const transacao = pagamento.id_transacao_externa || '';
+
+              if (transacao.includes('recuperacao')) {
+                desc = `Dívida Quitada (B.O) - Pedido #${p.id} - ${clienteNome}`;
+              } else if (transacao.includes('manual') || transacao.includes('final')) {
+                desc = `Pagamento Final (Balcão) - Pedido #${p.id} - ${clienteNome}`;
+              } else {
+                desc = `Sinal (Reserva) - Pedido #${p.id} - ${clienteNome}`;
+              }
+
+              extrato.push({
+                id: `PAG-${pagamento.id}`,
+                data: pagamento.createdAt, 
+                descricao: desc,
+                valor: parseFloat(pagamento.valor),
+                tipo: "RECEITA",
+                isRecuperacao: transacao.includes('recuperacao'),
+              });
+          }
+        });
+
+      } else {
+        // FALLBACK: Para pedidos muito antigos que não tinham tabela de pagamentos
+        const valorSinal = Number(p.valor_sinal) || 0;
+        const totalOS = Number(p.valor_total) + Number(p.taxa_avaria || 0) + Number(p.taxa_remarcacao || 0) + Number(p.taxa_atraso || 0);
+        const valorRestante = totalOS - valorSinal;
+
+        // Filtra o Sinal
+        const dataOSCriacao = new Date(p.data_criacao || p.createdAt);
+        if (valorSinal > 0 && dataOSCriacao >= dataInicioFiltro && dataOSCriacao <= dataFimFiltro) {
+          extrato.push({
+            id: `OS-${p.id}-SINAL`,
+            data: p.data_criacao || p.createdAt, 
+            descricao: `Sinal (Reserva) - Pedido #${p.id} - ${clienteNome}`,
+            valor: parseFloat(valorSinal),
+            tipo: "RECEITA",
+            isRecuperacao: false,
+          });
+        }
+
+        // Filtra o Pagamento Final
+        const dataOSFim = new Date(p.updatedAt);
+        if (valorRestante > 0 && dataOSFim >= dataInicioFiltro && dataOSFim <= dataFimFiltro) {
+          extrato.push({
+            id: `OS-${p.id}-FINAL`,
+            data: p.updatedAt, 
+            descricao: `Pagamento Final (Balcão) - Pedido #${p.id} - ${clienteNome}`,
+            valor: parseFloat(valorRestante),
+            tipo: "RECEITA",
+            isRecuperacao: false,
+          });
+        }
+      }
     });
 
     const prejuizosDetalhados = await Prejuizo.findAll({

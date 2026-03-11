@@ -248,13 +248,24 @@ const CheckoutForm = ({ usuario, orderIdsList }: { usuario: UsuarioDaOrdem, orde
     );
 }; 
 
+interface Prejuizo {
+    valor_prejuizo: string | number;
+    resolvido: boolean;
+}
+interface ItemReserva {
+    prejuizo?: Prejuizo | null;
+}
+interface OrderDetailsExpanded extends OrderDetails {
+    ItemReservas?: ItemReserva[];
+}
+
 const PaymentPage: React.FC = () => {
     const { orderId } = useParams<{ orderId: string }>(); 
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
     const queryIds = searchParams.get('ids'); 
     
-    const [orders, setOrders] = useState<OrderDetails[]>([]);
+    const [orders, setOrders] = useState<OrderDetailsExpanded[]>([]);
     const [loading, setLoading] = useState(true);
     const { token } = useAuth();
     const navigate = useNavigate();
@@ -294,45 +305,96 @@ const PaymentPage: React.FC = () => {
         );
     }
 
+    const isEntrega = orders[0]?.tipo_entrega === 'entrega';
+    const hasMultiple = idList.length > 1;
+    const textoLogistica = isEntrega ? (hasMultiple ? 'Entregas' : 'Entrega') : (hasMultiple ? 'Retiradas na Loja' : 'Retirada na Loja');
+
+    // SEPARA OS CUSTOS DA DÍVIDA
+    const isDivida = orders.some(o => o.status === 'PREJUIZO');
+    
+    let valorApresentado = 0;
+    let totalSaldoAluguel = 0;
+    let totalPrejuizos = 0;
+    
+    if (isDivida) {
+        orders.forEach(order => {
+            // Saldo restante do aluguel (Total - Sinal que ele já pagou)
+            let saldoRent = Number(order.valor_total) - Number(order.valor_sinal);
+            totalSaldoAluguel += saldoRent;
+
+            // Soma das Avarias/Perdas
+            if (order.ItemReservas) {
+                order.ItemReservas.forEach(item => {
+                    if (item.prejuizo && !item.prejuizo.resolvido) {
+                        totalPrejuizos += Number(item.prejuizo.valor_prejuizo);
+                    }
+                });
+            }
+        });
+        valorApresentado = totalSaldoAluguel + totalPrejuizos;
+    } else {
+        valorApresentado = orders.reduce((acc, curr) => acc + Number(curr.valor_sinal), 0);
+    }
+
+    // Custos do fluxo normal (Sinal)
     const totalGeral = orders.reduce((acc, curr) => acc + Number(curr.valor_total), 0);
     const totalFrete = orders.reduce((acc, curr) => acc + Number(curr.custo_frete), 0);
     const totalSubtotal = totalGeral - totalFrete;
-    const totalSinal = orders.reduce((acc, curr) => acc + Number(curr.valor_sinal), 0);
-
-    const isEntrega = orders[0]?.tipo_entrega === 'entrega';
-    const hasMultiple = idList.length > 1;
-    
-    const textoLogistica = isEntrega 
-        ? (hasMultiple ? 'Entregas' : 'Entrega') 
-        : (hasMultiple ? 'Retiradas na Loja' : 'Retirada na Loja');
 
     return (
         <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
             
             <div className="order-summary" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#000' }}>
-                <h4 style={{marginTop: 0, color: '#000', fontSize: '1.2rem'}}>
-                    Resumo do Pedido <small>({idList.length} {textoLogistica})</small>
+                
+                <h4 style={{marginTop: 0, color: isDivida ? '#c62828' : '#000', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    {isDivida ? '🚨 Acerto de Pendências' : `Resumo do Pedido (${idList.length} ${textoLogistica})`}
                 </h4>
                 
-                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
-                    <span style={{fontWeight: 500}}>Itens:</span>
-                    <span style={{fontWeight: 500}}>R$ {totalSubtotal.toFixed(2)}</span>
-                </div>
-                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
-                    <span style={{fontWeight: 500}}>{textoLogistica}:</span>
-                    <span style={{fontWeight: 500}}>{totalFrete > 0 ? `R$ ${totalFrete.toFixed(2)}` : 'Grátis'}</span>
-                </div>
-                
-                <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
-                
-                <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 'bold', color: '#000'}}>
-                    <span>Total dos Contratos:</span>
-                    <span>R$ {totalGeral.toFixed(2)}</span>
-                </div>
-                
-                <div style={{marginTop: '15px', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '8px', color: '#000', textAlign: 'center', border: '1px solid #c8e6c9'}}>
-                    <small style={{display: 'block', marginBottom: '5px', fontWeight: 600}}>Sinal para reservar o Lote (50%)</small>
-                    <span style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#000'}}>R$ {totalSinal.toFixed(2)}</span>
+                {/* FLUXO DO CALOTEIRO DÍVIDA DETALHADA */}
+                {isDivida ? (
+                    <>
+                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
+                            <span style={{fontWeight: 500, color: '#555'}}>Saldo Restante do Aluguel:</span>
+                            <span style={{fontWeight: 500, color: '#555'}}>R$ {totalSaldoAluguel.toFixed(2)}</span>
+                        </div>
+                        {totalPrejuizos > 0 && (
+                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
+                                <span style={{fontWeight: 500, color: '#c62828'}}>Avarias / Extravios (B.O.):</span>
+                                <span style={{fontWeight: 500, color: '#c62828'}}>R$ {totalPrejuizos.toFixed(2)}</span>
+                            </div>
+                        )}
+                        <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
+                    </>
+                ) : (
+                /* FLUXO NORMAL CLIENTE NOVO PAGANDO SINAL */
+                    <>
+                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
+                            <span style={{fontWeight: 500}}>Itens:</span>
+                            <span style={{fontWeight: 500}}>R$ {totalSubtotal.toFixed(2)}</span>
+                        </div>
+                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
+                            <span style={{fontWeight: 500}}>{textoLogistica}:</span>
+                            <span style={{fontWeight: 500}}>{totalFrete > 0 ? `R$ ${totalFrete.toFixed(2)}` : 'Grátis'}</span>
+                        </div>
+                        <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
+                        <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 'bold', color: '#000'}}>
+                            <span>Total dos Contratos:</span>
+                            <span>R$ {totalGeral.toFixed(2)}</span>
+                        </div>
+                    </>
+                )}
+
+                {/* CAIXA DE DESTAQUE COM O VALOR FINAL QUE VAI PASSAR NO CARTÃO */}
+                <div style={{
+                    marginTop: '15px', padding: '15px', borderRadius: '8px', textAlign: 'center', 
+                    backgroundColor: isDivida ? '#ffebee' : '#e8f5e9', 
+                    border: `1px solid ${isDivida ? '#ffcdd2' : '#c8e6c9'}`,
+                    color: isDivida ? '#c62828' : '#000'
+                }}>
+                    <small style={{display: 'block', marginBottom: '5px', fontWeight: 600}}>
+                        {isDivida ? 'Valor Total Devido (A Pagar)' : 'Sinal para reservar o Lote (50%)'}
+                    </small>
+                    <span style={{fontSize: '1.5rem', fontWeight: 'bold'}}>R$ {valorApresentado.toFixed(2)}</span>
                 </div>
             </div>
             
