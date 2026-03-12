@@ -1,4 +1,4 @@
-const { sequelize, Unidade, Equipamento, ItemReserva, OrdemDeServico } = require('../models');
+const { sequelize, Unidade, Equipamento, ItemReserva, OrdemDeServico, DetalhesVistoria } = require('../models');
 const { Op } = require('sequelize');
 
 const addUnitsToEquipment = async (req, res) => {
@@ -39,7 +39,6 @@ const getUnitsByEquipment = async (req, res) => {
         const units = await Unidade.findAll({
             where: { id_equipamento: req.params.id },
             order: [['id', 'ASC']],
-            // 👇 INJEÇÃO SÊNIOR: Subquery para contar TODO o histórico de manutenção 👇
             attributes: {
                 include: [
                     [
@@ -65,10 +64,31 @@ const getUnitsByEquipment = async (req, res) => {
                     include: [
                         { model: OrdemDeServico, as: 'OrdemDeServico', required: false, attributes: ['id', 'status'] }
                     ]
+                },
+                {
+                    model: DetalhesVistoria,
+                    as: 'Vistorias',
+                    required: false,
+                    attributes: ['comentarios', 'createdAt'],
+                    order: [['createdAt', 'DESC']],
+                    limit: 1
                 }
             ]
         });
-        res.status(200).json(units);
+
+        const unitsLimpo = units.map(u => {
+            const jsonUnit = u.toJSON();
+            let ultimaObservacao = null;
+            if (jsonUnit.Vistorias && jsonUnit.Vistorias.length > 0) {
+                if(jsonUnit.Vistorias[0].comentarios && jsonUnit.Vistorias[0].comentarios.trim() !== '') {
+                    ultimaObservacao = jsonUnit.Vistorias[0].comentarios;
+                }
+            }
+            jsonUnit.ultima_observacao_vistoria = ultimaObservacao;
+            return jsonUnit;
+        });
+
+        res.status(200).json(unitsLimpo);
     } catch (error) {
         console.error('Erro getUnits:', error);
         res.status(500).json({ error: 'Erro interno.' });
@@ -201,38 +221,34 @@ const deleteMaintenance = async (req, res) => {
 };
 
 const updateUnitDetails = async (req, res) => {
-    const { status, avarias_atuais, codigo_serial } = req.body;
     try {
-        const unit = await Unidade.findByPk(req.params.id);
-        if (!unit) return res.status(404).json({ error: 'Unidade não encontrada.' });
+        const { id } = req.params;
+        let { codigo_serial, avarias_atuais } = req.body;
 
-        const statusAntigo = unit.status; // Guarda o status de antes da alteração
+        const unidade = await Unidade.findByPk(id);
 
-        await unit.update({
-            status: status !== undefined ? status : unit.status,
-            avarias_atuais: avarias_atuais !== undefined ? avarias_atuais : unit.avarias_atuais,
-            codigo_serial: codigo_serial !== undefined ? codigo_serial : unit.codigo_serial
-        });
-
-        const novoStatus = status !== undefined ? status : unit.status;
-        
-        if (statusAntigo !== 'inativo' && novoStatus === 'inativo') {
-            const equipamento = await Equipamento.findByPk(unit.id_equipamento);
-            if (equipamento && equipamento.total_quantidade > 0) {
-                await equipamento.decrement('total_quantidade', { by: 1 });
-            }
-        } 
-        else if (statusAntigo === 'inativo' && novoStatus !== 'inativo') {
-            const equipamento = await Equipamento.findByPk(unit.id_equipamento);
-            if (equipamento) {
-                await equipamento.increment('total_quantidade', { by: 1 });
-            }
+        if (!unidade) {
+            return res.status(404).json({ error: 'Unidade não encontrada' });
         }
 
-        res.status(200).json(unit);
-    } catch (error) { 
-        console.error("Erro no updateUnitDetails:", error);
-        res.status(500).json({ error: 'Erro interno.' }); 
+        if (codigo_serial === "" || (typeof codigo_serial === 'string' && codigo_serial.trim() === "")) {
+            codigo_serial = null;
+        }
+
+        await unidade.update({
+            codigo_serial,
+            avarias_atuais
+        });
+
+        res.status(200).json({ message: 'Unidade atualizada com sucesso', unidade });
+    } catch (error) {
+        console.error('Erro no updateUnitDetails:', error);
+        
+        if (error.name === 'SequelizeUniqueConstraintError') {
+             return res.status(400).json({ error: 'Este código serial já está em uso por outra unidade deste equipamento.' });
+        }
+
+        res.status(500).json({ error: 'Erro interno ao atualizar a unidade.' });
     }
 };
 

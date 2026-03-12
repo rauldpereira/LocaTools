@@ -16,7 +16,7 @@ interface AvariaEncontrada {
 }
 interface DetalheVistoria {
     id: number;
-    id_item_equipamento: number;
+    id_unidade: number; 
     comentarios: string;
     avariasEncontradas: AvariaEncontrada[];
 }
@@ -58,6 +58,15 @@ interface OrderDetails {
     data_fim: string;
 }
 
+interface ReturnInspectionNote {
+    idUnidade: number;
+    nomeEquipamento: string;
+    comentarios: string;
+    marcouOutros: boolean;
+    novasAvarias: TipoAvaria[];
+    avariasAntigas: TipoAvaria[]; // 👈 O ERRO DO TYPESCRIPT FOI CORRIGIDO AQUI!
+}
+
 const parseDateStringAsLocal = (dateString: string) => {
     const dateOnly = dateString.split('T')[0];
     const [year, month, day] = dateOnly.split('-').map(Number);
@@ -71,7 +80,7 @@ const FinalizePaymentPage: React.FC = () => {
     const [order, setOrder] = useState<OrderDetails | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const [newDamages, setNewDamages] = useState<TipoAvaria[]>([]);
+    const [inspectionNotes, setInspectionNotes] = useState<ReturnInspectionNote[]>([]);
     const [outrosFee, setOutrosFee] = useState(0);
     const [selectedItemForPrejuizo, setSelectedItemForPrejuizo] = useState<ItemReserva | null>(null);
 
@@ -86,12 +95,10 @@ const FinalizePaymentPage: React.FC = () => {
             setLoading(true);
             const config = { headers: { Authorization: `Bearer ${token}` } };
             
-            // Busca Detalhes do Pedido
             const { data } = await axios.get(`${backendUrl}/api/reservations/${orderId}`, config);
             setOrder(data);
             calculateNewDamageFee(data);
 
-            // Verifica se tem Multa por Atraso
             if (!['finalizada', 'cancelada', 'PREJUIZO'].includes(data.status)) {
                 try {
                     const resMulta = await axios.get(`${backendUrl}/api/reservations/${orderId}/calculate-penalty`, config);
@@ -118,34 +125,69 @@ const FinalizePaymentPage: React.FC = () => {
     const calculateNewDamageFee = (orderData: OrderDetails) => {
         const vistoriaSaida = orderData.Vistorias.find(v => v.tipo_vistoria === 'entrega');
         const vistoriaDevolucao = orderData.Vistorias.find(v => v.tipo_vistoria === 'devolucao');
-        const avariasNovasEncontradas: TipoAvaria[] = [];
+        
+        const notes: ReturnInspectionNote[] = [];
 
         if (vistoriaDevolucao) {
-            for (const detalheDev of vistoriaDevolucao.detalhes) {
-                const detalheSaida = vistoriaSaida?.detalhes.find(d => d.id_item_equipamento === detalheDev.id_item_equipamento);
-                const avariasSaidaIDs = new Set(detalheSaida?.avariasEncontradas?.map(a => a.id_tipo_avaria) || []);
-                const avariasDevolucao = detalheDev.avariasEncontradas || [];
-                for (const avaria of avariasDevolucao) {
-                    if (!avariasSaidaIDs.has(avaria.id_tipo_avaria)) {
-                        if (avaria.TipoAvaria.descricao.toLowerCase() !== 'outros') {
-                            avariasNovasEncontradas.push(avaria.TipoAvaria);
+            orderData.ItemReservas.forEach(item => {
+                const detalheDev = vistoriaDevolucao.detalhes.find(d => d.id_unidade === item.Unidade.id);
+                const detalheSaida = vistoriaSaida?.detalhes.find(d => d.id_unidade === item.Unidade.id);
+                
+                if (detalheDev) {
+                    const avariasSaidaIDs = new Set(detalheSaida?.avariasEncontradas?.map(a => a.id_tipo_avaria) || []);
+                    
+                    let marcouOutros = false;
+                    const novasAvarias: TipoAvaria[] = [];
+                    const avariasAntigas: TipoAvaria[] = [];
+
+                    // Tratamento seguro caso venha null ou vazio
+                    const avariasDevolucao = detalheDev.avariasEncontradas || [];
+                    
+                    avariasDevolucao.forEach(avaria => {
+                        if (!avaria || !avaria.TipoAvaria) return; // Evita quebra se o BD mandar nulo
+                        
+                        const desc = avaria.TipoAvaria.descricao.toLowerCase();
+                        
+                        if (desc === 'outros') {
+                            marcouOutros = true;
+                        } else if (!avariasSaidaIDs.has(avaria.id_tipo_avaria)) {
+                            // Nova!
+                            novasAvarias.push(avaria.TipoAvaria);
+                        } else {
+                            // Antiga!
+                            avariasAntigas.push(avaria.TipoAvaria);
                         }
+                    });
+
+                    if (marcouOutros || novasAvarias.length > 0 || avariasAntigas.length > 0 || detalheDev.comentarios) {
+                        notes.push({
+                            idUnidade: item.Unidade.id,
+                            nomeEquipamento: item.Unidade.Equipamento.nome,
+                            comentarios: detalheDev.comentarios || '',
+                            marcouOutros,
+                            novasAvarias,
+                            avariasAntigas
+                        });
                     }
                 }
-            }
+            });
         }
-        setNewDamages(avariasNovasEncontradas);
+        setInspectionNotes(notes);
     };
 
     const valorRestante = order ? Number(order.valor_total) - Number(order.valor_sinal) : 0;
     const taxaRemarcacao = order ? Number(order.taxa_remarcacao || 0) : 0;
-    const calculatedFee = newDamages.reduce((acc, avaria) => acc + Number(avaria.preco), 0);
+    
+    // Soma apenas as avarias tabeladas (com preço fixo) DAS NOVAS AVARIAS
+    const calculatedFee = inspectionNotes.reduce((acc, note) => {
+        const sum = note.novasAvarias.reduce((s, a) => s + Number(a.preco || 0), 0);
+        return acc + sum;
+    }, 0);
     
     const totalPrejuizos = order ? order.ItemReservas.reduce((acc, item) => {
         return acc + (item.prejuizo ? Number(item.prejuizo.valor_prejuizo) : 0);
     }, 0) : 0;
 
-    // Valor final soma tudo + Multa por Atraso
     const valorFinal = valorRestante + calculatedFee + outrosFee + taxaRemarcacao + totalPrejuizos + multaAtraso;
 
     const handleManualConfirmation = async () => {
@@ -159,7 +201,7 @@ const FinalizePaymentPage: React.FC = () => {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const body = { 
                 damageFee: totalExtras,
-                lateFee: multaAtraso // Envia a multa separada pro backend
+                lateFee: multaAtraso
             };
             await axios.put(`${backendUrl}/api/reservations/${orderId}/confirm-manual-payment`, body, config);
             alert("Pagamento confirmado e ordem finalizada!");
@@ -191,6 +233,8 @@ const FinalizePaymentPage: React.FC = () => {
 
     if (loading || !order) return <p style={{textAlign:'center', marginTop:'50px'}}>Carregando...</p>;
 
+    const temAvariaOutrosGlobal = inspectionNotes.some(n => n.marcouOutros);
+
     return (
         <div style={{ padding: '2rem', marginTop: '60px', maxWidth: '800px', margin: '0 auto' }}>
             <h1>Finalizar Pedido #{orderId}</h1>
@@ -202,7 +246,6 @@ const FinalizePaymentPage: React.FC = () => {
                 </div>
             )}
 
-            {/* ALERTA DE ATRASO */}
             {diasAtraso > 0 && (
                 <div style={{marginBottom: '2rem', padding: '1rem', backgroundColor: '#fff3cd', border: '1px solid #ffeeba', borderRadius: '8px', color: '#856404'}}>
                     <h3 style={{marginTop: 0, display:'flex', alignItems:'center'}}>⚠️ Atraso na Devolução Detectado</h3>
@@ -239,35 +282,77 @@ const FinalizePaymentPage: React.FC = () => {
                 ))}
             </div>
 
-            <div className="damage-assessment" style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginBottom: '2rem' }}>
-                <h3>Custos Adicionais (Avarias/Outros)</h3>
-                {newDamages.length > 0 ? (
+            {/* RELATÓRIO DA VISTORIA */}
+            <div className="damage-assessment" style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', backgroundColor: temAvariaOutrosGlobal ? '#fff5f5' : 'white' }}>
+                <h3 style={{ color: temAvariaOutrosGlobal ? '#c62828' : '#333' }}>Relatório da Vistoria de Devolução</h3>
+                
+                {inspectionNotes.length > 0 ? (
                     <div>
-                        <p>Novas avarias catalogadas na devolução:</p>
-                        <ul style={{color: '#dc3545'}}>
-                            {newDamages.map(avaria => (
-                                <li key={avaria.id}>{avaria.descricao} - R$ {Number(avaria.preco).toFixed(2)}</li>
-                            ))}
-                        </ul>
-                        <p style={{fontWeight: 'bold', textAlign: 'right'}}>Subtotal Avarias: R$ {calculatedFee.toFixed(2)}</p>
+                        {inspectionNotes.map((note, idx) => (
+                            <div key={idx} style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#fdfdfd', border: '1px solid #ccc', borderRadius: '8px' }}>
+                                <h4 style={{ margin: '0 0 10px 0', color: '#0056b3' }}>{note.nomeEquipamento} <span style={{color:'#666', fontSize:'0.9rem'}}>(ID: {note.idUnidade})</span></h4>
+                                
+                                {/* AVARIAS NOVAS (SÃO COBRADAS) */}
+                                {note.novasAvarias.length > 0 && (
+                                    <div style={{ marginBottom: '10px' }}>
+                                        <strong style={{ color: '#dc3545' }}>🚨 Avarias Novas (A Cobrar):</strong>
+                                        <ul style={{ margin: '5px 0', paddingLeft: '20px', color: '#dc3545', fontWeight: 'bold' }}>
+                                            {note.novasAvarias.map((a, i) => (
+                                                <li key={i}>{a.descricao} - R$ {Number(a.preco).toFixed(2)}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {/* AVARIAS VELHAS (NÃO SÃO COBRADAS) */}
+                                {note.avariasAntigas.length > 0 && (
+                                    <div style={{ marginBottom: '10px' }}>
+                                        <strong style={{ color: '#6c757d' }}>✅ Avarias Pré-existentes (Já estavam na Saída):</strong>
+                                        <ul style={{ margin: '5px 0', paddingLeft: '20px', color: '#6c757d', fontStyle: 'italic' }}>
+                                            {note.avariasAntigas.map((a, i) => (
+                                                <li key={i}>{a.descricao} - Não cobrar (R$ 0,00)</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {note.marcouOutros && (
+                                    <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px', fontWeight: 'bold' }}>
+                                        ⚠️ A opção "Outros" foi MARCADA. Leia o comentário abaixo e adicione o valor no campo de Taxa Extra.
+                                    </div>
+                                )}
+
+                                <div style={{ padding: '10px', backgroundColor: '#f8f9fa', borderLeft: '4px solid #6c757d', fontSize: '0.95rem', color: '#333' }}>
+                                    <strong>💬 Observações do Vistoriador:</strong><br/>
+                                    <span style={{ fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>{note.comentarios || "Nenhum comentário deixado."}</span>
+                                </div>
+                            </div>
+                        ))}
+                        
+                        <p style={{fontWeight: 'bold', textAlign: 'right', fontSize: '1.1rem'}}>Subtotal Avarias Tabeladas: R$ {calculatedFee.toFixed(2)}</p>
                     </div>
-                ) : <p style={{color: '#666'}}>Nenhuma avaria catalogada nova detectada.</p>}
+                ) : <p style={{color: '#666'}}>Nenhuma observação ou avaria registrada na devolução.</p>}
 
                 <hr style={{ margin: '1rem 0', borderColor: '#eee' }} />
                 
-                <label style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 'bold'}}>
-                    Adicionar Valor Manual (Outros/Multa):
-                    <div style={{display: 'flex', alignItems: 'center'}}>
-                        R$ 
-                        <input
-                            type="number"
-                            value={outrosFee}
-                            onChange={(e) => setOutrosFee(Number(e.target.value))}
-                            min="0"
-                            style={{marginLeft: '5px', padding: '5px', width: '100px', textAlign: 'right'}}
-                        />
-                    </div>
-                </label>
+                <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px dashed #ccc' }}>
+                    <label style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 'bold', color: '#0056b3'}}>
+                        Adicionar Valor Manual (Outros / Taxa Extra):
+                        <div style={{display: 'flex', alignItems: 'center'}}>
+                            R$ 
+                            <input
+                                type="number"
+                                value={outrosFee}
+                                onChange={(e) => setOutrosFee(Number(e.target.value))}
+                                min="0"
+                                style={{marginLeft: '10px', padding: '8px', width: '120px', textAlign: 'right', fontSize: '1.1rem', fontWeight: 'bold', border: '2px solid #007bff', borderRadius: '6px'}}
+                            />
+                        </div>
+                    </label>
+                    <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '8px', marginBottom: 0 }}>
+                        * Use este campo se o vistoriador marcou "Outros" ou se houver alguma negociação extra.
+                    </p>
+                </div>
             </div>
 
             <div className="summary" style={{ border: '2px solid #333', padding: '1.5rem', borderRadius: '8px', backgroundColor: '#fdfdfd' }}>
@@ -295,7 +380,6 @@ const FinalizePaymentPage: React.FC = () => {
                             <span>+ R$ {totalPrejuizos.toFixed(2)}</span>
                         </div>
                     )}
-                    {/* MOSTRA A MULTA POR ATRASO NO RESUMO */}
                     {multaAtraso > 0 && (
                         <div style={{display: 'flex', justifyContent: 'space-between', color: '#d35400', fontWeight: 'bold', backgroundColor:'#fff3cd', padding:'0 5px'}}>
                             <span>Multa por Atraso ({diasAtraso} dias):</span>

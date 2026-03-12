@@ -310,7 +310,7 @@ const PaymentPage: React.FC = () => {
     const textoLogistica = isEntrega ? (hasMultiple ? 'Entregas' : 'Entrega') : (hasMultiple ? 'Retiradas na Loja' : 'Retirada na Loja');
 
     // SEPARA OS CUSTOS DA DÍVIDA
-    const isDivida = orders.some(o => o.status === 'PREJUIZO');
+    const isDivida = orders.some(o => o.status.toUpperCase() === 'PREJUIZO');
     
     let valorApresentado = 0;
     let totalSaldoAluguel = 0;

@@ -22,6 +22,7 @@ interface Unit {
   avarias_atuais: number[] | null;
   ItensReserva?: any[];
   total_manutencoes?: number;
+  ultima_observacao_vistoria?: string | null;
 }
 
 interface StockModalProps {
@@ -387,6 +388,14 @@ const UnitItem: React.FC<{
               </label>
             ))}
           </div>
+
+          {unit.ultima_observacao_vistoria && (
+            <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#fff3cd', borderLeft: '4px solid #ffc107', borderRadius: '4px', fontSize: '0.85rem', color: '#856404' }}>
+              <strong>💬 Anotação da última Vistoria:</strong><br/>
+              <span style={{ fontStyle: 'italic' }}>"{unit.ultima_observacao_vistoria}"</span>
+            </div>
+          )}
+
         </div>
 
         <button onClick={handleSave} style={{ marginTop: '15px', width: '100%', padding: '10px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>

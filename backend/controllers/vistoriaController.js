@@ -18,10 +18,7 @@ const createVistoria = async (req, res) => {
 
             for (const detalhe of detalhesParsed) {
                 const fotosDaUnidade = files
-                    .filter(file => {
-                        const regex = new RegExp(`\\[${detalhe.id_unidade}\\]`);
-                        return regex.test(file.fieldname);
-                    })
+                    .filter(file => file.fieldname === `fotos[${detalhe.id_unidade}]`)
                     .map(file => `/uploads/vistorias/${file.filename}`);
 
                 const novoDetalhe = await DetalhesVistoria.create({
@@ -33,6 +30,7 @@ const createVistoria = async (req, res) => {
                 }, { transaction: t });
 
                 const avariasEncontradasIDs = detalhe.avariasEncontradas || [];
+                
                 if (avariasEncontradasIDs.length > 0) {
                     const avariasParaCriar = avariasEncontradasIDs.map((idAvaria) => ({
                         id_detalhe_vistoria: novoDetalhe.id,
@@ -43,15 +41,20 @@ const createVistoria = async (req, res) => {
 
                 const unidade = await Unidade.findByPk(detalhe.id_unidade, { transaction: t });
                 if (unidade) {
+                    
+                    const avariasAnteriores = unidade.avarias_atuais || [];
+                    
+                    const todasAvarias = Array.from(new Set([...avariasAnteriores, ...avariasEncontradasIDs]));
+
                     if (tipo_vistoria === 'devolucao') {
-
                         await unidade.update({
-                            avarias_atuais: avariasEncontradasIDs
+                            avarias_atuais: todasAvarias,
+                            status: 'disponivel'
                         }, { transaction: t });
-                    } else if (tipo_vistoria === 'entrega') {
 
+                    } else if (tipo_vistoria === 'entrega') {
                         await unidade.update({
-                            avarias_atuais: [],
+                            avarias_atuais: todasAvarias, 
                             status: 'alugado'
                         }, { transaction: t });
                     }
