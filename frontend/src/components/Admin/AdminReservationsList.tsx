@@ -179,14 +179,15 @@ const AdminReservationsList: React.FC = () => {
                     <button 
                         onClick={() => setActiveTab('inadimplentes')} 
                         style={getTabStyle(activeTab === 'inadimplentes', true)}
-                        className="piscar-alerta" // Caso queira meter um CSS piscando depois!
+                        className="piscar-alerta" 
                     >
                         💰 Dívidas Ativas ({ordersEmPrejuizo.length})
                     </button>
                 )}
 
+                {/* Notificação contando só os de Hoje */}
                 <button onClick={() => setActiveTab('saidas')} style={getTabStyle(activeTab === 'saidas')}>
-                    🚚 Saídas ({ordersToday.length + ordersFutureScheduled.length})
+                    🚚 Saídas ({ordersToday.length})
                 </button>
                 <button onClick={() => setActiveTab('devolucoes')} style={getTabStyle(activeTab === 'devolucoes')}>
                     🔄 Devoluções ({ordersForReturnInspection.length})
@@ -285,7 +286,8 @@ const AdminReservationsList: React.FC = () => {
                 {/* ABA: PENDÊNCIAS */}
                 {podeGerenciarReservas && activeTab === 'pendencias' && (
                     <>
-                        {renderOrderTable("Aguardando Assinatura do Contrato", ordersAwaitingSignature, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#17a2b8', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ver Contrato</button></Link>)}
+                        {renderOrderTable("Aguardando Assinatura do Contrato", ordersAwaitingSignature, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }, { key: 'data_inicio', label: 'Data de Início' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#17a2b8', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ver Contrato</button></Link>)}
+                        
                         {renderOrderTable("Reservas Aguardando Pagamento Final", ordersAwaitingFinalPayment, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/admin/finalize-payment/${order.id}`}><button style={{ backgroundColor: '#28a745', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Finalizar e Cobrar</button></Link>)}
                         {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)", ordersAbandoned, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Resgatar Venda</button></Link>)}
                     </>
