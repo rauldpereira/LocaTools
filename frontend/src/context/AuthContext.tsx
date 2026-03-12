@@ -15,7 +15,7 @@ interface AuthContextType {
     isLoggedIn: boolean;
     isLoadingAuth: boolean;
     login: (token: string) => Promise<void>;
-    logout: () => void;
+    logout: (redirectToLogin?: boolean) => void;
     updateUser: (newUser: { nome: string; email: string }) => void;
     hasPermission: (permission: string) => boolean; 
 }
@@ -32,23 +32,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(prevUser => (prevUser ? { ...prevUser, ...newUser } : null));
     };
 
-    const logout = () => {
+    const logout = (redirectToLogin = false) => {
         delete axios.defaults.headers.common['Authorization'];
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
         setIsLoggedIn(false);
+
+        // madnda o usuário para a tela de login com o aviso de expirado
+        if (redirectToLogin) {
+            window.location.href = '/auth?expired=true'; 
+        }
     };
 
     const hasPermission = (permission: string): boolean => {
         if (!user) return false;
-        
-        // Se for admin passa em tudo
         if (user.tipo_usuario === 'admin') return true;
-        
-        // Se for funcionário, checa se a permissão está na lista
         return Array.isArray(user.permissoes) && user.permissoes.includes(permission);
     };
+
+    useEffect(() => {
+        const interceptor = axios.interceptors.response.use(
+            response => response, 
+            error => {
+                // Se o backend devolver 401 e não for na rota de login...
+                if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
+                    console.warn('⚠️ Token expirado ou inválido. Redirecionando para o login...');
+                    logout(true); // Aciona o logout forçado!
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        // Limpa o interceptador se o componente desmontar
+        return () => {
+            axios.interceptors.response.eject(interceptor);
+        };
+    }, []);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -62,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     setIsLoggedIn(true);
                 } catch (error) {
                     console.error('Erro ao carregar o perfil:', error);
-                    logout();
+                    logout(false); 
                 } finally {
                     setIsLoadingAuth(false); 
                 }
@@ -84,7 +104,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoggedIn(true);
         } catch (error) {
             console.error('Erro ao buscar perfil após login:', error);
-            logout();
+            logout(false);
         }
     };
 
