@@ -620,13 +620,14 @@ const VistoriaPage: React.FC = () => {
                     }
                     style={{ width: "100%", padding: "8px" }}
                   >
-                    <option value="ROUBO">Roubo (Baixa de Estoque)</option>
                     <option value="EXTRAVIO">
-                      Extravio (Baixa de Estoque)
+                      Não Devolvido (Baixa de Estoque)
                     </option>
-                    <option value="AVARIA">Avaria Total / Perda Total</option>
+                    <option value="AVARIA">
+                      Avaria Total / Perda Total (Baixa de Estoque)
+                    </option>
                     <option value="CALOTE">
-                      Calote (Item Retornado, mas não pago)
+                      Inadimplência (Devolveu, mas não pagou)
                     </option>
                   </select>
                 </div>

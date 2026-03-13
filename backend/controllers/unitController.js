@@ -85,6 +85,7 @@ const getUnitsByEquipment = async (req, res) => {
                 }
             }
             jsonUnit.ultima_observacao_vistoria = ultimaObservacao;
+            jsonUnit.observacao = jsonUnit.observacao || null; 
             return jsonUnit;
         });
 
@@ -223,7 +224,7 @@ const deleteMaintenance = async (req, res) => {
 const updateUnitDetails = async (req, res) => {
     try {
         const { id } = req.params;
-        let { codigo_serial, avarias_atuais } = req.body;
+        let { codigo_serial, avarias_atuais, status } = req.body;
 
         const unidade = await Unidade.findByPk(id);
 
@@ -237,7 +238,8 @@ const updateUnitDetails = async (req, res) => {
 
         await unidade.update({
             codigo_serial,
-            avarias_atuais
+            avarias_atuais,
+            status
         });
 
         res.status(200).json({ message: 'Unidade atualizada com sucesso', unidade });

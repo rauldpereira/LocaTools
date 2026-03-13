@@ -23,6 +23,7 @@ interface Unit {
   ItensReserva?: any[];
   total_manutencoes?: number;
   ultima_observacao_vistoria?: string | null;
+  observacao?: string | null;
 }
 
 interface StockModalProps {
@@ -162,43 +163,42 @@ const UnitItem: React.FC<{
 
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [showTransplantModal, setShowTransplantModal] = useState(false);
-  const [isTransplanting, setIsTransplanting] = useState(false)
+  const [isTransplanting, setIsTransplanting] = useState(false);
 
+  // Agora ele só roda quando os dados REAIS mudam, e respeita a hierarquia.
   useEffect(() => {
-    let realStatus: 'disponivel' | 'manutencao' | 'alugado' | 'inativo' = unit.status;
+    let calculatedStatus: 'disponivel' | 'manutencao' | 'alugado' | 'inativo' = unit.status;
 
-    if (unit.ItensReserva && unit.ItensReserva.length > 0) {
-      const today = new Date();
-      const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0).getTime();
+    // Se o banco diz que é inativo, respeita o inativo.
+    if (unit.status !== 'inativo') {
+        if (unit.ItensReserva && unit.ItensReserva.length > 0) {
+          const today = new Date();
+          const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0).getTime();
 
-      const activeRes = unit.ItensReserva.find(res => {
-        const cleanStart = String(res.data_inicio).substring(0, 10);
-        const cleanEnd = String(res.data_fim).substring(0, 10);
-        const rStart = new Date(cleanStart + "T12:00:00").getTime();
-        const rEnd = new Date(cleanEnd + "T12:00:00").getTime();
-        
-        if (res.status !== 'manutencao' && res.OrdemDeServico) {
-            const statusAtivos = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'];
-            if (!statusAtivos.includes(res.OrdemDeServico.status)) return false; 
+          const activeRes = unit.ItensReserva.find(res => {
+            const cleanStart = String(res.data_inicio).substring(0, 10);
+            const cleanEnd = String(res.data_fim).substring(0, 10);
+            const rStart = new Date(cleanStart + "T12:00:00").getTime();
+            const rEnd = new Date(cleanEnd + "T12:00:00").getTime();
+            
+            if (res.status !== 'manutencao' && res.OrdemDeServico) {
+                const statusAtivos = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'];
+                if (!statusAtivos.includes(res.OrdemDeServico.status)) return false; 
+            }
+
+            return todayTime >= rStart && todayTime <= rEnd;
+          });
+
+          if (activeRes) {
+            calculatedStatus = activeRes.status === 'manutencao' ? 'manutencao' : 'alugado';
+          } else {
+             calculatedStatus = 'disponivel';
+          }
+        } else {
+             calculatedStatus = 'disponivel';
         }
-
-        return todayTime >= rStart && todayTime <= rEnd;
-      });
-
-      if (activeRes) {
-        realStatus = activeRes.status === 'manutencao' ? 'manutencao' : 'alugado';
-      } else {
-        if (unit.status !== 'inativo') {
-            realStatus = 'disponivel';
-        }
-      }
-    } else {
-      if (unit.status !== 'inativo') {
-          realStatus = 'disponivel';
-      }
     }
-    
-    setStatus(realStatus);
+    setStatus(calculatedStatus);
   }, [unit]);
 
   const handleAvariaCheck = (id: number) => {
@@ -209,6 +209,7 @@ const UnitItem: React.FC<{
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
+      // Se o usuário mudou o select para "manutencao" ou "inativo", checa se tem conflito no futuro
       if ((status === 'manutencao' || status === 'inativo') && unit.status !== status) {
         const confRes = await axios.get(`http://localhost:3001/api/units/${unit.id}/conflicts`, config);
         
@@ -231,15 +232,19 @@ const UnitItem: React.FC<{
       .filter(k => checkedAvarias[parseInt(k)])
       .map(Number);
 
-    await axios.put(`http://localhost:3001/api/units/${unit.id}`, {
-      status,
-      avarias_atuais: avariasIDs,
-      codigo_serial: serial
-    }, config);
+    try {
+        await axios.put(`http://localhost:3001/api/units/${unit.id}`, {
+          status: status, // Manda o status que tá no select!
+          avarias_atuais: avariasIDs,
+          codigo_serial: serial
+        }, config);
 
-    alert('Unidade salva com sucesso!');
-    setIsEditingSerial(false);
-    onUpdate();
+        alert('Unidade salva com sucesso!');
+        setIsEditingSerial(false);
+        onUpdate(); // Chama a atualização da tela
+    } catch (error: any) {
+        alert(error.response?.data?.error || 'Erro ao salvar a unidade.');
+    }
   };
 
   const executeTransplantAndSave = async (reallocations: { id_reserva: number; id_nova_unidade: number }[]) => {
@@ -314,13 +319,13 @@ const UnitItem: React.FC<{
         <select
           value={status}
           onChange={e => setStatus(e.target.value as any)}
-          disabled={status === 'alugado'}
+          disabled={unit.status === 'alugado'} // Só bloqueia se o banco disser que tá alugado (proteção real)
           style={{
             padding: '6px',
             borderRadius: '4px',
             borderColor: '#ccc',
-            backgroundColor: (status === 'alugado') ? '#e9ecef' : '#fff',
-            cursor: (status === 'alugado') ? 'not-allowed' : 'pointer'
+            backgroundColor: (unit.status === 'alugado') ? '#e9ecef' : '#fff',
+            cursor: (unit.status === 'alugado') ? 'not-allowed' : 'pointer'
           }}
         >
           <option value="disponivel">🟢 Disponível</option>
@@ -393,6 +398,16 @@ const UnitItem: React.FC<{
             <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#fff3cd', borderLeft: '4px solid #ffc107', borderRadius: '4px', fontSize: '0.85rem', color: '#856404' }}>
               <strong>💬 Anotação da última Vistoria:</strong><br/>
               <span style={{ fontStyle: 'italic' }}>"{unit.ultima_observacao_vistoria}"</span>
+            </div>
+          )}
+          {unit.status === 'inativo' && unit.observacao && (
+            <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f8d7da', borderLeft: '5px solid #dc3545', borderRadius: '6px', fontSize: '0.9rem', color: '#721c24', boxShadow: '0 2px 4px rgba(220,53,69,0.1)' }}>
+              <strong style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                🔴 Motivo da Baixa (Inativação):
+              </strong>
+              <div style={{ marginTop: '5px', fontWeight: '500' }}>
+                {unit.observacao}
+              </div>
             </div>
           )}
 
