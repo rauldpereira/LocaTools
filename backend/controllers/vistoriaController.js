@@ -1,4 +1,5 @@
 const { Vistoria, DetalhesVistoria, OrdemDeServico, AvariasEncontradas, Unidade, sequelize } = require('../models');
+const { notificarUsuario } = require('../utils/notificacaoHelper');
 
 const createVistoria = async (req, res) => {
     const { id_ordem_servico, tipo_vistoria, detalhes } = req.body;
@@ -65,8 +66,25 @@ const createVistoria = async (req, res) => {
             if (ordemDeServico) {
                 if (tipo_vistoria === 'entrega') {
                     await ordemDeServico.update({ status: 'aguardando_assinatura' }, { transaction: t });
+                    
+                    // AVISA O CLIENTE PRA ASSINAR 
+                    await notificarUsuario(
+                        ordemDeServico.id_usuario,
+                        '✍️ Vistoria Concluída - Assine o Contrato',
+                        `A vistoria do seu pedido #${ordemDeServico.id} foi finalizada. Assine o contrato para liberar os equipamentos.`,
+                        `/my-reservations/${ordemDeServico.id}`
+                    );
+
                 } else if (tipo_vistoria === 'devolucao') {
                     await ordemDeServico.update({ status: 'aguardando_pagamento_final' }, { transaction: t });
+
+                    //  AVISA O CLIENTE PRA PAGAR O RESTO
+                    await notificarUsuario(
+                        ordemDeServico.id_usuario,
+                        '💳 Vistoria Concluída - Pagamento Pendente',
+                        `A devolução do pedido #${ordemDeServico.id} foi registrada! Acesse para realizar o pagamento do saldo final.`,
+                        `/my-reservations/${ordemDeServico.id}`
+                    );
                 }
             }
 

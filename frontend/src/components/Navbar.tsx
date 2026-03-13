@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import NotificationBell from './NotificationBell';
 import '../styles/Navbar.css';
 
 const Navbar: React.FC = () => {
@@ -29,6 +30,10 @@ const Navbar: React.FC = () => {
                     </li>
                     {isLoggedIn ? (
                         <>
+                            <li style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>
+                                <NotificationBell />
+                            </li>
+
                             <li>
                                 <Link to="/profile">Olá, {user?.nome}</Link>
                             </li>

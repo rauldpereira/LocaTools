@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo, FreteConfig } = require('../models');
+const { notificarUsuario } = require('../utils/notificacaoHelper');
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
 
@@ -292,7 +293,6 @@ const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
 
     try {
-
         const order = await OrdemDeServico.findByPk(id);
 
         if (!order) {
@@ -300,6 +300,22 @@ const updateOrderStatus = async (req, res) => {
         }
 
         await order.update({ status });
+
+        if (status === 'aguardando_assinatura') {
+            await notificarUsuario(
+                order.id_usuario,
+                '✍️ Contrato Liberado',
+                `O contrato do seu pedido #${order.id} está pronto. Por favor, assine para garantir a reserva.`,
+                `/my-reservations/${order.id}`
+            );
+        } else if (status === 'aprovada') {
+            await notificarUsuario(
+                order.id_usuario,
+                '✅ Reserva Confirmada',
+                `Seu pedido #${order.id} foi aprovado! Fique atento às datas de retirada/entrega.`,
+                `/my-reservations/${order.id}`
+            );
+        }
 
         res.status(200).json({ message: 'Status da ordem de serviço atualizado com sucesso.', order });
 
@@ -821,18 +837,18 @@ const rescheduleOrder = async (req, res) => {
 
 const skipReturnInspection = async (req, res) => {
     try {
+        let userIdNotify = null;
+
         await sequelize.transaction(async (t) => {
             const order = await OrdemDeServico.findByPk(req.params.id, {
                 include: [{ model: ItemReserva, as: 'ItemReservas' }],
                 transaction: t
             });
 
-            if (!order) {
-                throw new Error('Ordem de serviço não encontrada.');
-            }
-            if (order.status !== 'em_andamento') {
-                throw new Error('Este pedido não está na etapa de devolução.');
-            }
+            if (!order) throw new Error('Ordem de serviço não encontrada.');
+            if (order.status !== 'em_andamento') throw new Error('Este pedido não está na etapa de devolução.');
+
+            userIdNotify = order.id_usuario;
 
             await order.update({
                 status: 'aguardando_pagamento_final',
@@ -846,6 +862,15 @@ const skipReturnInspection = async (req, res) => {
                 }
             }
         });
+
+        if (userIdNotify) {
+            await notificarUsuario(
+                userIdNotify,
+                '💳 Pagamento Final Pendente',
+                `A devolução do pedido #${req.params.id} foi concluída! Acesse para realizar o pagamento do saldo restante.`,
+                `/my-reservations/${req.params.id}`
+            );
+        }
 
         res.status(200).json({ message: 'Devolução rápida registrada com sucesso.' });
     } catch (error) {
@@ -870,6 +895,13 @@ const finalizarComPendencia = async (req, res) => {
         await order.update({
             status: 'PREJUIZO', 
         });
+
+        await notificarUsuario(
+            order.id_usuario,
+            '⚠️ Pendência Financeira',
+            `Seu pedido #${order.id} foi encerrado com valores pendentes. Acesse para regularizar a situação.`,
+            `/my-reservations/${order.id}`
+        );
 
         res.status(200).json({ message: 'Ordem encerrada com pendências financeiras.' });
 

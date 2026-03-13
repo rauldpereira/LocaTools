@@ -15,6 +15,8 @@ const calendarioRoutes = require('./routes/calendarioRoutes');
 const prejuizoRoutes = require('./routes/prejuizoRoutes');
 const freteRoutes = require('./routes/freteRoutes');
 const iniciarCronJobs = require('./services/canceladorPedidos');
+const notificacaoRoutes = require('./routes/notificacaoRoutes');
+const { iniciarRoboDeLembretes } = require('./services/lembretesCron');
 
 dotenv.config({ path: '.env', quiet: true });
 
@@ -42,10 +44,14 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api', calendarioRoutes);
 app.use('/api/prejuizos', prejuizoRoutes);
 app.use('/api/frete', freteRoutes);
+app.use('/api/notificacoes', notificacaoRoutes);
 
 app.get('/', (req, res) => {
   res.send('API do LocaTools está rodando!');
 });
+
+iniciarRoboDeLembretes();
+console.log('⏱️ Serviço de CRON (Lembretes Automáticos) ativado.');
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
