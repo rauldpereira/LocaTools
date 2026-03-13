@@ -11,6 +11,12 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ error: 'Preencha os campos obrigatórios.' });
     }
 
+    // Validação de Força da Senha no Cadastro 
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(senha)) {
+        return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres, contendo letras e números.' });
+    }
+
     const userExists = await Usuario.findOne({ where: { email } });
     if (userExists) {
       return res.status(409).json({ error: 'E-mail já cadastrado.' });
@@ -118,10 +124,18 @@ const changePassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'Usuário não encontrado.' });
     }
+    
     const isOldPasswordCorrect = await bcrypt.compare(old_senha, user.senha_hash);
     if (!isOldPasswordCorrect) {
       return res.status(401).json({ error: 'A senha antiga está incorreta.' });
     }
+
+    // Requisitos: Mínimo 8 caracteres, pelo menos uma letra e um número.
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(new_senha)) {
+        return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres, contendo pelo menos letras e números.' });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const new_senha_hash = await bcrypt.hash(new_senha, salt);
     await user.update({ senha_hash: new_senha_hash });
@@ -185,6 +199,12 @@ const createFuncionario = async (req, res) => {
 
     if (!nome || !email || !senha) {
       return res.status(400).json({ error: 'Preencha todos os campos.' });
+    }
+
+    // Validação de Força da Senha para Funcionários 
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(senha)) {
+        return res.status(400).json({ error: 'A senha do funcionário deve ter no mínimo 8 caracteres, contendo letras e números.' });
     }
 
     // Checa se o email já tá em uso

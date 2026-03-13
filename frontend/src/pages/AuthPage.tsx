@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode') || 'login';
+  const isExpired = searchParams.get('expired') === 'true';
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
@@ -18,6 +19,13 @@ const AuthPage: React.FC = () => {
 
   return (
     <div style={pageContainerStyle}>
+      
+      {isExpired && (
+        <div style={alertBannerStyle}>
+          Sua sessão expirou por segurança. Por favor, faça login novamente.
+        </div>
+      )}
+
       <div style={{ 
           ...cardStyle, 
           maxWidth: mode === 'register' ? '900px' : '420px',
@@ -73,6 +81,20 @@ const pageContainerStyle: React.CSSProperties = {
   alignItems: 'center',
   backgroundColor: '#f4f6f8',
   padding: '1rem'
+};
+
+const alertBannerStyle: React.CSSProperties = {
+  backgroundColor: '#f8d7da',
+  color: '#721c24',
+  padding: '12px 20px',
+  borderRadius: '8px',
+  border: '1px solid #f5c6cb',
+  marginBottom: '1rem',
+  maxWidth: '420px',
+  width: '100%',
+  textAlign: 'center',
+  fontWeight: 'bold',
+  boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
 };
 
 const cardStyle: React.CSSProperties = {

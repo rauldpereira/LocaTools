@@ -6,9 +6,11 @@ const Profile: React.FC = () => {
   const { user, updateUser, logout } = useAuth();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  
   const [mensagem, setMensagem] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -46,10 +48,18 @@ const Profile: React.FC = () => {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (newPassword !== confirmNewPassword) {
         setMensagem('Erro: As novas senhas não coincidem.');
         return;
     }
+
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+        setMensagem('Erro: A nova senha deve ter no mínimo 8 caracteres e conter letras e números.');
+        return;
+    }
+
     try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -64,10 +74,12 @@ const Profile: React.FC = () => {
             Authorization: `Bearer ${token}`,
           },
         });
+        
         setMensagem('Senha alterada com sucesso!');
         setOldPassword('');
         setNewPassword('');
         setConfirmNewPassword('');
+        
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setMensagem('Erro: ' + (err.response.data.error || 'Erro ao alterar a senha.'));
@@ -82,7 +94,7 @@ const Profile: React.FC = () => {
     return (
       <div style={{ padding: '2rem', color: 'red' }}>
         {error}
-        <button onClick={logout}>Fazer Login</button>
+        <button onClick={() => logout(true)}>Fazer Login</button>
       </div>
     );
   }
@@ -111,7 +123,6 @@ const Profile: React.FC = () => {
         />
         <button type="submit">Atualizar Perfil</button>
       </form>
-      {mensagem && <p style={{ marginTop: '1rem', color: mensagem.startsWith('Erro') ? 'red' : 'green' }}>{mensagem}</p>}
       
       <hr style={{ margin: '2rem 0' }} />
 
@@ -124,13 +135,18 @@ const Profile: React.FC = () => {
           onChange={(e) => setOldPassword(e.target.value)}
           required
         />
-        <input
-          type="password"
-          placeholder="Nova Senha"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          required
-        />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <input
+              type="password"
+              placeholder="Nova Senha"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+            <small style={{ color: '#666', fontSize: '0.8rem', marginTop: '4px' }}>
+              Mínimo de 8 caracteres, com letras e números.
+            </small>
+        </div>
         <input
           type="password"
           placeholder="Confirmar Nova Senha"
@@ -140,6 +156,21 @@ const Profile: React.FC = () => {
         />
         <button type="submit">Alterar Senha</button>
       </form>
+
+      {mensagem && (
+          <div style={{ 
+              marginTop: '1rem', 
+              padding: '10px', 
+              backgroundColor: mensagem.startsWith('Erro') ? '#f8d7da' : '#d4edda',
+              color: mensagem.startsWith('Erro') ? '#721c24' : '#155724',
+              border: `1px solid ${mensagem.startsWith('Erro') ? '#f5c6cb' : '#c3e6cb'}`,
+              borderRadius: '4px',
+              maxWidth: '300px'
+          }}>
+              {mensagem}
+          </div>
+      )}
+
     </div>
   );
 };
