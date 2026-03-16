@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from '../context/AuthContext';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ const Register: React.FC = () => {
   const [razaoSocial, setRazaoSocial] = useState("");
 
   const [mensagem, setMensagem] = useState("");
+
+  const { login } = useAuth();
 
   const isCPFValido = (cpf: string) => {
     cpf = cpf.replace(/\D/g, "");
@@ -163,20 +166,20 @@ const Register: React.FC = () => {
 
       setMensagem("Credenciais criadas com sucesso! Redirecionando...");
 
-      setTimeout(() => {
-        navigate("/auth?mode=login");
+      try {
+        const { data } = await axios.post('http://localhost:3001/api/login', { email, senha });
+        
+        // Usa a função login do contexto
+        login(data.token); 
+        
+        // Manda o cara direto pra Home
+        navigate('/'); 
 
-        // Limpa os campos para a tela não piscar vazia antes de trocar
-        setNome("");
-        setEmail("");
-        setSenha("");
-        setConfirmarSenha("");
-        setTelefone("");
-        setCpf("");
-        setRg("");
-        setCnpj("");
-        setRazaoSocial("");
-      }, 1500);
+      } catch (loginError) {
+        console.error("Erro no auto-login:", loginError);
+        navigate("/auth?mode=login"); 
+      }
+
     } catch (error: any) {
       if (axios.isAxiosError(error) && error.response) {
         setMensagem("Erro: " + error.response.data.error);
