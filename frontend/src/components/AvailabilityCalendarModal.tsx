@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Calendar from 'react-calendar';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import HorarioFuncionamento from './HorarioFuncionamentoDisplay';
 
@@ -25,7 +24,6 @@ const toISODate = (date: Date): string => {
 
 const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void }> = ({ equipment, onClose }) => {
     const { addToCart } = useCart();
-    const { isLoggedIn, isLoadingAuth } = useAuth();
     const navigate = useNavigate();
 
     const [availabilityData, setAvailabilityData] = useState<{ [key: string]: number }>({});
@@ -38,13 +36,11 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
     const [minDate, setMinDate] = useState<Date | undefined>(undefined);
     const [maxDate, setMaxDate] = useState<Date | undefined>(undefined);
 
-
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    // CARREGA OS MESES
     useEffect(() => {
-        if (isLoadingAuth || !isLoggedIn) return;
-
         const fetchMesesPublicados = async () => {
             try {
                 setLoading(true);
@@ -84,9 +80,10 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         };
 
         fetchMesesPublicados();
-    }, [isLoadingAuth, isLoggedIn]);
+    }, []);
 
 
+    // CARREGA OS FERIADOS E DIAS FECHADOS
     useEffect(() => {
         if (!minDate) return;
 
@@ -109,6 +106,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         fetchStatusMensal();
     }, [currentMonthView, minDate]);
 
+    // CARREGA A DISPONIBILIDADE DO EQUIPAMENTO
     useEffect(() => {
         if (!minDate || !maxDate || !equipment.id) return;
 
@@ -131,6 +129,8 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         fetchDailyAvailability();
     }, [minDate, maxDate, equipment.id]);
 
+
+    // LÓGICA DE CÁLCULO DE UNIDADES QUANDO CLICA NO CALENDÁRIO
 
    useEffect(() => {
         if (selectedRange && selectedRange.length === 2) {
@@ -158,7 +158,6 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
     const getTileClassName = ({ date, view }: { date: Date, view: string }) => {
         if (view !== 'month') return null;
         const dayString = toISODate(date);
-
 
         if (date.getMonth() !== currentMonthView.getMonth()) {
             return 'day-neighboring-month';
@@ -188,14 +187,11 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
             }
         }
 
-
         if (availabilityEstoque === undefined) return null;
         if (availabilityEstoque === 0) return 'day-red';
 
-
         const percentage = (availabilityEstoque / equipment.total_quantidade) * 100;
         if (percentage <= 50) return 'day-yellow';
-
 
         return 'day-green';
     };
@@ -203,7 +199,6 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
     const tileDisabled = ({ date, view }: { date: Date, view: string }): boolean => {
         if (view !== 'month') return false;
-
 
         if (date.getMonth() !== currentMonthView.getMonth()) {
             return true;
@@ -224,9 +219,9 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         return false;
     };
 
-
+    // ADICIONAR AO CARRINHO
     const handleAddToCart = () => {
-        if (!isLoggedIn || !selectedRange) return;
+        if (!selectedRange) return;
 
         const startDate = selectedRange[0];
         const endDate = selectedRange[1];
@@ -242,16 +237,14 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
             data_fim: endDateString,
             preco: equipment.preco_diaria,
         };
+        
+        // Manda pro localStorage e vai pro carrinho
         addToCart(item);
         onClose();
         navigate('/cart');
     };
 
     const handleContentClick = (e: React.MouseEvent) => e.stopPropagation();
-
-    if (isLoadingAuth) {
-        return <div style={modalOverlayStyle} onClick={onClose}><p>Carregando...</p></div>;
-    }
 
     return (
         <div style={modalOverlayStyle} onClick={onClose}>
@@ -277,23 +270,19 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                     </div>
                 </div>
 
-
                 {loading ? <p>Carregando calendário...</p> :
                     errorMessage ? <p style={{ color: 'red' }}>{errorMessage}</p> : (
                         <Calendar
                             onChange={(value) => setSelectedRange(value as Date[])}
                             selectRange={true}
-
                             minDate={minDate}
                             maxDate={maxDate}
                             activeStartDate={currentMonthView}
                             onActiveStartDateChange={({ activeStartDate }) =>
                                 setCurrentMonthView(activeStartDate || new Date())
                             }
-
                             tileClassName={getTileClassName}
                             tileDisabled={tileDisabled}
-
                             minDetail="month"
                             maxDetail="month"
                         />
@@ -334,15 +323,16 @@ const modalOverlayStyle: React.CSSProperties = {
 };
 
 const modalContentStyle: React.CSSProperties = {
-    backgroundColor: 'var(--cor-fundo-modal)',
-    color: 'var(--cor-texto-principal)',
-    padding: '2rem',
-    borderRadius: '8px',
-    width: 'auto',
-    maxWidth: '90vw',
-    maxHeight: '90vh',
+    backgroundColor: 'var(--cor-fundo-modal, #2a2a2a)',
+    color: 'var(--cor-texto-principal, #fff)',
+    padding: '1.5rem',
+    borderRadius: '12px',
+    width: '100%',
+    maxWidth: '700px',
+    maxHeight: '80vh',
     overflowY: 'auto',
-    position: 'relative'
+    position: 'relative',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
 };
 
 export default AvailabilityCalendarModal;

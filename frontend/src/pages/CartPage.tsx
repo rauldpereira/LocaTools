@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import AuthModal from '../components/AuthModal';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import '../styles/CartPage.css';
@@ -14,6 +15,8 @@ const CartPage: React.FC = () => {
     const { cartItems, removeFromCart, clearCart } = useCart();
     const { token } = useAuth();
     const navigate = useNavigate();
+
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -152,7 +155,7 @@ const CartPage: React.FC = () => {
 
     const handleCheckout = async () => {
         if (!token) {
-            navigate('/auth?mode=login');
+            setShowAuthModal(true);
             return;
         }
         if (cartItems.length === 0) {
@@ -399,6 +402,11 @@ const CartPage: React.FC = () => {
                     </>
                 )}
             </div>
+
+            <AuthModal 
+                isOpen={showAuthModal} 
+                onClose={() => setShowAuthModal(false)} 
+            />
         </div>
     );
 };

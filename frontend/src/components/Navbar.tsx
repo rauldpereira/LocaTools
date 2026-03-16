@@ -28,11 +28,14 @@ const Navbar: React.FC = () => {
                     <li>
                         <Link to="/">Equipamentos</Link>
                     </li>
+                    
+                    <li>
+                        <Link to="/cart">Carrinho ({totalItems})</Link>
+                    </li>
+
                     {isLoggedIn ? (
                         <>
-                            <li style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>
-                                <NotificationBell />
-                            </li>
+                            
 
                             <li>
                                 <Link to="/profile">Olá, {user?.nome}</Link>
@@ -46,9 +49,8 @@ const Navbar: React.FC = () => {
                                     <Link to="/admin">Painel Interno</Link>
                                 </li>
                             )}
-                            
-                            <li>
-                                <Link to="/cart">Carrinho ({totalItems})</Link>
+                            <li style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>
+                                <NotificationBell />
                             </li>
                             <li>
                                 <button onClick={handleLogout} className="navbar-button">Sair</button>
