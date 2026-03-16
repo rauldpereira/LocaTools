@@ -6,6 +6,7 @@ import RescheduleModal from "../components/RescheduleModal";
 import HorarioFuncionamento from "../components/HorarioFuncionamentoDisplay";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import ContractModal from "../components/ContractModal";
 
 interface TipoAvaria {
   id: number;
@@ -100,8 +101,6 @@ const ReservationDetailsPage: React.FC = () => {
   const { token, user } = useAuth();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isChecked, setIsChecked] = useState(false);
-  const [signing, setSigning] = useState(false);
   const [contractLoading, setContractLoading] = useState(false);
   const backendUrl = "http://localhost:3001";
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
@@ -111,6 +110,8 @@ const ReservationDetailsPage: React.FC = () => {
   const [recoverMethod, setRecoverMethod] = useState("pix");
   const [isRecovering, setIsRecovering] = useState(false);
   const [customDebtAmount, setCustomDebtAmount] = useState<number | string>(0);
+
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
 
   const fetchOrderDetails = async () => {
     if (!token || !orderId) return;
@@ -368,26 +369,6 @@ const ReservationDetailsPage: React.FC = () => {
     );
 
     doc.save(`Fatura_Locacao_Pedido_${order.id}.pdf`);
-  };
-
-  const handleSignContract = async () => {
-    if (!isChecked) return alert("Você precisa concordar com os termos.");
-    setSigning(true);
-    try {
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.put(
-        `${backendUrl}/api/reservations/${orderId}/sign`,
-        {},
-        config,
-      );
-      alert("Contrato assinado!");
-      fetchOrderDetails();
-    } catch (error) {
-      alert("Erro ao assinar.");
-    } finally {
-      setSigning(false);
-      setIsChecked(false);
-    }
   };
 
   const handleDownloadContract = async () => {
@@ -1067,56 +1048,27 @@ const ReservationDetailsPage: React.FC = () => {
         </button>
       )}
 
-      {user?.tipo_usuario !== "admin" &&
-        order.status === "aguardando_assinatura" && (
-          <div
+      {user?.tipo_usuario !== "admin" && order.status === "aguardando_assinatura" && (
+        <div style={{
+          border: "2px solid #007bff", padding: "1.5rem", marginBottom: "2rem",
+          borderRadius: "8px", backgroundColor: "#f0f7ff", textAlign: "center"
+        }}>
+          <h3 style={{ marginTop: 0, color: "#007bff", marginBottom: "10px" }}>Assinatura Pendente</h3>
+          <p style={{ color: "#555", marginBottom: "20px" }}>
+            Para liberar a retirada dos equipamentos, você precisa ler e assinar o contrato digital de locação.
+          </p>
+          <button
+            onClick={() => setIsContractModalOpen(true)}
             style={{
-              border: "2px solid #007bff",
-              padding: "1.5rem",
-              marginBottom: "2rem",
-              borderRadius: "8px",
-              backgroundColor: "#f8f9fa",
+              padding: "15px 30px", backgroundColor: "#007bff", color: "white",
+              border: "none", borderRadius: "8px", fontWeight: "bold",
+              fontSize: "1.2rem", cursor: "pointer", boxShadow: "0 4px 10px rgba(0,123,255,0.3)"
             }}
           >
-            <h3 style={{ marginTop: 0, color: "#007bff" }}>
-              Assinatura Pendente
-            </h3>
-            <p>
-              Por favor, leia o contrato (botão acima) e confirme o aceite dos
-              termos para liberar a retirada do equipamento.
-            </p>
-            <div
-              style={{
-                margin: "1.5rem 0",
-                padding: "10px",
-                backgroundColor: "#fff",
-                border: "1px solid #ddd",
-                borderRadius: "4px",
-              }}
-            >
-              <input
-                type="checkbox"
-                id="terms"
-                checked={isChecked}
-                onChange={() => setIsChecked(!isChecked)}
-                style={{ transform: "scale(1.5)", marginRight: "10px" }}
-              />
-              <label
-                htmlFor="terms"
-                style={{ fontSize: "1.1rem", cursor: "pointer" }}
-              >
-                Li, compreendi e concordo com os termos do contrato.
-              </label>
-            </div>
-            <button
-              onClick={handleSignContract}
-              disabled={!isChecked || signing}
-              style={btnPrimaryStyle}
-            >
-              {signing ? "Processando..." : "Assinar Digitalmente e Confirmar"}
-            </button>
-          </div>
-        )}
+            📄 Abrir e Assinar Contrato
+          </button>
+        </div>
+      )}
 
       <div
         style={{
@@ -1477,6 +1429,17 @@ const ReservationDetailsPage: React.FC = () => {
           }}
         />
       )}
+      
+      {isContractModalOpen && (
+        <ContractModal
+          order={order}
+          onClose={() => setIsContractModalOpen(false)}
+          onSuccess={() => {
+            setIsContractModalOpen(false);
+            fetchOrderDetails();
+          }}
+        />
+      )}
 
       {/* MODAL DE RECUPERAÇÃO DE DÍVIDA */}
       {showRecoverModal && (
@@ -1665,18 +1628,7 @@ const btnActionStyle: React.CSSProperties = {
   fontSize: "0.95rem",
   boxShadow: "0 2px 5px rgba(0,123,255,0.3)",
 };
-const btnPrimaryStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "1rem",
-  fontSize: "1.2rem",
-  backgroundColor: "#28a745",
-  color: "white",
-  border: "none",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: "bold",
-  boxShadow: "0 4px 6px rgba(40,167,69,0.2)",
-};
+
 const btnSecondaryStyle: React.CSSProperties = {
   padding: "10px 20px",
   border: "2px solid #2c3e50",

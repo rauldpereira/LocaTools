@@ -1,114 +1,120 @@
-'use strict';
-const { Model } = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class OrdemDeServico extends Model {
     static associate(models) {
       OrdemDeServico.belongsTo(models.Usuario, {
-        foreignKey: 'id_usuario',
+        foreignKey: "id_usuario",
       });
 
       OrdemDeServico.hasMany(models.ItemReserva, {
-        foreignKey: 'id_ordem_servico',
-        as: 'ItemReservas'
+        foreignKey: "id_ordem_servico",
+        as: "ItemReservas",
       });
 
       OrdemDeServico.hasMany(models.Pagamento, {
-        foreignKey: 'id_ordem_servico',
-        as: 'Pagamentos'
+        foreignKey: "id_ordem_servico",
+        as: "Pagamentos",
       });
 
       OrdemDeServico.hasMany(models.Entrega, {
-        foreignKey: 'id_ordem_servico',
-        as: 'Entregas'
+        foreignKey: "id_ordem_servico",
+        as: "Entregas",
       });
 
       OrdemDeServico.hasMany(models.Vistoria, {
-        foreignKey: 'id_reserva',
-        as: 'Vistorias'
+        foreignKey: "id_reserva",
+        as: "Vistorias",
       });
     }
   }
 
-  OrdemDeServico.init({
-    id_usuario: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: 'Usuarios',
-        key: 'id',
+  OrdemDeServico.init(
+    {
+      id_usuario: {
+        type: DataTypes.INTEGER,
+        references: {
+          model: "Usuarios",
+          key: "id",
+        },
+      },
+      status: {
+        type: DataTypes.ENUM(
+          "pendente",
+          "aprovada",
+          "cancelada",
+          "aguardando_assinatura",
+          "em_andamento",
+          "entregue",
+          "devolvida",
+          "finalizada",
+          "aguardando_pagamento_final",
+          "PREJUIZO",
+        ),
+        allowNull: false,
+        defaultValue: "pendente",
+      },
+      data_criacao: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      data_inicio: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
+      },
+      data_fim: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
+      },
+      valor_total: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+      tipo_entrega: {
+        type: DataTypes.ENUM("retirada", "entrega"),
+        allowNull: false,
+      },
+      endereco_entrega: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      custo_frete: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+      valor_sinal: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+      taxa_avaria: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.0,
+      },
+      taxa_cancelamento: {
+        type: DataTypes.DECIMAL(10, 2),
+      },
+      valor_reembolsado: {
+        type: DataTypes.DECIMAL(10, 2),
+      },
+      taxa_remarcacao: {
+        type: DataTypes.DECIMAL(10, 2),
+      },
+      taxa_atraso: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        defaultValue: 0,
+      },
+      assinatura_cliente: {
+        type: DataTypes.TEXT,
+        allowNull: true,
       },
     },
-    status: {
-      type: DataTypes.ENUM(
-        'pendente',
-        'aprovada',
-        'cancelada',
-        'aguardando_assinatura',
-        'em_andamento',
-        'entregue',
-        'devolvida',
-        'finalizada',
-        'aguardando_pagamento_final',
-        'PREJUIZO'
-      ),
-      allowNull: false,
-      defaultValue: 'pendente'
+    {
+      sequelize,
+      modelName: "OrdemDeServico",
+      tableName: "OrdensDeServico",
     },
-    data_criacao: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW
-    },
-    data_inicio: {
-      type: DataTypes.DATEONLY,
-      allowNull: false
-    },
-    data_fim: {
-      type: DataTypes.DATEONLY,
-      allowNull: false
-    },
-    valor_total: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false
-    },
-    tipo_entrega: {
-      type: DataTypes.ENUM('retirada', 'entrega'),
-      allowNull: false,
-    },
-    endereco_entrega: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    custo_frete: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-    },
-    valor_sinal: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-    },
-    taxa_avaria: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-      defaultValue: 0.00
-    },
-    taxa_cancelamento: {
-      type: DataTypes.DECIMAL(10, 2),
-    },
-    valor_reembolsado: {
-      type: DataTypes.DECIMAL(10, 2),
-    },
-    taxa_remarcacao: {
-      type: DataTypes.DECIMAL(10, 2)
-    },
-    taxa_atraso: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-      defaultValue: 0
-    },
-  }, {
-    sequelize,
-    modelName: 'OrdemDeServico',
-    tableName: 'OrdensDeServico'
-  });
+  );
   return OrdemDeServico;
 };
-

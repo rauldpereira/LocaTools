@@ -535,11 +535,9 @@ const generateContract = async (req, res) => {
         ], { indent: 20 });
         doc.moveDown(0.5);
 
-
         doc.text('6.2. DEVOLUÇÃO E AVARIAS:');
         doc.text('Na devolução, uma nova vistoria será realizada. Avarias que não constam na Vistoria de Saída (Cláusula 4) serão de responsabilidade do(a) LOCATÁRIO(A), sendo os custos de reparo (baseados no catálogo de avarias) adicionados ao valor final do pagamento.');
         doc.moveDown(0.5);
-
 
         doc.font('Helvetica-Bold').text('6.3. POLÍTICA DE CANCELAMENTO:');
         doc.font('Helvetica').text(
@@ -554,6 +552,24 @@ const generateContract = async (req, res) => {
         ], { indent: 20 });
 
         doc.moveDown(2);
+
+
+        if (order.assinatura_cliente) {
+            try {
+                const base64Data = order.assinatura_cliente.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
+                
+                const imgBuffer = Buffer.from(base64Data, 'base64');
+                
+                doc.image(imgBuffer, 230, doc.y, { fit: [150, 70] });
+                
+                doc.moveDown(4);
+            } catch (err) {
+                console.error("Erro ao processar imagem da assinatura no PDF:", err);
+                doc.moveDown(3);
+            }
+        } else {
+            doc.moveDown(3);
+        }
 
         doc.fontSize(12);
         doc.text('________________________________________', { align: 'center' });
@@ -573,6 +589,7 @@ const generateContract = async (req, res) => {
 const signContract = async (req, res) => {
     try {
         const order = await OrdemDeServico.findByPk(req.params.id);
+        const { assinatura_cliente } = req.body; 
 
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
@@ -584,7 +601,10 @@ const signContract = async (req, res) => {
             return res.status(400).json({ error: 'Esta reserva não está na etapa de assinatura.' });
         }
 
-        await order.update({ status: 'em_andamento' });
+        await order.update({ 
+            status: 'em_andamento',
+            assinatura_cliente: assinatura_cliente || null
+        });
 
         res.status(200).json({ message: 'Contrato assinado e reserva confirmada com sucesso.', order });
 
@@ -610,15 +630,13 @@ const confirmManualPayment = async (req, res) => {
             return res.status(400).json({ error: `Status inválido para finalizar: ${order.status}.` });
         }
 
-        // 🚀 RADAR BLINDADO: Fazemos uma contagem DIRETA na tabela de Prejuízos.
-        // Ele vai olhar: "Quantos Prejuízos abertos existem atrelados aos itens desta OS?"
         const qtdeBoAberto = await Prejuizo.count({
             where: { resolvido: false },
             include: [{
                 model: ItemReserva,
                 as: 'itemReserva',
                 where: { id_ordem_servico: order.id },
-                required: true // Só conta se o B.O for desta OS
+                required: true
             }]
         });
 

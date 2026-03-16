@@ -20,7 +20,6 @@ import FinalizePaymentPage from './pages/FinalizePaymentPage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import GerenciamentoCalendario from './components/Admin/GerenciamentoCalendario';
 import AdminFreightConfig from './pages/AdminFreightConfig';
-
 const stripePromise = loadStripe('pk_test_51RxzLsHUnTeu3by4toldZZMEswVFiFnrXc0eSI9PyNzEGnICbSvasFqoC0cmMgqkD3Ie6tQIEhKlhDvitfTbcwTT00qAldkZVx');
 
 function App() {
