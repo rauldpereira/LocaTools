@@ -457,9 +457,18 @@ const generateContract = async (req, res) => {
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
         }
-        if (order.id_usuario !== userId && tipoUsuario !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado.' });
+        
+        const isOwner = order.id_usuario === req.user.id;
+        const isAdmin = req.user.tipo_usuario === 'admin';
+        const hasPermission = req.user.permissoes && (
+            req.user.permissoes.includes('gerenciar_reservas') || 
+            req.user.permissoes.includes('fazer_vistoria')
+        );
+
+        if (!isOwner && !isAdmin && !hasPermission) {
+            return res.status(403).json({ error: 'Acesso negado. Você não tem permissão para baixar este contrato.' });
         }
+
         if (!order.ItemReservas || order.ItemReservas.length === 0) {
             return res.status(500).json({ error: 'Pedido sem itens.' });
         }
@@ -594,9 +603,17 @@ const signContract = async (req, res) => {
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
         }
-        if (order.id_usuario !== req.user.id) {
-            return res.status(403).json({ error: 'Acesso negado.' });
+
+        const isOwner = order.id_usuario === req.user.id;
+        const isAdmin = req.user.tipo_usuario === 'admin' || req.user.tipo_usuario === 'funcionario';
+        
+        const hasPermission = req.user.permissoes.includes('gerenciar_reservas') || 
+            req.user.permissoes.includes('fazer_vistoria')
+
+        if (!isOwner && !isAdmin && !hasPermission) {
+            return res.status(403).json({ error: 'Acesso negado. Você não tem permissão para coletar assinaturas.' });
         }
+
         if (order.status !== 'aguardando_assinatura') {
             return res.status(400).json({ error: 'Esta reserva não está na etapa de assinatura.' });
         }

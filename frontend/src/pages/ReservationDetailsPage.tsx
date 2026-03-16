@@ -67,6 +67,11 @@ interface ItemReserva {
 
 interface OrderDetails {
   id: number;
+  id_usuario: number;
+  Usuario?: {  
+    nome: string;
+    email: string;
+  };
   status: string;
   data_inicio: string;
   data_fim: string;
@@ -98,7 +103,7 @@ const parseDateStringAsLocal = (dateString: string) => {
 const ReservationDetailsPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
-  const { token, user } = useAuth();
+  const { token, user, hasPermission } = useAuth();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [contractLoading, setContractLoading] = useState(false);
@@ -594,6 +599,17 @@ const ReservationDetailsPage: React.FC = () => {
     });
   }
 
+  const isAdmin = user?.tipo_usuario === "admin";
+  const isOwner = user?.id === order?.id_usuario;
+  const isFuncionario = user?.tipo_usuario === "funcionario";
+  
+  const podeVerFinanceiro = isAdmin || isOwner || hasPermission("ver_financeiro");
+  
+  const podeColetarAssinatura = isAdmin || hasPermission("gerenciar_reservas") || hasPermission("fazer_vistoria");
+  
+  const podeVerPainelAcoes = isAdmin || isFuncionario || podeColetarAssinatura;
+  // =========================================================================
+
   return (
     <div
       style={{
@@ -616,7 +632,7 @@ const ReservationDetailsPage: React.FC = () => {
         }}
       >
         <div>
-          {user?.tipo_usuario === "admin" ? (
+          {isAdmin || isFuncionario ? (
             <button onClick={() => navigate("/admin")} style={btnBackStyle}>
               &larr; Painel
             </button>
@@ -736,7 +752,8 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {user?.tipo_usuario === "admin" && (
+      {/* PAINEL DE AÇÕES DA EQUIPE */}
+      {podeVerPainelAcoes && (
         <div
           style={{
             border: "1px solid #007bff",
@@ -754,7 +771,7 @@ const ReservationDetailsPage: React.FC = () => {
               paddingBottom: "10px",
             }}
           >
-            Painel de Ações
+            Painel de Ações Internas
           </h3>
           <div
             style={{
@@ -764,27 +781,43 @@ const ReservationDetailsPage: React.FC = () => {
               marginTop: "15px",
             }}
           >
-            {order.status === "aprovada" && (
+            {/* Botão de Assinatura liberado para admin ou permissão correta */}
+            {order.status === "aguardando_assinatura" && podeColetarAssinatura && (
+              <button
+                onClick={() => setIsContractModalOpen(true)}
+                style={{
+                  ...btnActionStyle,
+                  backgroundColor: "#17a2b8",
+                  boxShadow: "0 2px 5px rgba(23, 162, 184, 0.3)",
+                }}
+              >
+                🖊️ Coletar Assinatura Do Cliente
+              </button>
+            )}
+            
+            {(isAdmin || hasPermission("fazer_vistoria") || hasPermission("gerenciar_reservas")) && order.status === "aprovada" && (
               <Link to={`/admin/vistoria/${order.id}`}>
                 <button style={btnActionStyle}>
                   📋 Realizar Vistoria de Saída
                 </button>
               </Link>
             )}
-            {order.status === "em_andamento" && (
+            
+            {(isAdmin || hasPermission("fazer_vistoria") || hasPermission("gerenciar_reservas")) && order.status === "em_andamento" && (
               <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
                 <button style={btnActionStyle}>
                   📋 Registrar Devolução / Vistoria
                 </button>
               </Link>
             )}
-            {order.status === "aguardando_pagamento_final" && (
+            
+            {(isAdmin || hasPermission("gerenciar_reservas") || hasPermission("ver_financeiro")) && order.status === "aguardando_pagamento_final" && (
               <Link to={`/admin/finalize-payment/${order.id}`}>
                 <button style={btnActionStyle}>💲 Finalizar e Cobrar</button>
               </Link>
             )}
 
-            {order.status === "PREJUIZO" && (
+            {podeVerFinanceiro && order.status === "PREJUIZO" && (
               <button
                 onClick={() => {
                   setCustomDebtAmount(totalPendenteGeral.toFixed(2));
@@ -804,7 +837,8 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {itensComPrejuizo.length > 0 && (
+      {/* BLOCO DE DÍVIDAS / PREJUÍZO (ESCONDIDO DE QUEM NÃO TEM ACESSO) */}
+      {podeVerFinanceiro && itensComPrejuizo.length > 0 && (
         <div
           style={{
             border: "2px solid #dc3545",
@@ -1048,25 +1082,169 @@ const ReservationDetailsPage: React.FC = () => {
         </button>
       )}
 
-      {user?.tipo_usuario !== "admin" && order.status === "aguardando_assinatura" && (
-        <div style={{
-          border: "2px solid #007bff", padding: "1.5rem", marginBottom: "2rem",
-          borderRadius: "8px", backgroundColor: "#f0f7ff", textAlign: "center"
-        }}>
-          <h3 style={{ marginTop: 0, color: "#007bff", marginBottom: "10px" }}>Assinatura Pendente</h3>
+      {/* A CAIXA GIGANTE AGORA SÓ APARECE PRO CLIENTE (DONO) */}
+      {!isAdmin && !isFuncionario && order.status === "aguardando_assinatura" && (
+        <div
+          style={{
+            border: "2px solid #007bff",
+            padding: "1.5rem",
+            marginBottom: "2rem",
+            borderRadius: "8px",
+            backgroundColor: "#f0f7ff",
+            textAlign: "center",
+          }}
+        >
+          <h3 style={{ marginTop: 0, color: "#007bff", marginBottom: "10px" }}>
+            Assinatura Pendente
+          </h3>
           <p style={{ color: "#555", marginBottom: "20px" }}>
-            Para liberar a retirada dos equipamentos, você precisa ler e assinar o contrato digital de locação.
+            Para liberar a retirada dos equipamentos, você precisa ler e
+            assinar o contrato digital de locação.
           </p>
           <button
             onClick={() => setIsContractModalOpen(true)}
             style={{
-              padding: "15px 30px", backgroundColor: "#007bff", color: "white",
-              border: "none", borderRadius: "8px", fontWeight: "bold",
-              fontSize: "1.2rem", cursor: "pointer", boxShadow: "0 4px 10px rgba(0,123,255,0.3)"
+              padding: "15px 30px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: "bold",
+              fontSize: "1.2rem",
+              cursor: "pointer",
+              boxShadow: "0 4px 10px rgba(0,123,255,0.3)",
             }}
           >
             📄 Abrir e Assinar Contrato
           </button>
+        </div>
+      )}
+
+      {podeVerFinanceiro && (
+        <div
+          style={{
+            display: "flex",
+            gap: "2rem",
+            flexWrap: "wrap",
+            marginBottom: "2rem",
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              border: "1px solid #ddd",
+              padding: "1.5rem",
+              borderRadius: "8px",
+              backgroundColor: "#fff",
+            }}
+          >
+            <h3
+              style={{
+                marginTop: 0,
+                color: "#2c3e50",
+                borderBottom: "2px solid #f0f0f0",
+                paddingBottom: "10px",
+              }}
+            >
+              Resumo Financeiro
+            </h3>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "8px",
+              }}
+            >
+              <span>Subtotal Aluguel:</span>
+              <strong>R$ {subtotal.toFixed(2)}</strong>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "8px",
+              }}
+            >
+              <span>Frete:</span>
+              <strong>R$ {Number(order.custo_frete).toFixed(2)}</strong>
+            </div>
+            {Number(order.taxa_remarcacao) > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "8px",
+                  color: "#e65100",
+                }}
+              >
+                <span>Taxa de Remarcação:</span>
+                <strong>+ R$ {Number(order.taxa_remarcacao).toFixed(2)}</strong>
+              </div>
+            )}
+            {Number(order.taxa_avaria) > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "8px",
+                  color: "#c62828",
+                }}
+              >
+                <span>Taxa de Avarias:</span>
+                <strong>+ R$ {Number(order.taxa_avaria).toFixed(2)}</strong>
+              </div>
+            )}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: "15px",
+                paddingTop: "15px",
+                borderTop: "1px solid #eee",
+                fontSize: "1.2rem",
+                color: "#2c3e50",
+              }}
+            >
+              <span>Total do Contrato:</span>
+              <strong>R$ {valorTotalAjustado.toFixed(2)}</strong>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: "5px",
+                color: order.status === "pendente" ? "#e65100" : "#2e7d32",
+              }}
+            >
+              <span>
+                {order.status === "pendente"
+                  ? "Sinal a Pagar (Pendente):"
+                  : "Sinal Pago (Reserva):"}
+              </span>
+              <strong>- R$ {Number(order.valor_sinal).toFixed(2)}</strong>
+            </div>
+
+            {order.status === "finalizada" && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginTop: "10px",
+                  padding: "10px",
+                  backgroundColor: "#e8f5e9",
+                  borderRadius: "6px",
+                  color: "#1b5e20",
+                  fontWeight: "bold",
+                }}
+              >
+                <span>Restante Quitado:</span>
+                <span>
+                  R$ {(valorTotalAjustado - Number(order.valor_sinal)).toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1078,123 +1256,6 @@ const ReservationDetailsPage: React.FC = () => {
           marginBottom: "2rem",
         }}
       >
-        <div
-          style={{
-            flex: 1,
-            border: "1px solid #ddd",
-            padding: "1.5rem",
-            borderRadius: "8px",
-            backgroundColor: "#fff",
-          }}
-        >
-          <h3
-            style={{
-              marginTop: 0,
-              color: "#2c3e50",
-              borderBottom: "2px solid #f0f0f0",
-              paddingBottom: "10px",
-            }}
-          >
-            Resumo Financeiro
-          </h3>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "8px",
-            }}
-          >
-            <span>Subtotal Aluguel:</span>
-            <strong>R$ {subtotal.toFixed(2)}</strong>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "8px",
-            }}
-          >
-            <span>Frete:</span>
-            <strong>R$ {Number(order.custo_frete).toFixed(2)}</strong>
-          </div>
-          {Number(order.taxa_remarcacao) > 0 && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "8px",
-                color: "#e65100",
-              }}
-            >
-              <span>Taxa de Remarcação:</span>
-              <strong>+ R$ {Number(order.taxa_remarcacao).toFixed(2)}</strong>
-            </div>
-          )}
-          {Number(order.taxa_avaria) > 0 && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "8px",
-                color: "#c62828",
-              }}
-            >
-              <span>Taxa de Avarias:</span>
-              <strong>+ R$ {Number(order.taxa_avaria).toFixed(2)}</strong>
-            </div>
-          )}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: "15px",
-              paddingTop: "15px",
-              borderTop: "1px solid #eee",
-              fontSize: "1.2rem",
-              color: "#2c3e50",
-            }}
-          >
-            <span>Total do Contrato:</span>
-            <strong>R$ {valorTotalAjustado.toFixed(2)}</strong>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: "5px",
-              color: order.status === "pendente" ? "#e65100" : "#2e7d32",
-            }}
-          >
-            <span>
-              {order.status === "pendente"
-                ? "Sinal a Pagar (Pendente):"
-                : "Sinal Pago (Reserva):"}
-            </span>
-            <strong>- R$ {Number(order.valor_sinal).toFixed(2)}</strong>
-          </div>
-
-          {order.status === "finalizada" && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: "10px",
-                padding: "10px",
-                backgroundColor: "#e8f5e9",
-                borderRadius: "6px",
-                color: "#1b5e20",
-                fontWeight: "bold",
-              }}
-            >
-              <span>Restante Quitado:</span>
-              <span>
-                R$ {(valorTotalAjustado - Number(order.valor_sinal)).toFixed(2)}
-              </span>
-            </div>
-          )}
-        </div>
-
         <div
           style={{
             flex: 1,
@@ -1429,7 +1490,7 @@ const ReservationDetailsPage: React.FC = () => {
           }}
         />
       )}
-      
+
       {isContractModalOpen && (
         <ContractModal
           order={order}

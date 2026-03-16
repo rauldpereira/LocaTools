@@ -19,10 +19,11 @@ const AdminReservationsList: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<TabKey>('urgentes');
     
-    const { token, hasPermission } = useAuth();
+    const { token, hasPermission, user } = useAuth();
 
-    // Atalhos para não repetir código
     const podeGerenciarReservas = hasPermission('gerenciar_reservas');
+    const podeFazerVistoria = hasPermission('fazer_vistoria');
+    const podeVerFinanceiro = user?.tipo_usuario === 'admin' || hasPermission('ver_financeiro');
 
     const fetchAllOrders = useCallback(async () => {
         if (!token) return;
@@ -78,6 +79,10 @@ const AdminReservationsList: React.FC = () => {
     const ordersEmPrejuizo = orders.filter(o => o.status === 'PREJUIZO').sort(sortByIdDesc);
     const finalizedOrders = orders.filter(o => o.status === 'finalizada').sort(sortByIdDesc);
     const cancelledOrders = orders.filter(o => o.status === 'cancelada').sort(sortByIdDesc);
+
+    const qtdePendencias = podeVerFinanceiro 
+        ? ordersAwaitingSignature.length + ordersAwaitingFinalPayment.length + ordersAbandoned.length
+        : ordersAwaitingSignature.length;
 
     if (loading) return <p style={{ textAlign: 'center', padding: '20px', fontSize: '1.2rem' }}>A carregar reservas...</p>;
 
@@ -175,7 +180,7 @@ const AdminReservationsList: React.FC = () => {
                     🚨 Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})
                 </button>
 
-                {ordersEmPrejuizo.length > 0 && (
+                {podeVerFinanceiro && ordersEmPrejuizo.length > 0 && (
                     <button 
                         onClick={() => setActiveTab('inadimplentes')} 
                         style={getTabStyle(activeTab === 'inadimplentes', true)}
@@ -193,14 +198,18 @@ const AdminReservationsList: React.FC = () => {
                     🔄 Devoluções ({ordersForReturnInspection.length})
                 </button>
 
-                {podeGerenciarReservas && (
+                {(podeGerenciarReservas || podeFazerVistoria) && (
                     <>
                         <button onClick={() => setActiveTab('pendencias')} style={getTabStyle(activeTab === 'pendencias')}>
-                            ✍️ Pendências ({ordersAwaitingSignature.length + ordersAwaitingFinalPayment.length + ordersAbandoned.length})
+                            ✍️ Pendências ({qtdePendencias})
                         </button>
-                        <button onClick={() => setActiveTab('historico')} style={getTabStyle(activeTab === 'historico')}>
-                            ✅ Histórico
-                        </button>
+                        
+                        {/* O histórico a gente deixa só pra quem gerencia reservas mesmo */}
+                        {podeGerenciarReservas && (
+                            <button onClick={() => setActiveTab('historico')} style={getTabStyle(activeTab === 'historico')}>
+                                ✅ Histórico
+                            </button>
+                        )}
                     </>
                 )}
             </div>
@@ -284,12 +293,17 @@ const AdminReservationsList: React.FC = () => {
                 )}
 
                 {/* ABA: PENDÊNCIAS */}
-                {podeGerenciarReservas && activeTab === 'pendencias' && (
+                {(podeGerenciarReservas || podeFazerVistoria) && activeTab === 'pendencias' && (
                     <>
                         {renderOrderTable("Aguardando Assinatura do Contrato", ordersAwaitingSignature, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }, { key: 'data_inicio', label: 'Data de Início' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#17a2b8', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ver Contrato</button></Link>)}
                         
-                        {renderOrderTable("Reservas Aguardando Pagamento Final", ordersAwaitingFinalPayment, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/admin/finalize-payment/${order.id}`}><button style={{ backgroundColor: '#28a745', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Finalizar e Cobrar</button></Link>)}
-                        {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)", ordersAbandoned, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Resgatar Venda</button></Link>)}
+                        {podeVerFinanceiro && (
+                            <>
+                                {renderOrderTable("Reservas Aguardando Pagamento Final", ordersAwaitingFinalPayment, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/admin/finalize-payment/${order.id}`}><button style={{ backgroundColor: '#28a745', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Finalizar e Cobrar</button></Link>)}
+                                
+                                {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)", ordersAbandoned, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Resgatar Venda</button></Link>)}
+                            </>
+                        )}
                     </>
                 )}
 
