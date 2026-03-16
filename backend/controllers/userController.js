@@ -195,7 +195,7 @@ const createFuncionario = async (req, res) => {
       return res.status(403).json({ error: 'Acesso negado.' });
     }
 
-    const { nome, email, senha } = req.body;
+    const { nome, email, senha, tipo_usuario } = req.body;
 
     if (!nome || !email || !senha) {
       return res.status(400).json({ error: 'Preencha todos os campos.' });
@@ -222,7 +222,7 @@ const createFuncionario = async (req, res) => {
       nome,
       email,
       senha_hash,
-      tipo_usuario: 'funcionario',
+      tipo_usuario: tipo_usuario || 'funcionario',
       permissoes: []
     });
 
@@ -230,6 +230,89 @@ const createFuncionario = async (req, res) => {
   } catch (error) {
     console.error('Erro ao criar colaborador:', error);
     res.status(500).json({ error: 'Erro interno ao criar colaborador.' });
+  }
+};
+
+const updateFuncionarioDados = async (req, res) => {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem editar a equipe.' });
+    }
+
+    const { id } = req.params;
+    const { nome, email, senha, tipo_usuario } = req.body;
+
+    const usuario = await Usuario.findByPk(id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    // TRAVA: IMPEDE REBAIXAR O ÚLTIMO ADMIN
+    if (usuario.tipo_usuario === 'admin' && tipo_usuario !== 'admin') {
+      const adminCount = await Usuario.count({ where: { tipo_usuario: 'admin' } });
+      if (adminCount <= 1) {
+        return res.status(403).json({ error: 'Operação bloqueada! O sistema precisa ter pelo menos um Administrador.' });
+      }
+    }
+
+    // Se o email mudou, checar se o novo email já existe
+    if (email !== usuario.email) {
+       const emailExists = await Usuario.findOne({ where: { email } });
+       if (emailExists) return res.status(400).json({ error: 'Este e-mail já está em uso por outra conta.' });
+    }
+
+    const updateData = { nome, email, tipo_usuario };
+
+    // Se o admin digitou uma senha nova, a gente valida e criptografa
+    if (senha && senha.trim() !== '') {
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+        if (!passwordRegex.test(senha)) {
+            return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres, contendo letras e números.' });
+        }
+        const salt = await bcrypt.genSalt(10);
+        updateData.senha_hash = await bcrypt.hash(senha, salt);
+    }
+
+    await usuario.update(updateData);
+
+    res.status(200).json({ message: 'Dados e acessos atualizados com sucesso!', usuario: updateData });
+  } catch (error) {
+    console.error('Erro ao atualizar dados do funcionário:', error);
+    res.status(500).json({ error: 'Erro interno ao atualizar colaborador.' });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acesso negado.' });
+    }
+
+    const { id } = req.params;
+    const usuario = await Usuario.findByPk(id);
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    // O Admin não pode se auto-excluir 
+    if (usuario.id === req.user.id) {
+      return res.status(400).json({ error: 'Você não pode excluir sua própria conta.' });
+    }
+
+    if (usuario.tipo_usuario === 'admin') {
+      const adminCount = await Usuario.count({ where: { tipo_usuario: 'admin' } });
+      if (adminCount <= 1) {
+        return res.status(403).json({ error: 'Operação bloqueada! Não é possível excluir o único Administrador do sistema.' });
+      }
+    }
+
+    await usuario.destroy();
+    res.status(200).json({ message: 'Usuário excluído com sucesso.' });
+
+  } catch (error) {
+    console.error('Erro ao excluir usuário:', error);
+    res.status(500).json({ error: 'Erro interno ao excluir usuário.' });
   }
 };
 
@@ -241,5 +324,7 @@ module.exports = {
   changePassword,
   getTeam,
   updatePermissions,
-  createFuncionario
+  createFuncionario,
+  updateFuncionarioDados,
+  deleteUser
 };

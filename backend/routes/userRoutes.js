@@ -7,7 +7,9 @@ const {
   changePassword,
   getTeam, 
   updatePermissions,
-  createFuncionario
+  createFuncionario,
+  updateFuncionarioDados, 
+  deleteUser
 } = require('../controllers/userController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
@@ -23,6 +25,10 @@ router.put('/profile/password', protect, changePassword);
 router.get('/team', protect, getTeam);
 router.put('/team/:id/permissions', protect, updatePermissions);
 
+router.put('/team/:id/dados', protect, admin, updateFuncionarioDados); 
+
 router.post('/team', protect, admin, createFuncionario);
+
+router.delete('/team/:id', protect, admin, deleteUser);
 
 module.exports = router;
