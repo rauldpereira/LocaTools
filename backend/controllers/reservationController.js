@@ -886,7 +886,7 @@ const skipReturnInspection = async (req, res) => {
             userIdNotify = order.id_usuario;
 
             await order.update({
-                status: 'aguardando_pagamento_final',
+                status: 'aguardando_assinatura_devolucao',
                 taxa_avaria: 0
             }, { transaction: t });
 
@@ -901,8 +901,8 @@ const skipReturnInspection = async (req, res) => {
         if (userIdNotify) {
             await notificarUsuario(
                 userIdNotify,
-                '💳 Pagamento Final Pendente',
-                `A devolução do pedido #${req.params.id} foi concluída! Acesse para realizar o pagamento do saldo restante.`,
+                'Assinatura Contrato Final Pendente',
+                `A devolução do pedido #${req.params.id} foi concluída! Acesse para realizar a assinatura do Contrato.`,
                 `/my-reservations/${req.params.id}`
             );
         }
@@ -1080,6 +1080,136 @@ const calcularMultaAtraso = async (req, res) => {
     }
 };
 
+// --- SALVAR ASSINATURA DA DEVOLUÇÃO ---
+const saveReturnSignature = async (req, res) => {
+    const { id } = req.params;
+    const { assinatura } = req.body;
+
+    try {
+        const order = await OrdemDeServico.findByPk(id, {
+            include: [{ model: ItemReserva, as: 'ItemReservas' }]
+        });
+
+        if (!order) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+        // Verifica se tem algum item marcado com prejuízo no banco
+        // (Ajuste a lógica se o seu banco registrar o prejuízo de forma diferente)
+        const temPrejuizoNoBanco = order.ItemReservas.some(item => item.status === 'FINALIZADO_COM_PREJUIZO' || item.status === 'PREJUIZO');
+        
+        // Define o próximo status da OS depois da assinatura
+        let proximoStatus = 'finalizada';
+        
+        // Se tem prejuízo físico, vai pra PREJUIZO
+        if (temPrejuizoNoBanco) {
+            proximoStatus = 'PREJUIZO';
+        } 
+        // Se não tem prejuízo, mas o cara ainda deve dinheiro (sinal menor que total)
+        else if (parseFloat(order.valor_sinal) < parseFloat(order.valor_total)) {
+            proximoStatus = 'aguardando_pagamento_final';
+        }
+
+        await order.update({
+            assinatura_devolucao: assinatura,
+            data_assinatura_devolucao: new Date(),
+            status: proximoStatus
+        });
+
+        res.status(200).json({ message: 'Assinatura salva e contrato de devolução encerrado.', status: proximoStatus });
+    } catch (error) {
+        console.error('Erro ao salvar assinatura de devolução:', error);
+        res.status(500).json({ error: 'Erro interno ao salvar assinatura.' });
+    }
+};
+
+// --- GERAR PDF DO TERMO DE DEVOLUÇÃO ---
+const generateReturnContract = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const order = await OrdemDeServico.findByPk(id, {
+            include: [
+                { model: Usuario, as: 'Usuario', attributes: ['nome', 'email', 'cpf', 'cnpj'] },
+                { 
+                    model: ItemReserva, as: 'ItemReservas', 
+                    include: [{ 
+                        model: Unidade, as: 'Unidade', 
+                        include: [{ model: Equipamento, as: 'Equipamento' }] 
+                    }] 
+                }
+            ]
+        });
+
+        if (!order || !order.assinatura_devolucao) {
+            return res.status(404).json({ error: 'Termo de devolução não encontrado ou não assinado.' });
+        }
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=termo_devolucao_${id}.pdf`);
+
+        const doc = new PDFDocument({ margin: 50 });
+        doc.pipe(res);
+
+        // Cabeçalho
+        doc.fontSize(18).font('Helvetica-Bold').text('TERMO DE DEVOLUÇÃO E ENCERRAMENTO', { align: 'center' });
+        doc.fontSize(14).text(`Contrato Nº: ${order.id}`, { align: 'center' });
+        doc.moveDown(2);
+
+        // Dados do Cliente
+        doc.fontSize(12).font('Helvetica-Bold').text('1. DADOS DO LOCATÁRIO');
+        doc.font('Helvetica').text(`Nome: ${order.Usuario.nome}`);
+        doc.text(`Documento: ${order.Usuario.cpf || order.Usuario.cnpj || 'Não informado'}`);
+        doc.moveDown();
+
+        // Equipamentos Devolvidos
+        doc.font('Helvetica-Bold').text('2. EQUIPAMENTOS DEVOLVIDOS');
+        order.ItemReservas.forEach((item) => {
+            doc.font('Helvetica').text(`- ${item.Unidade.Equipamento.nome} (Unidade ID: ${item.id_unidade})`);
+        });
+        doc.moveDown();
+
+        // Status Final
+        doc.font('Helvetica-Bold').text('3. STATUS DA DEVOLUÇÃO');
+        const dataDevolucao = new Date(order.data_assinatura_devolucao).toLocaleString('pt-BR');
+        doc.font('Helvetica').text(`Data e Hora da Devolução: ${dataDevolucao}`);
+        
+        if (order.status === 'PREJUIZO') {
+            doc.fillColor('red').text('Status: Devolvido COM AVARIAS ou PENDÊNCIAS. Valores de reparo/reposição serão apurados e cobrados.');
+            doc.fillColor('black');
+        } else {
+            doc.fillColor('green').text('Status: Devolvido em PERFEITO ESTADO. Contrato encerrado sem pendências físicas.');
+            doc.fillColor('black');
+        }
+        doc.moveDown(3);
+
+        // Assinatura
+        doc.font('Helvetica-Bold').text('4. ASSINATURA DE CONFIRMAÇÃO');
+        doc.font('Helvetica').text('Declaro estar ciente e de acordo com as condições de devolução descritas acima.');
+        doc.moveDown(2);
+
+        // Imprime a imagem da assinatura no PDF
+        try {
+            const base64Data = order.assinatura_devolucao.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
+            const imgBuffer = Buffer.from(base64Data, 'base64');
+            doc.image(imgBuffer, 230, doc.y, { fit: [150, 70] });
+            doc.moveDown(4);
+        } catch (err) {
+            console.error("Erro ao processar imagem da assinatura de devolução no PDF:", err);
+            doc.moveDown(3);
+        }
+
+        doc.fontSize(12);
+        doc.text('________________________________________', { align: 'center' });
+        doc.text(order.Usuario.nome, { align: 'center' });
+        doc.text('(Assinatura do Locatário na Devolução)', { align: 'center', fontSize: 9 });
+
+        doc.end();
+
+    } catch (error) {
+        console.error('Erro ao gerar termo de devolução:', error);
+        if (!res.headersSent) res.status(500).json({ error: 'Erro ao gerar termo de devolução.' });
+    }
+};
+
 module.exports = {
     createOrder,
     getMyOrders,
@@ -1096,5 +1226,7 @@ module.exports = {
     skipReturnInspection,
     finalizarComPendencia,
     recoverDebt,
-    calcularMultaAtraso
+    calcularMultaAtraso,
+    saveReturnSignature,
+    generateReturnContract
 };

@@ -46,6 +46,7 @@ module.exports = (sequelize, DataTypes) => {
           "aguardando_assinatura",
           "em_andamento",
           "entregue",
+          "aguardando_assinatura_devolucao", 
           "devolvida",
           "finalizada",
           "aguardando_pagamento_final",
@@ -109,6 +110,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      
+      assinatura_devolucao: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      data_assinatura_devolucao: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      }
     },
     {
       sequelize,

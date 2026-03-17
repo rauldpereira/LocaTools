@@ -7,6 +7,7 @@ import HorarioFuncionamento from "../components/HorarioFuncionamentoDisplay";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import ContractModal from "../components/ContractModal";
+import ReturnContractModal from "../components/ReturnContractModal";
 
 interface TipoAvaria {
   id: number;
@@ -68,7 +69,7 @@ interface ItemReserva {
 interface OrderDetails {
   id: number;
   id_usuario: number;
-  Usuario?: {  
+  Usuario?: {
     nome: string;
     email: string;
   };
@@ -87,6 +88,8 @@ interface OrderDetails {
   ItemReservas: ItemReserva[];
   Vistorias: Vistoria[];
   createdAt?: string;
+  assinatura_devolucao?: string;
+  data_assinatura_devolucao?: string;
 }
 
 const parseDateStringAsLocal = (dateString: string) => {
@@ -117,6 +120,7 @@ const ReservationDetailsPage: React.FC = () => {
   const [customDebtAmount, setCustomDebtAmount] = useState<number | string>(0);
 
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
 
   const fetchOrderDetails = async () => {
     if (!token || !orderId) return;
@@ -402,6 +406,30 @@ const ReservationDetailsPage: React.FC = () => {
     }
   };
 
+  const handleDownloadReturnContract = async () => {
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob" as "json", // Blob porque é arquivo PDF
+      };
+      const response = await axios.get(
+        `http://localhost:3001/api/reservations/return-contract/${orderId}`,
+        config
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `termo_devolucao_${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Erro ao baixar termo de devolução:", error);
+      alert("Erro ao baixar o termo de devolução.");
+    }
+  };
+
   const getNomeTipoPrejuizo = (tipo: string) => {
     const map: any = {
       ROUBO: "Não Devolvido / Extraviado",
@@ -602,11 +630,15 @@ const ReservationDetailsPage: React.FC = () => {
   const isAdmin = user?.tipo_usuario === "admin";
   const isOwner = user?.id === order?.id_usuario;
   const isFuncionario = user?.tipo_usuario === "funcionario";
-  
-  const podeVerFinanceiro = isAdmin || isOwner || hasPermission("ver_financeiro");
-  
-  const podeColetarAssinatura = isAdmin || hasPermission("gerenciar_reservas") || hasPermission("fazer_vistoria");
-  
+
+  const podeVerFinanceiro =
+    isAdmin || isOwner || hasPermission("ver_financeiro");
+
+  const podeColetarAssinatura =
+    isAdmin ||
+    hasPermission("gerenciar_reservas") ||
+    hasPermission("fazer_vistoria");
+
   const podeVerPainelAcoes = isAdmin || isFuncionario || podeColetarAssinatura;
   // =========================================================================
 
@@ -782,40 +814,50 @@ const ReservationDetailsPage: React.FC = () => {
             }}
           >
             {/* Botão de Assinatura liberado para admin ou permissão correta */}
-            {order.status === "aguardando_assinatura" && podeColetarAssinatura && (
-              <button
-                onClick={() => setIsContractModalOpen(true)}
-                style={{
-                  ...btnActionStyle,
-                  backgroundColor: "#17a2b8",
-                  boxShadow: "0 2px 5px rgba(23, 162, 184, 0.3)",
-                }}
-              >
-                🖊️ Coletar Assinatura Do Cliente
-              </button>
-            )}
-            
-            {(isAdmin || hasPermission("fazer_vistoria") || hasPermission("gerenciar_reservas")) && order.status === "aprovada" && (
-              <Link to={`/admin/vistoria/${order.id}`}>
-                <button style={btnActionStyle}>
-                  📋 Realizar Vistoria de Saída
+            {order.status === "aguardando_assinatura" &&
+              podeColetarAssinatura && (
+                <button
+                  onClick={() => setIsContractModalOpen(true)}
+                  style={{
+                    ...btnActionStyle,
+                    backgroundColor: "#17a2b8",
+                    boxShadow: "0 2px 5px rgba(23, 162, 184, 0.3)",
+                  }}
+                >
+                  🖊️ Coletar Assinatura Do Cliente
                 </button>
-              </Link>
-            )}
-            
-            {(isAdmin || hasPermission("fazer_vistoria") || hasPermission("gerenciar_reservas")) && order.status === "em_andamento" && (
-              <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
-                <button style={btnActionStyle}>
-                  📋 Registrar Devolução / Vistoria
-                </button>
-              </Link>
-            )}
-            
-            {(isAdmin || hasPermission("gerenciar_reservas") || hasPermission("ver_financeiro")) && order.status === "aguardando_pagamento_final" && (
-              <Link to={`/admin/finalize-payment/${order.id}`}>
-                <button style={btnActionStyle}>💲 Finalizar e Cobrar</button>
-              </Link>
-            )}
+              )}
+
+            {(isAdmin ||
+              hasPermission("fazer_vistoria") ||
+              hasPermission("gerenciar_reservas")) &&
+              order.status === "aprovada" && (
+                <Link to={`/admin/vistoria/${order.id}`}>
+                  <button style={btnActionStyle}>
+                    📋 Realizar Vistoria de Saída
+                  </button>
+                </Link>
+              )}
+
+            {(isAdmin ||
+              hasPermission("fazer_vistoria") ||
+              hasPermission("gerenciar_reservas")) &&
+              order.status === "em_andamento" && (
+                <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
+                  <button style={btnActionStyle}>
+                    📋 Registrar Devolução / Vistoria
+                  </button>
+                </Link>
+              )}
+
+            {(isAdmin ||
+              hasPermission("gerenciar_reservas") ||
+              hasPermission("ver_financeiro")) &&
+              order.status === "aguardando_pagamento_final" && (
+                <Link to={`/admin/finalize-payment/${order.id}`}>
+                  <button style={btnActionStyle}>💲 Finalizar e Cobrar</button>
+                </Link>
+              )}
 
             {podeVerFinanceiro && order.status === "PREJUIZO" && (
               <button
@@ -1062,6 +1104,50 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
+      {order.assinatura_devolucao && (
+        <div
+          style={{
+            marginTop: "20px",
+            padding: "20px",
+            backgroundColor: "#f8f9fa",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          <h3 style={{ color: "#2c3e50", marginTop: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+            ✅ Equipamentos Devolvidos
+          </h3>
+          <p style={{ color: "#555", marginBottom: "20px" }}>
+            O termo de devolução foi assinado pelo cliente em{" "}
+            {order.data_assinatura_devolucao 
+              ? new Date(order.data_assinatura_devolucao).toLocaleDateString("pt-BR") 
+              : "data não registrada"}.
+          </p>
+          
+          <button
+            onClick={handleDownloadReturnContract}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#17a2b8", 
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              boxShadow: "0 2px 4px rgba(23,162,184,0.3)"
+            }}
+          >
+            📄 Baixar Termo de Devolução (PDF)
+          </button>
+        </div>
+      )}
+
       {user?.tipo_usuario !== "admin" && canReschedule && (
         <button
           onClick={() => setIsRescheduleModalOpen(true)}
@@ -1083,41 +1169,92 @@ const ReservationDetailsPage: React.FC = () => {
       )}
 
       {/* A CAIXA GIGANTE AGORA SÓ APARECE PRO CLIENTE (DONO) */}
-      {!isAdmin && !isFuncionario && order.status === "aguardando_assinatura" && (
+      {!isAdmin &&
+        !isFuncionario &&
+        order.status === "aguardando_assinatura" && (
+          <div
+            style={{
+              border: "2px solid #007bff",
+              padding: "1.5rem",
+              marginBottom: "2rem",
+              borderRadius: "8px",
+              backgroundColor: "#f0f7ff",
+              textAlign: "center",
+            }}
+          >
+            <h3
+              style={{ marginTop: 0, color: "#007bff", marginBottom: "10px" }}
+            >
+              Assinatura Pendente
+            </h3>
+            <p style={{ color: "#555", marginBottom: "20px" }}>
+              Para liberar a retirada dos equipamentos, você precisa ler e
+              assinar o contrato digital de locação.
+            </p>
+            <button
+              onClick={() => setIsContractModalOpen(true)}
+              style={{
+                padding: "15px 30px",
+                backgroundColor: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                fontWeight: "bold",
+                fontSize: "1.2rem",
+                cursor: "pointer",
+                boxShadow: "0 4px 10px rgba(0,123,255,0.3)",
+              }}
+            >
+              📄 Abrir e Assinar Contrato
+            </button>
+          </div>
+        )}
+      {order.status === "aguardando_assinatura_devolucao" && (
         <div
           style={{
-            border: "2px solid #007bff",
+            border: "2px solid #28a745",
             padding: "1.5rem",
             marginBottom: "2rem",
             borderRadius: "8px",
-            backgroundColor: "#f0f7ff",
+            backgroundColor: "#e8f5e9",
             textAlign: "center",
           }}
         >
-          <h3 style={{ marginTop: 0, color: "#007bff", marginBottom: "10px" }}>
-            Assinatura Pendente
+          <h3 style={{ marginTop: 0, color: "#28a745", marginBottom: "10px" }}>
+            Assinatura de Devolução Pendente
           </h3>
           <p style={{ color: "#555", marginBottom: "20px" }}>
-            Para liberar a retirada dos equipamentos, você precisa ler e
-            assinar o contrato digital de locação.
+            Os equipamentos foram devolvidos. Assine o termo de encerramento
+            para finalizar a locação.
           </p>
           <button
-            onClick={() => setIsContractModalOpen(true)}
+            onClick={() => setIsReturnModalOpen(true)}
             style={{
               padding: "15px 30px",
-              backgroundColor: "#007bff",
+              backgroundColor: "#28a745",
               color: "white",
               border: "none",
               borderRadius: "8px",
               fontWeight: "bold",
               fontSize: "1.2rem",
               cursor: "pointer",
-              boxShadow: "0 4px 10px rgba(0,123,255,0.3)",
+              boxShadow: "0 4px 10px rgba(40,167,69,0.3)",
             }}
           >
-            📄 Abrir e Assinar Contrato
+            ✍️ Assinar Termo de Devolução
           </button>
         </div>
+      )}
+
+      {isReturnModalOpen && (
+        <ReturnContractModal
+          order={order}
+          onClose={() => setIsReturnModalOpen(false)}
+          onSuccess={() => {
+            setIsReturnModalOpen(false);
+            fetchOrderDetails();
+          }}
+        />
       )}
 
       {podeVerFinanceiro && (
@@ -1240,7 +1377,8 @@ const ReservationDetailsPage: React.FC = () => {
               >
                 <span>Restante Quitado:</span>
                 <span>
-                  R$ {(valorTotalAjustado - Number(order.valor_sinal)).toFixed(2)}
+                  R${" "}
+                  {(valorTotalAjustado - Number(order.valor_sinal)).toFixed(2)}
                 </span>
               </div>
             )}

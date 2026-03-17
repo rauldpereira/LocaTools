@@ -16,7 +16,9 @@ const {
     skipReturnInspection,
     finalizarComPendencia,
     recoverDebt, 
-    calcularMultaAtraso           
+    calcularMultaAtraso,     
+    saveReturnSignature,
+    generateReturnContract
 } = require('../controllers/reservationController');
 
 const { protect, checkPermissao } = require('../middlewares/authMiddleware');
@@ -32,6 +34,8 @@ router.post('/:id/check-reschedule', protect, checkRescheduleAvailability);
 router.put('/:id/sign', protect, signContract);
 router.put('/:id/cancel', protect, cancelOrder);
 router.put('/:id/reschedule', protect, rescheduleOrder);
+router.post('/:id/return-signature', protect, saveReturnSignature);
+router.get('/return-contract/:id', protect, generateReturnContract);
 
 // ROTAS DE OPERAÇÃO
 router.get('/:id/calculate-penalty', protect, checkPermissao('gerenciar_reservas'), calcularMultaAtraso);

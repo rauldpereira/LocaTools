@@ -76,13 +76,12 @@ const createVistoria = async (req, res) => {
                     );
 
                 } else if (tipo_vistoria === 'devolucao') {
-                    await ordemDeServico.update({ status: 'aguardando_pagamento_final' }, { transaction: t });
+                    await ordemDeServico.update({ status: 'aguardando_assinatura_devolucao' }, { transaction: t });
 
-                    //  AVISA O CLIENTE PRA PAGAR O RESTO
                     await notificarUsuario(
                         ordemDeServico.id_usuario,
-                        '💳 Vistoria Concluída - Pagamento Pendente',
-                        `A devolução do pedido #${ordemDeServico.id} foi registrada! Acesse para realizar o pagamento do saldo final.`,
+                        '✍️ Vistoria de Retorno Concluída',
+                        `A devolução do pedido #${ordemDeServico.id} foi registrada! Acesse para assinar o Termo de Devolução.`,
                         `/my-reservations/${ordemDeServico.id}`
                     );
                 }
