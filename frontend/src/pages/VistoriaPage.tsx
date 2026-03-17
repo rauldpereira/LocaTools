@@ -106,6 +106,13 @@ const VistoriaPage: React.FC = () => {
 
           if (avariasAtuaisDaMaquina.length > 0) condicao = "danificado";
 
+          const avariaOutros = item.Unidade.Equipamento.TipoAvarias.find(
+            (a) => a.descricao.toLowerCase() === "outros"
+          );
+          if (avariaOutros && checkedAvarias[avariaOutros.id]) {
+            comentarios = "Avaria pré-existente (Outros) registrada em locação anterior.";
+          }
+
           if (tipoVistoria === "devolucao" && vistoriaDeSaida) {
             const detalheSaida = vistoriaDeSaida.detalhes.find(
               (d: any) => d.id_unidade === unitId,

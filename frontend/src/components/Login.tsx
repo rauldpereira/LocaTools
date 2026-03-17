@@ -7,12 +7,17 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [senha, setSenha] = useState<string>('');
   const [mensagem, setMensagem] = useState<string>('');
+  
+  const [deuErro, setDeuErro] = useState<boolean>(false); 
 
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setMensagem(''); // Limpa mensagens anteriores
+    setDeuErro(false); // Reseta o estado de erro
+
     try {
       const response = await axios.post('http://localhost:3001/api/login', {
         email,
@@ -20,16 +25,18 @@ const Login: React.FC = () => {
       });
 
       const { token } = response.data;
-
+      
       await login(token);
       navigate('/');
+      
     } catch (error) {
+      setDeuErro(true);
+
       if (axios.isAxiosError(error) && error.response) {
-        setMensagem('Erro: ' + (error.response.data.error || 'Erro no servidor'));
-        console.error('Erro de login:', error.response.data);
+        // Pega a string limpa que vem do backend: "Credenciais inválidas."
+        setMensagem(error.response.data.error || 'Erro no servidor'); 
       } else {
-        setMensagem('Erro: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
-        console.error('Erro de login:', error);
+        setMensagem('Erro desconhecido ao tentar fazer login.');
       }
     }
   };
@@ -54,7 +61,12 @@ const Login: React.FC = () => {
         />
         <button type="submit">Entrar</button>
       </form>
-      {mensagem && <p style={{ marginTop: '1rem', color: mensagem.startsWith('Erro') ? 'red' : 'green' }}>{mensagem}</p>}
+      
+      {mensagem && (
+        <p style={{ marginTop: '1rem', color: deuErro ? '#dc3545' : '#28a745', fontWeight: 'bold' }}>
+          {mensagem}
+        </p>
+      )}
     </div>
   );
 };

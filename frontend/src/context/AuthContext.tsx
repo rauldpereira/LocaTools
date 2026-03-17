@@ -55,8 +55,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const interceptor = axios.interceptors.response.use(
             response => response, 
             error => {
-                // Se o backend devolver 401 e não for na rota de login...
-                if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
+                // Ignora o 401 se a URL da requisição tiver 'login' ou 'register'
+                const url = error.config?.url || '';
+                const isAuthRoute = url.includes('/login') || url.includes('/register');
+
+                if (error.response?.status === 401 && !isAuthRoute) {
                     console.warn('⚠️ Token expirado ou inválido. Redirecionando para o login...');
                     logout(true); // Aciona o logout forçado!
                 }
