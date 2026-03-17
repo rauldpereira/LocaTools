@@ -282,12 +282,12 @@ const VistoriaPage: React.FC = () => {
       }
 
       alert("Processo concluído com sucesso!");
-      navigate("/admin");
+      navigate(`/my-reservations/${order.id}`);
     } catch (error: any) {
       console.error("Erro ao salvar:", error);
       alert(
         "Erro ao processar: " +
-          (error.response?.data?.error || "Tente novamente."),
+        (error.response?.data?.error || "Tente novamente."),
       );
     } finally {
       setLoading(false);
@@ -333,7 +333,7 @@ const VistoriaPage: React.FC = () => {
           detalheVistoriaSaida?.condicao === "danificado" || tinhaAvariaNaSaida
             ? "danificado"
             : "ok";
-            
+
         const avariasHistorico = equipamento.TipoAvarias.filter(a => avariasAtuaisDaMaquina.includes(a.id));
 
         const avariaOutros = equipamento.TipoAvarias.find(
@@ -431,7 +431,7 @@ const VistoriaPage: React.FC = () => {
                           ⚠️ Avariado na Entrega
                         </span>
                       )}
-                      
+
                       {tinhaAvariaNaSaida && (
                         <ul
                           style={{
