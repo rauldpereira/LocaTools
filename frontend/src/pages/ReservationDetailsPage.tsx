@@ -828,6 +828,21 @@ const ReservationDetailsPage: React.FC = () => {
                 </button>
               )}
 
+              {/* Botão para os funcionarios coletarem a assinatura de DEVOLUÇÃO  */}
+            {order.status === "aguardando_assinatura_devolucao" &&
+              podeColetarAssinatura && (
+                <button
+                  onClick={() => setIsReturnModalOpen(true)}
+                  style={{
+                    ...btnActionStyle,
+                    backgroundColor: "#28a745",
+                    boxShadow: "0 2px 5px rgba(40, 167, 69, 0.3)",
+                  }}
+                >
+                  🖊️ Coletar Assinatura de Devolução
+                </button>
+              )}
+
             {(isAdmin ||
               hasPermission("fazer_vistoria") ||
               hasPermission("gerenciar_reservas")) &&
@@ -1168,81 +1183,34 @@ const ReservationDetailsPage: React.FC = () => {
         </button>
       )}
 
-      {/* A CAIXA GIGANTE AGORA SÓ APARECE PRO CLIENTE (DONO) */}
-      {!isAdmin &&
-        !isFuncionario &&
-        order.status === "aguardando_assinatura" && (
-          <div
-            style={{
-              border: "2px solid #007bff",
-              padding: "1.5rem",
-              marginBottom: "2rem",
-              borderRadius: "8px",
-              backgroundColor: "#f0f7ff",
-              textAlign: "center",
-            }}
-          >
-            <h3
-              style={{ marginTop: 0, color: "#007bff", marginBottom: "10px" }}
-            >
-              Assinatura Pendente
-            </h3>
-            <p style={{ color: "#555", marginBottom: "20px" }}>
-              Para liberar a retirada dos equipamentos, você precisa ler e
-              assinar o contrato digital de locação.
-            </p>
-            <button
-              onClick={() => setIsContractModalOpen(true)}
-              style={{
-                padding: "15px 30px",
-                backgroundColor: "#007bff",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                fontWeight: "bold",
-                fontSize: "1.2rem",
-                cursor: "pointer",
-                boxShadow: "0 4px 10px rgba(0,123,255,0.3)",
-              }}
-            >
-              📄 Abrir e Assinar Contrato
-            </button>
-          </div>
-        )}
-      {order.status === "aguardando_assinatura_devolucao" && (
+      {!isAdmin && !isFuncionario && order.status === "aguardando_assinatura" && (
         <div
           style={{
-            border: "2px solid #28a745",
-            padding: "1.5rem",
+            padding: "15px",
+            backgroundColor: "#e3f2fd",
+            color: "#0d47a1",
+            borderRadius: "6px",
             marginBottom: "2rem",
-            borderRadius: "8px",
-            backgroundColor: "#e8f5e9",
-            textAlign: "center",
+            border: "1px solid #b6d4fe"
           }}
         >
-          <h3 style={{ marginTop: 0, color: "#28a745", marginBottom: "10px" }}>
-            Assinatura de Devolução Pendente
-          </h3>
-          <p style={{ color: "#555", marginBottom: "20px" }}>
-            Os equipamentos foram devolvidos. Assine o termo de encerramento
-            para finalizar a locação.
-          </p>
-          <button
-            onClick={() => setIsReturnModalOpen(true)}
-            style={{
-              padding: "15px 30px",
-              backgroundColor: "#28a745",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontWeight: "bold",
-              fontSize: "1.2rem",
-              cursor: "pointer",
-              boxShadow: "0 4px 10px rgba(40,167,69,0.3)",
-            }}
-          >
-            ✍️ Assinar Termo de Devolução
-          </button>
+          <strong>Aguardando Assinatura:</strong> A vistoria de saída foi concluída. O motorista coletará sua assinatura agora.
+        </div>
+      )}
+
+      {/* AVISO PARA O CLIENTE NA DEVOLUÇÃO*/}
+      {!isAdmin && !isFuncionario && order.status === "aguardando_assinatura_devolucao" && (
+        <div
+          style={{
+            padding: "15px",
+            backgroundColor: "#e8f5e9",
+            color: "#2e7d32",
+            borderRadius: "6px",
+            marginBottom: "2rem",
+            border: "1px solid #c8e6c9"
+          }}
+        >
+          <strong>Aguardando Assinatura Final:</strong> A vistoria de devolução foi registrada. O motorista coletará sua assinatura para encerrar o contrato.
         </div>
       )}
 

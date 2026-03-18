@@ -304,8 +304,8 @@ const updateOrderStatus = async (req, res) => {
         if (status === 'aguardando_assinatura') {
             await notificarUsuario(
                 order.id_usuario,
-                '✍️ Contrato Liberado',
-                `O contrato do seu pedido #${order.id} está pronto. Por favor, assine para garantir a reserva.`,
+                '🚚 Equipamentos Prontos',
+                `Os equipamentos do pedido #${order.id} estão liberados para entrega/retirada. O contrato será assinado presencialmente com nossa equipe.`,
                 `/my-reservations/${order.id}`
             );
         } else if (status === 'aprovada') {
@@ -604,14 +604,15 @@ const signContract = async (req, res) => {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
         }
 
-        const isOwner = order.id_usuario === req.user.id;
         const isAdmin = req.user.tipo_usuario === 'admin' || req.user.tipo_usuario === 'funcionario';
         
-        const hasPermission = req.user.permissoes.includes('gerenciar_reservas') || 
+        const hasPermission = req.user.permissoes && (
+            req.user.permissoes.includes('gerenciar_reservas') || 
             req.user.permissoes.includes('fazer_vistoria')
+        );
 
-        if (!isOwner && !isAdmin && !hasPermission) {
-            return res.status(403).json({ error: 'Acesso negado. Você não tem permissão para coletar assinaturas.' });
+        if (!isAdmin && !hasPermission) {
+            return res.status(403).json({ error: 'Acesso negado. Apenas a equipe pode coletar a assinatura no momento da entrega.' });
         }
 
         if (order.status !== 'aguardando_assinatura') {
@@ -1092,8 +1093,17 @@ const saveReturnSignature = async (req, res) => {
 
         if (!order) return res.status(404).json({ error: 'Pedido não encontrado.' });
 
+        const isAdmin = req.user.tipo_usuario === 'admin' || req.user.tipo_usuario === 'funcionario';
+        const hasPermission = req.user.permissoes && (
+            req.user.permissoes.includes('gerenciar_reservas') || 
+            req.user.permissoes.includes('fazer_vistoria')
+        );
+
+        if (!isAdmin && !hasPermission) {
+            return res.status(403).json({ error: 'Acesso negado. Apenas a equipe pode coletar a assinatura de devolução.' });
+        }
+
         // Verifica se tem algum item marcado com prejuízo no banco
-        // (Ajuste a lógica se o seu banco registrar o prejuízo de forma diferente)
         const temPrejuizoNoBanco = order.ItemReservas.some(item => item.status === 'FINALIZADO_COM_PREJUIZO' || item.status === 'PREJUIZO');
         
         // Define o próximo status da OS depois da assinatura

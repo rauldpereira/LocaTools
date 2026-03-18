@@ -70,8 +70,8 @@ const createVistoria = async (req, res) => {
                     // AVISA O CLIENTE PRA ASSINAR 
                     await notificarUsuario(
                         ordemDeServico.id_usuario,
-                        '✍️ Vistoria Concluída - Assine o Contrato',
-                        `A vistoria do seu pedido #${ordemDeServico.id} foi finalizada. Assine o contrato para liberar os equipamentos.`,
+                        '📋 Vistoria de Entrega Concluída',
+                        `A vistoria do pedido #${ordemDeServico.id} foi registrada! Confira as fotos/observações e assine na tela do nosso entregador para liberar os equipamentos.`,
                         `/my-reservations/${ordemDeServico.id}`
                     );
 

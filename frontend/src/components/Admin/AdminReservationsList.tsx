@@ -73,16 +73,17 @@ const AdminReservationsList: React.FC = () => {
     }).sort(sortByDateAsc);
 
     const ordersAwaitingSignature = orders.filter(o => o.status === 'aguardando_assinatura').sort(sortByIdDesc);
-    const ordersForReturnInspection = orders.filter(o => o.status === 'em_andamento').sort(sortByDateAsc);
     const ordersAwaitingFinalPayment = orders.filter(o => o.status === 'aguardando_pagamento_final').sort(sortByIdDesc);
     const ordersAbandoned = orders.filter(o => o.status === 'pendente').sort(sortByIdDesc);
     const ordersEmPrejuizo = orders.filter(o => o.status === 'PREJUIZO').sort(sortByIdDesc);
     const finalizedOrders = orders.filter(o => o.status === 'finalizada').sort(sortByIdDesc);
     const cancelledOrders = orders.filter(o => o.status === 'cancelada').sort(sortByIdDesc);
+    const ordersAwaitingReturnSignature = orders.filter(o => o.status === 'aguardando_assinatura_devolucao').sort(sortByIdDesc);
+    const ordersForReturnInspection = orders.filter(o => o.status === 'em_andamento').sort(sortByDateAsc);
 
     const qtdePendencias = podeVerFinanceiro 
-        ? ordersAwaitingSignature.length + ordersAwaitingFinalPayment.length + ordersAbandoned.length
-        : ordersAwaitingSignature.length;
+        ? ordersAwaitingSignature.length + ordersAwaitingReturnSignature.length + ordersAwaitingFinalPayment.length + ordersAbandoned.length
+        : ordersAwaitingSignature.length + ordersAwaitingReturnSignature.length;
 
     if (loading) return <p style={{ textAlign: 'center', padding: '20px', fontSize: '1.2rem' }}>A carregar reservas...</p>;
 
@@ -295,13 +296,37 @@ const AdminReservationsList: React.FC = () => {
                 {/* ABA: PENDÊNCIAS */}
                 {(podeGerenciarReservas || podeFazerVistoria) && activeTab === 'pendencias' && (
                     <>
-                        {renderOrderTable("Aguardando Assinatura do Contrato", ordersAwaitingSignature, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }, { key: 'data_inicio', label: 'Data de Início' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#17a2b8', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Ver Contrato</button></Link>)}
+                        {/* TABELA DE ASSINATURA DE SAÍDA */}
+                        {renderOrderTable(
+                            "Aguardando Assinatura de Saída (Entrega)", 
+                            ordersAwaitingSignature, 
+                            [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }, { key: 'data_inicio', label: 'Data de Início' }], 
+                            order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#17a2b8', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Coletar Assinatura</button></Link>
+                        )}
+                        
+                        {/* TABELA DE ASSINATURA DE DEVOLUÇÃO*/}
+                        {renderOrderTable(
+                            "Aguardando Assinatura de Devolução", 
+                            ordersAwaitingReturnSignature, 
+                            [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }, { key: 'data_fim', label: 'Data de Devolução' }], 
+                            order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#28a745', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Coletar Assinatura Final</button></Link>
+                        )}
                         
                         {podeVerFinanceiro && (
                             <>
-                                {renderOrderTable("Reservas Aguardando Pagamento Final", ordersAwaitingFinalPayment, [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], order => <Link to={`/admin/finalize-payment/${order.id}`}><button style={{ backgroundColor: '#28a745', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Finalizar e Cobrar</button></Link>)}
+                                {renderOrderTable(
+                                    "Reservas Aguardando Pagamento Final", 
+                                    ordersAwaitingFinalPayment, 
+                                    [{ key: 'id', label: 'Pedido ID' }, { key: 'status', label: 'Status' }], 
+                                    order => <Link to={`/admin/finalize-payment/${order.id}`}><button style={{ backgroundColor: '#28a745', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Finalizar e Cobrar</button></Link>
+                                )}
                                 
-                                {renderOrderTable("Retenção: Clientes no Checkout (Pagamento Pendente)", ordersAbandoned, [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Resgatar Venda</button></Link>)}
+                                {renderOrderTable(
+                                    "Retenção: Clientes no Checkout (Pagamento Pendente)", 
+                                    ordersAbandoned, 
+                                    [{ key: 'id', label: 'Pedido ID' }, { key: 'data_inicio', label: 'Criado em (Data Saída)' }], 
+                                    order => <Link to={`/my-reservations/${order.id}`}><button style={{ backgroundColor: '#fd7e14', color: 'white', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Resgatar Venda</button></Link>
+                                )}
                             </>
                         )}
                     </>
