@@ -51,7 +51,7 @@ const AdminReservationsList: React.FC = () => {
 
     // --- FILTROS DE CATEGORIA ---
     const ordersToday = orders.filter(o => 
-        o.status === 'aprovada' 
+        (o.status === 'aprovada' || o.status === 'saiu_para_entrega')
         && parseDateStringAsLocal(o.data_inicio).setHours(0, 0, 0, 0) === hoje.getTime())
         .sort(sortByDateAsc);
 
@@ -96,6 +96,18 @@ const AdminReservationsList: React.FC = () => {
             fetchAllOrders();
         } catch (error: any) {
             alert(`Erro: ${error.response?.data?.error || 'Não foi possível processar.'}`);
+        }
+    };
+
+    const handleDispatchOrder = async (orderId: number) => {
+        if (!window.confirm("Confirmar a saída deste pedido para entrega? O cliente será notificado na hora!")) return;
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.put(`http://localhost:3001/api/reservations/${orderId}/dispatch`, {}, config);
+            alert('🚚 Pedido despachado com sucesso!');
+            fetchAllOrders();
+        } catch (error: any) {
+            alert(`Erro: ${error.response?.data?.error || 'Não foi possível despachar o pedido.'}`);
         }
     };
 
@@ -176,7 +188,6 @@ const AdminReservationsList: React.FC = () => {
 
             {/* MENUS DAS ABAS */}
             <div style={{ display: 'flex', gap: '5px', borderBottom: '3px solid #dee2e6', marginBottom: '30px', overflowX: 'auto', paddingBottom: '2px' }}>
-                {/* Essas abas todos veem (Balcão e Vistoriador) */}
                 <button onClick={() => setActiveTab('urgentes')} style={getTabStyle(activeTab === 'urgentes', true)}>
                     🚨 Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})
                 </button>
@@ -262,7 +273,42 @@ const AdminReservationsList: React.FC = () => {
                                 { key: 'tipo_entrega', label: 'Tipo de Entrega' },
                                 { key: 'data_inicio', label: 'Data de Saída' }
                             ],
-                            order => <Link to={`/admin/vistoria/${order.id}`}><button style={{ backgroundColor: '#007bff', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Realizar Vistoria</button></Link>
+                            order => (
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                    
+                                    {/* SÓ MOSTRA O BOTÃO DE LIBERAR (Quando tá aprovada) */}
+                                    {order.status === 'aprovada' && (
+                                        <button 
+                                            onClick={() => handleDispatchOrder(order.id)} 
+                                            style={{ 
+                                                backgroundColor: order.tipo_entrega === 'entrega' ? '#17a2b8' : '#28a745', 
+                                                color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', 
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
+                                            }}
+                                        >
+                                            {order.tipo_entrega === 'entrega' ? '🚚 Despachar Caminhão' : '✅ Liberar p/ Retirada'}
+                                        </button>
+                                    )}
+
+                                    {/* SÓ MOSTRA A VISTORIA DEPOIS QUE FOI LIBERADO (Status: saiu_para_entrega) */}
+                                    {order.status === 'saiu_para_entrega' && (
+                                        <>
+                                            <span style={{ 
+                                                color: order.tipo_entrega === 'entrega' ? '#007bff' : '#28a745', 
+                                                fontWeight: 'bold', fontSize: '0.9rem', padding: '0 5px' 
+                                            }}>
+                                                {order.tipo_entrega === 'entrega' ? '🚚 Em Trânsito' : '✅ No Balcão'}
+                                            </span>
+                                            
+                                            <Link to={`/admin/vistoria/${order.id}`}>
+                                                <button style={{ backgroundColor: '#007bff', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                                    {order.tipo_entrega === 'entrega' ? '📋 Fazer Vistoria na Obra' : '🏪 Fazer Vistoria no Balcão'}
+                                                </button>
+                                            </Link>
+                                        </>
+                                    )}
+                                </div>
+                            )
                         )}
                         {renderOrderTable(
                             "Reservas Agendadas",
@@ -280,16 +326,26 @@ const AdminReservationsList: React.FC = () => {
                 {/* ABA: DEVOLUÇÕES */}
                 {activeTab === 'devolucoes' && (
                     <>
-                        {renderOrderTable("Equipamentos em Locação (Aguardando Devolução)", ordersForReturnInspection, [{ key: 'id', label: 'Pedido ID' }, { key: 'tipo_entrega', label: 'Tipo de Entrega' }, { key: 'data_fim', label: 'Data de Devolução' }], order => (
-                            <div style={{ display: 'flex', gap: '5px' }}>
-                                <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}><button style={{ backgroundColor: '#ffc107', color: '#212529', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Vistoria de Retorno</button></Link>
+                        {renderOrderTable(
+                            "Equipamentos em Locação (Aguardando Devolução)", 
+                            ordersForReturnInspection, 
+                            [{ key: 'id', label: 'Pedido ID' }, { key: 'tipo_entrega', label: 'Tipo de Entrega' }, { key: 'data_fim', label: 'Data de Devolução' }], 
+                            order => (
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                    <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
+                                        <button style={{ backgroundColor: '#ffc107', color: '#212529', fontWeight: 'bold', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                                            {order.tipo_entrega === 'entrega' ? '🚚 Vistoria de Coleta' : '🏪 Vistoria no Balcão'}
+                                        </button>
+                                    </Link>
                                 
-                                {/* O botão de devolução rápida (que pula a vistoria) só fica disponível pra quem tem poder de Balcão/Gerência */}
-                                {podeGerenciarReservas && (
-                                    <button onClick={() => handleSkipInspection(order.id)} style={{ backgroundColor: '#28a745', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Devolução Rápida (OK)</button>
-                                )}
-                            </div>
-                        ))}
+                                    {podeGerenciarReservas && (
+                                        <button onClick={() => handleSkipInspection(order.id)} style={{ backgroundColor: '#28a745', color: 'white', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                                            Devolução Rápida (OK)
+                                        </button>
+                                    )}
+                                </div>
+                            )
+                        )}
                     </>
                 )}
 
@@ -351,7 +407,7 @@ const AdminReservationsList: React.FC = () => {
                     </>
                 )}
 
-                {/* ABA: INADIMPLENTES (Radar do Calote) */}
+                {/* ABA: INADIMPLENTES */}
                 {activeTab === 'inadimplentes' && (
                     <>
                         <div style={{ backgroundColor: '#fff5f5', border: '1px solid #dc3545', borderLeft: '6px solid #dc3545', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>

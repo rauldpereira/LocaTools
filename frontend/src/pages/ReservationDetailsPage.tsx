@@ -414,7 +414,7 @@ const ReservationDetailsPage: React.FC = () => {
       };
       const response = await axios.get(
         `http://localhost:3001/api/reservations/return-contract/${orderId}`,
-        config
+        config,
       );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -699,29 +699,66 @@ const ReservationDetailsPage: React.FC = () => {
             </button>
           )}
 
-          <span
-            style={{
-              padding: "6px 12px",
-              borderRadius: "20px",
-              fontWeight: "bold",
-              fontSize: "0.9rem",
-              backgroundColor:
-                order.status === "PREJUIZO"
-                  ? "#ffebee"
-                  : order.status === "pendente"
-                    ? "#fff3cd"
-                    : "#e8f5e9",
-              color:
-                order.status === "PREJUIZO"
-                  ? "#c62828"
-                  : order.status === "pendente"
-                    ? "#856404"
-                    : "#2e7d32",
-              border: `1px solid ${order.status === "PREJUIZO" ? "#c62828" : order.status === "pendente" ? "#ffeeba" : "#2e7d32"}`,
-            }}
-          >
-            {order.status.replace(/_/g, " ").toUpperCase()}
-          </span>
+          {/* 👇 MAQUIAGEM VISUAL DA TAG DE STATUS 👇 */}
+          {(() => {
+            let badgeText = order.status.replace(/_/g, " ").toUpperCase();
+            let badgeColor = "#495057";
+            let badgeBg = "#e9ecef";
+            let badgeBorder = "#dee2e6";
+
+            if (order.status === "pendente") {
+              badgeColor = "#856404";
+              badgeBg = "#fff3cd";
+              badgeBorder = "#ffeeba";
+            } else if (order.status === "PREJUIZO") {
+              badgeColor = "#c62828";
+              badgeBg = "#ffebee";
+              badgeBorder = "#ffcdd2";
+              badgeText = "🚨 " + badgeText;
+            } else if (order.status === "aprovada") {
+              badgeColor = "#d97706";
+              badgeBg = "#fef3c7";
+              badgeBorder = "#fde68a";
+              badgeText =
+                order.tipo_entrega === "entrega"
+                  ? "⏳ AGENDADA PARA ENTREGA"
+                  : "🏪 AGENDADA PARA RETIRADA";
+            } else if (order.status === "saiu_para_entrega") {
+              if (order.tipo_entrega === "entrega") {
+                badgeColor = "#007bff";
+                badgeBg = "#e7f1ff";
+                badgeBorder = "#b6d4fe";
+                badgeText = "🚚 EM TRÂNSITO (A CAMINHO)";
+              } else {
+                badgeColor = "#28a745";
+                badgeBg = "#e8f5e9";
+                badgeBorder = "#c8e6c9";
+                badgeText = "✅ PRONTO PARA RETIRADA NO BALCÃO";
+              }
+            } else if (order.status === "em_andamento") {
+              badgeColor = "#2e7d32";
+              badgeBg = "#e8f5e9";
+              badgeBorder = "#c8e6c9";
+              badgeText = "✅ EM LOCAÇÃO ATIVA";
+            }
+
+            return (
+              <span
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "20px",
+                  fontWeight: "bold",
+                  fontSize: "0.9rem",
+                  backgroundColor: badgeBg,
+                  color: badgeColor,
+                  border: `1px solid ${badgeBorder}`,
+                }}
+              >
+                {badgeText}
+              </span>
+            );
+          })()}
+          {/* 👆 FIM DA TAG 👇 */}
         </div>
       </div>
 
@@ -828,7 +865,7 @@ const ReservationDetailsPage: React.FC = () => {
                 </button>
               )}
 
-              {/* Botão para os funcionarios coletarem a assinatura de DEVOLUÇÃO  */}
+            {/* Botão para os funcionarios coletarem a assinatura de DEVOLUÇÃO  */}
             {order.status === "aguardando_assinatura_devolucao" &&
               podeColetarAssinatura && (
                 <button
@@ -894,7 +931,7 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {/* BLOCO DE DÍVIDAS / PREJUÍZO (ESCONDIDO DE QUEM NÃO TEM ACESSO) */}
+      {/* BLOCO DE DÍVIDAS / PREJUÍZO */}
       {podeVerFinanceiro && itensComPrejuizo.length > 0 && (
         <div
           style={{
@@ -1132,21 +1169,32 @@ const ReservationDetailsPage: React.FC = () => {
             alignItems: "center",
           }}
         >
-          <h3 style={{ color: "#2c3e50", marginTop: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3
+            style={{
+              color: "#2c3e50",
+              marginTop: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
             ✅ Equipamentos Devolvidos
           </h3>
           <p style={{ color: "#555", marginBottom: "20px" }}>
             O termo de devolução foi assinado pelo cliente em{" "}
-            {order.data_assinatura_devolucao 
-              ? new Date(order.data_assinatura_devolucao).toLocaleDateString("pt-BR") 
-              : "data não registrada"}.
+            {order.data_assinatura_devolucao
+              ? new Date(order.data_assinatura_devolucao).toLocaleDateString(
+                  "pt-BR",
+                )
+              : "data não registrada"}
+            .
           </p>
-          
+
           <button
             onClick={handleDownloadReturnContract}
             style={{
               padding: "10px 20px",
-              backgroundColor: "#17a2b8", 
+              backgroundColor: "#17a2b8",
               color: "white",
               border: "none",
               borderRadius: "6px",
@@ -1155,7 +1203,7 @@ const ReservationDetailsPage: React.FC = () => {
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              boxShadow: "0 2px 4px rgba(23,162,184,0.3)"
+              boxShadow: "0 2px 4px rgba(23,162,184,0.3)",
             }}
           >
             📄 Baixar Termo de Devolução (PDF)
@@ -1190,15 +1238,17 @@ const ReservationDetailsPage: React.FC = () => {
             backgroundColor: "#e3f2fd",
             color: "#0d47a1",
             borderRadius: "6px",
-            marginBottom: "2rem",
             border: "1px solid #b6d4fe"
           }}
         >
-          <strong>Aguardando Assinatura:</strong> A vistoria de saída foi concluída. O motorista coletará sua assinatura agora.
+          <strong>Aguardando Assinatura:</strong> A vistoria de saída foi concluída. 
+          {order.tipo_entrega === "entrega" 
+            ? " O motorista coletará sua assinatura agora no momento da entrega." 
+            : " Nossa equipe no local coletará sua assinatura agora."}
         </div>
       )}
 
-      {/* AVISO PARA O CLIENTE NA DEVOLUÇÃO*/}
+      {/* AVISO PARA O CLIENTE NA DEVOLUÇÃO */}
       {!isAdmin && !isFuncionario && order.status === "aguardando_assinatura_devolucao" && (
         <div
           style={{
@@ -1210,7 +1260,10 @@ const ReservationDetailsPage: React.FC = () => {
             border: "1px solid #c8e6c9"
           }}
         >
-          <strong>Aguardando Assinatura Final:</strong> A vistoria de devolução foi registrada. O motorista coletará sua assinatura para encerrar o contrato.
+          <strong>Aguardando Assinatura Final:</strong> A vistoria de devolução foi registrada. 
+          {order.tipo_entrega === "entrega"
+            ? " O motorista coletará sua assinatura para encerrar o contrato no recolhimento."
+            : " Assine no balcão para encerrar o contrato."}
         </div>
       )}
 

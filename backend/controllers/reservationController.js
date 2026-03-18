@@ -1220,6 +1220,41 @@ const generateReturnContract = async (req, res) => {
     }
 };
 
+const dispatchOrder = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const order = await OrdemDeServico.findByPk(id);
+
+        if (!order) {
+            return res.status(404).json({ error: 'Pedido não encontrado.' });
+        }
+
+        // Só pode sair pra entrega se estiver aprovada (paga e separada)
+        if (order.status !== 'aprovada') {
+            return res.status(400).json({ error: `O pedido não pode ser despachado no status atual (${order.status}).` });
+        }
+
+        await order.update({ status: 'saiu_para_entrega' });
+
+        const isEntrega = order.tipo_entrega === 'entrega';
+        
+        const tituloNotificacao = isEntrega ? '🚚 Saiu para Entrega!' : '✅ Pronto para Retirada!';
+        const textoNotificacao = isEntrega 
+            ? `Seu pedido #${order.id} está a caminho. Prepare-se para receber e assinar a vistoria com nossa equipe.`
+            : `Seu equipamento do pedido #${order.id} já está separado e testado no balcão. Pode vir buscar!`;
+
+        // Avisa o cliente na hora!
+        await notificarUsuario(order.id_usuario, tituloNotificacao, textoNotificacao, `/my-reservations/${order.id}`);
+
+        res.status(200).json({ message: 'Pedido despachado com sucesso!', status: 'saiu_para_entrega' });
+
+    } catch (error) {
+        console.error('Erro ao despachar pedido:', error);
+        res.status(500).json({ error: 'Erro interno ao despachar pedido.' });
+    }
+};
+
 module.exports = {
     createOrder,
     getMyOrders,
@@ -1238,5 +1273,6 @@ module.exports = {
     recoverDebt,
     calcularMultaAtraso,
     saveReturnSignature,
-    generateReturnContract
+    generateReturnContract,
+    dispatchOrder
 };
