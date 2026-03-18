@@ -12,6 +12,7 @@ interface Order {
     valor_total: string;
     taxa_cancelamento?: string;
     valor_reembolsado?: string;
+    updatedAt?: string;
 }
 
 const MyReservationsPage: React.FC = () => {
@@ -21,7 +22,7 @@ const MyReservationsPage: React.FC = () => {
     const [message, setMessage] = useState('');
 
     const [searchTerm, setSearchTerm] = useState('');
-    const [sortBy, setSortBy] = useState('id_desc'); 
+    const [sortBy, setSortBy] = useState('updated_desc');
 
     const cancellableStatuses = ['aprovada', 'aguardando_assinatura'];
 
@@ -88,12 +89,18 @@ const MyReservationsPage: React.FC = () => {
             return idMatch || dateMatch;
         })
         .sort((a, b) => {
+            if (sortBy === 'updated_desc') {
+                return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+            }
+            if (sortBy === 'updated_asc') {
+                return new Date(a.updatedAt || 0).getTime() - new Date(b.updatedAt || 0).getTime();
+            }
+            
             if (sortBy === 'id_desc') return b.id - a.id;
             if (sortBy === 'id_asc') return a.id - b.id;
             
             const dateA = new Date(a.data_inicio).getTime();
             const dateB = new Date(b.data_inicio).getTime();
-            
             if (sortBy === 'date_asc') return dateA - dateB;
             if (sortBy === 'date_desc') return dateB - dateA;
             
@@ -124,10 +131,12 @@ const MyReservationsPage: React.FC = () => {
                             onChange={(e) => setSortBy(e.target.value)}
                             style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '4px', backgroundColor: 'white' }}
                         >
+                            <option value="updated_desc">Últimas Atualizações (Mais recentes)</option>
+                            <option value="updated_asc">Últimas Atualizações (Mais antigas)</option>
                             <option value="date_asc">Data da Locação Crescente</option>
                             <option value="date_desc">Data da Locação Decrescente</option>
-                            <option value="id_desc">Pedidos Mais Recentes</option>
-                            <option value="id_asc">Pedidos Mais Antigos</option>
+                            <option value="id_desc">Pedidos Mais Recentes (Por ID)</option>
+                            <option value="id_asc">Pedidos Mais Antigos (Por ID)</option>
                         </select>
                     </div>
                 )}
