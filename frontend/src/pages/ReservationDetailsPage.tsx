@@ -90,6 +90,8 @@ interface OrderDetails {
   createdAt?: string;
   assinatura_devolucao?: string;
   data_assinatura_devolucao?: string;
+  solicitou_devolucao?: boolean;
+  coleta_confirmada?: boolean;
 }
 
 const parseDateStringAsLocal = (dateString: string) => {
@@ -430,6 +432,26 @@ const ReservationDetailsPage: React.FC = () => {
     }
   };
 
+  const handleRequestReturn = async () => {
+    if (
+      !window.confirm("Avisar a loja que o equipamento já pode ser recolhido?")
+    )
+      return;
+
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      await axios.put(
+        `${backendUrl}/api/reservations/${orderId}/request-return`,
+        {},
+        config,
+      );
+      alert("Aviso enviado para a loja!");
+      fetchOrderDetails();
+    } catch (error) {
+      alert("Erro ao solicitar recolhimento.");
+    }
+  };
+
   const getNomeTipoPrejuizo = (tipo: string) => {
     const map: any = {
       ROUBO: "Não Devolvido / Extraviado",
@@ -640,7 +662,6 @@ const ReservationDetailsPage: React.FC = () => {
     hasPermission("fazer_vistoria");
 
   const podeVerPainelAcoes = isAdmin || isFuncionario || podeColetarAssinatura;
-  // =========================================================================
 
   return (
     <div
@@ -699,7 +720,7 @@ const ReservationDetailsPage: React.FC = () => {
             </button>
           )}
 
-          {/* 👇 MAQUIAGEM VISUAL DA TAG DE STATUS 👇 */}
+          {/* MAQUIAGEM VISUAL DA TAG DE STATUS */}
           {(() => {
             let badgeText = order.status.replace(/_/g, " ").toUpperCase();
             let badgeColor = "#495057";
@@ -758,7 +779,6 @@ const ReservationDetailsPage: React.FC = () => {
               </span>
             );
           })()}
-          {/* 👆 FIM DA TAG 👇 */}
         </div>
       </div>
 
@@ -930,6 +950,56 @@ const ReservationDetailsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* BOTÃO DE SOLICITAR RECOLHIMENTO */}
+      {!isAdmin &&
+        !isFuncionario &&
+        order.status === "em_andamento" &&
+        order.tipo_entrega === "entrega" && (
+          <div
+            style={{
+              marginTop: "2rem",
+              padding: "20px",
+              backgroundColor: "#f8f9fa",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              textAlign: "center",
+            }}
+          >
+            <h3 style={{ margin: "0 0 10px 0", color: "#2c3e50" }}>
+              Terminou de usar?
+            </h3>
+            <p style={{ color: "#555", marginBottom: "15px" }}>
+              Avise nossa equipe para agilizarmos a coleta na obra.
+            </p>
+
+            <button
+              onClick={handleRequestReturn}
+              disabled={order.solicitou_devolucao}
+              style={{
+                padding: "12px 25px",
+                backgroundColor: order.coleta_confirmada
+                  ? "#17a2b8"
+                  : order.solicitou_devolucao
+                    ? "#28a745"
+                    : "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "bold",
+                fontSize: "1.1rem",
+                cursor: order.solicitou_devolucao ? "not-allowed" : "pointer",
+                boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              }}
+            >
+              {order.coleta_confirmada
+                ? "🚚 Caminhão a Caminho!"
+                : order.solicitou_devolucao
+                  ? "✅ Coleta Solicitada"
+                  : "🚚 Solicitar Recolhimento da Máquina"}
+            </button>
+          </div>
+        )}
 
       {/* BLOCO DE DÍVIDAS / PREJUÍZO */}
       {podeVerFinanceiro && itensComPrejuizo.length > 0 && (
@@ -1231,41 +1301,48 @@ const ReservationDetailsPage: React.FC = () => {
         </button>
       )}
 
-      {!isAdmin && !isFuncionario && order.status === "aguardando_assinatura" && (
-        <div
-          style={{
-            padding: "15px",
-            backgroundColor: "#e3f2fd",
-            color: "#0d47a1",
-            borderRadius: "6px",
-            border: "1px solid #b6d4fe"
-          }}
-        >
-          <strong>Aguardando Assinatura:</strong> A vistoria de saída foi concluída. 
-          {order.tipo_entrega === "entrega" 
-            ? " O motorista coletará sua assinatura agora no momento da entrega." 
-            : " Nossa equipe no local coletará sua assinatura agora."}
-        </div>
-      )}
+      {/* AVISO PARA O CLIENTE NA ENTREGA/RETIRADA */}
+      {!isAdmin &&
+        !isFuncionario &&
+        order.status === "aguardando_assinatura" && (
+          <div
+            style={{
+              padding: "15px",
+              backgroundColor: "#e3f2fd",
+              color: "#0d47a1",
+              borderRadius: "6px",
+              border: "1px solid #b6d4fe",
+            }}
+          >
+            <strong>Aguardando Assinatura:</strong> A vistoria de saída foi
+            concluída.
+            {order.tipo_entrega === "entrega"
+              ? " O motorista coletará sua assinatura agora no momento da entrega."
+              : " Nossa equipe no balcão coletará sua assinatura agora."}
+          </div>
+        )}
 
       {/* AVISO PARA O CLIENTE NA DEVOLUÇÃO */}
-      {!isAdmin && !isFuncionario && order.status === "aguardando_assinatura_devolucao" && (
-        <div
-          style={{
-            padding: "15px",
-            backgroundColor: "#e8f5e9",
-            color: "#2e7d32",
-            borderRadius: "6px",
-            marginBottom: "2rem",
-            border: "1px solid #c8e6c9"
-          }}
-        >
-          <strong>Aguardando Assinatura Final:</strong> A vistoria de devolução foi registrada. 
-          {order.tipo_entrega === "entrega"
-            ? " O motorista coletará sua assinatura para encerrar o contrato no recolhimento."
-            : " Assine no balcão para encerrar o contrato."}
-        </div>
-      )}
+      {!isAdmin &&
+        !isFuncionario &&
+        order.status === "aguardando_assinatura_devolucao" && (
+          <div
+            style={{
+              padding: "15px",
+              backgroundColor: "#e8f5e9",
+              color: "#2e7d32",
+              borderRadius: "6px",
+              marginBottom: "2rem",
+              border: "1px solid #c8e6c9",
+            }}
+          >
+            <strong>Aguardando Assinatura Final:</strong> A vistoria de
+            devolução foi registrada.
+            {order.tipo_entrega === "entrega"
+              ? " O motorista coletará sua assinatura para encerrar o contrato no recolhimento."
+              : " Assine no balcão para encerrar o contrato."}
+          </div>
+        )}
 
       {isReturnModalOpen && (
         <ReturnContractModal

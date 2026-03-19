@@ -1255,6 +1255,53 @@ const dispatchOrder = async (req, res) => {
     }
 };
 
+
+const requestReturn = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const order = await OrdemDeServico.findByPk(id);
+
+        if (!order) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+        if (order.id_usuario !== req.user.id) {
+            return res.status(403).json({ error: 'Acesso negado.' });
+        }
+
+        await order.update({ solicitou_devolucao: true });
+
+
+        res.status(200).json({ message: 'Recolhimento solicitado com sucesso!' });
+
+    } catch (error) {
+        console.error('Erro ao solicitar recolhimento:', error);
+        res.status(500).json({ error: 'Erro interno.' });
+    }
+};
+
+const confirmPickup = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const order = await OrdemDeServico.findByPk(id);
+        if (!order) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+        await order.update({ coleta_confirmada: true });
+
+        await notificarUsuario(
+            order.id_usuario,
+            '🚚 Caminhão a Caminho!',
+            `Nosso motorista já saiu para recolher os equipamentos do pedido #${order.id}. Aguarde no local.`,
+            `/my-reservations/${order.id}`
+        );
+
+        res.status(200).json({ message: 'Coleta confirmada com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao confirmar coleta:', error);
+        res.status(500).json({ error: 'Erro interno.' });
+    }
+};
+
 module.exports = {
     createOrder,
     getMyOrders,
@@ -1274,5 +1321,7 @@ module.exports = {
     calcularMultaAtraso,
     saveReturnSignature,
     generateReturnContract,
-    dispatchOrder
+    dispatchOrder, 
+    requestReturn,
+    confirmPickup
 };
