@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo, FreteConfig } = require('../models');
-const { notificarUsuario } = require('../utils/notificacaoHelper');
+const { notificarUsuario, notificarEquipe } = require('../utils/notificacaoHelper');
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
 
@@ -1270,6 +1270,11 @@ const requestReturn = async (req, res) => {
 
         await order.update({ solicitou_devolucao: true });
 
+        await notificarEquipe(
+            '🔔 Coleta Solicitada!',
+            `O cliente do pedido #${order.id} avisou que o equipamento já pode ser recolhido.`,
+            `/admin` 
+        );
 
         res.status(200).json({ message: 'Recolhimento solicitado com sucesso!' });
 
