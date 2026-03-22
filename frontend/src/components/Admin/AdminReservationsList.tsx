@@ -20,7 +20,7 @@ type TabKey =
   | "devolucoes"
   | "pendencias"
   | "historico"
-  | "inadimplentes";
+  | "financeiro";
 
 const AdminReservationsList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -124,12 +124,7 @@ const AdminReservationsList: React.FC = () => {
     .filter((o) => o.status === "em_andamento")
     .sort(sortByDateAsc);
 
-  const qtdePendencias = podeVerFinanceiro
-    ? ordersAwaitingSignature.length +
-      ordersAwaitingReturnSignature.length +
-      ordersAwaitingFinalPayment.length +
-      ordersAbandoned.length
-    : ordersAwaitingSignature.length + ordersAwaitingReturnSignature.length;
+  const qtdePendencias = ordersAwaitingSignature.length + ordersAwaitingReturnSignature.length;
 
   if (loading)
     return (
@@ -446,13 +441,14 @@ const AdminReservationsList: React.FC = () => {
           🚨 Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})
         </button>
 
-        {podeVerFinanceiro && ordersEmPrejuizo.length > 0 && (
+        {/* NOVA ABA DO FINANCEIRO */}
+        {podeVerFinanceiro && (
           <button
-            onClick={() => setActiveTab("inadimplentes")}
-            style={getTabStyle(activeTab === "inadimplentes", true)}
-            className="piscar-alerta"
+            onClick={() => setActiveTab("financeiro")}
+            style={getTabStyle(activeTab === "financeiro", ordersEmPrejuizo.length > 0)}
+            className={ordersEmPrejuizo.length > 0 ? "piscar-alerta" : ""}
           >
-            💰 Dívidas Ativas ({ordersEmPrejuizo.length})
+            💲 Financeiro ({ordersAwaitingFinalPayment.length + ordersAbandoned.length + ordersEmPrejuizo.length})
           </button>
         )}
 
@@ -819,62 +815,6 @@ const AdminReservationsList: React.FC = () => {
                   </Link>
                 ),
               )}
-
-              {podeVerFinanceiro && (
-                <>
-                  {renderOrderTable(
-                    "Reservas Aguardando Pagamento Final",
-                    ordersAwaitingFinalPayment,
-                    [
-                      { key: "id", label: "Pedido ID" },
-                      { key: "status", label: "Status" },
-                    ],
-                    (order) => (
-                      <Link to={`/admin/finalize-payment/${order.id}`}>
-                        <button
-                          style={{
-                            backgroundColor: "#28a745",
-                            color: "white",
-                            fontWeight: "bold",
-                            padding: "8px",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Finalizar e Cobrar
-                        </button>
-                      </Link>
-                    ),
-                  )}
-
-                  {renderOrderTable(
-                    "Retenção: Clientes no Checkout (Pagamento Pendente)",
-                    ordersAbandoned,
-                    [
-                      { key: "id", label: "Pedido ID" },
-                      { key: "data_inicio", label: "Criado em (Data Saída)" },
-                    ],
-                    (order) => (
-                      <Link to={`/my-reservations/${order.id}`}>
-                        <button
-                          style={{
-                            backgroundColor: "#fd7e14",
-                            color: "white",
-                            fontWeight: "bold",
-                            padding: "8px",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Resgatar Venda
-                        </button>
-                      </Link>
-                    ),
-                  )}
-                </>
-              )}
             </>
           )}
 
@@ -935,30 +875,89 @@ const AdminReservationsList: React.FC = () => {
           </>
         )}
 
-        {/* ABA: INADIMPLENTES */}
-        {activeTab === "inadimplentes" && (
+        {/* ABA: FINANCEIRO */}
+        {podeVerFinanceiro && activeTab === "financeiro" && (
           <>
-            <div
-              style={{
-                backgroundColor: "#fff5f5",
-                border: "1px solid #dc3545",
-                borderLeft: "6px solid #dc3545",
-                padding: "15px",
-                borderRadius: "8px",
-                marginBottom: "20px",
-              }}
-            >
-              <h3 style={{ margin: "0 0 5px 0", color: "#c62828" }}>
-                ⚠️ Clientes com Dívida Ativa
-              </h3>
-              <p style={{ margin: 0, color: "#333" }}>
-                Estes pedidos foram encerrados com pendências financeiras
-                (Avarias, multas, ou perda de equipamento). O cliente precisa
-                regularizar a situação.
-              </p>
-            </div>
+            {/* SINAL PENDENTE (Retenção) */}
             {renderOrderTable(
-              "Aguardando Pagamento do Prejuízo",
+              "Retenção: Clientes no Checkout (Pagamento do Sinal Pendente)",
+              ordersAbandoned,
+              [
+                { key: "id", label: "Pedido ID" },
+                { key: "data_inicio", label: "Criado em (Data Saída)" },
+              ],
+              (order) => (
+                <Link to={`/my-reservations/${order.id}`}>
+                  <button
+                    style={{
+                      backgroundColor: "#fd7e14",
+                      color: "white",
+                      fontWeight: "bold",
+                      padding: "8px",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Resgatar Venda
+                  </button>
+                </Link>
+              ),
+            )}
+
+            {/* PAGAMENTO FINAL PENDENTE */}
+            {renderOrderTable(
+              "Reservas Aguardando Pagamento Final (Pós-Vistoria)",
+              ordersAwaitingFinalPayment,
+              [
+                { key: "id", label: "Pedido ID" },
+                { key: "status", label: "Status" },
+              ],
+              (order) => (
+                <Link to={`/admin/finalize-payment/${order.id}`}>
+                  <button
+                    style={{
+                      backgroundColor: "#28a745",
+                      color: "white",
+                      fontWeight: "bold",
+                      padding: "8px",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Finalizar e Cobrar
+                  </button>
+                </Link>
+              ),
+            )}
+
+            {/* DÍVIDAS ATIVAS (Prejuízos e Avarias) */}
+            {ordersEmPrejuizo.length > 0 && (
+              <div
+                style={{
+                  backgroundColor: "#fff5f5",
+                  border: "1px solid #dc3545",
+                  borderLeft: "6px solid #dc3545",
+                  padding: "15px",
+                  borderRadius: "8px",
+                  marginBottom: "20px",
+                  marginTop: "20px"
+                }}
+              >
+                <h3 style={{ margin: "0 0 5px 0", color: "#c62828" }}>
+                  ⚠️ Clientes com Dívida Ativa
+                </h3>
+                <p style={{ margin: 0, color: "#333" }}>
+                  Estes pedidos foram encerrados com pendências financeiras
+                  (Avarias, multas, ou perda de equipamento). O cliente precisa
+                  regularizar a situação.
+                </p>
+              </div>
+            )}
+            
+            {renderOrderTable(
+              "Aguardando Pagamento do Prejuízo/Multa",
               ordersEmPrejuizo,
               [
                 { key: "id", label: "Pedido ID" },
@@ -969,14 +968,14 @@ const AdminReservationsList: React.FC = () => {
                 <Link to={`/my-reservations/${order.id}`}>
                   <button
                     style={{
-                      backgroundColor: "#28a745",
+                      backgroundColor: "#c62828",
                       color: "white",
                       fontWeight: "bold",
                       padding: "10px 15px",
                       border: "none",
                       borderRadius: "6px",
                       cursor: "pointer",
-                      boxShadow: "0 2px 4px rgba(40,167,69,0.3)",
+                      boxShadow: "0 2px 4px rgba(198,40,40,0.3)",
                     }}
                   >
                     💰 Receber Dívida

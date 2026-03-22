@@ -3,7 +3,7 @@ const { OrdemDeServico, HorarioFuncionamento } = require("../models");
 const { Op } = require("sequelize");
 const {
   notificarUsuario,
-  notificarEquipe,
+  notificarPorPermissao, // 👈 Importamos o "Sniper" aqui
 } = require("../utils/notificacaoHelper");
 
 const iniciarRoboDeLembretes = () => {
@@ -67,10 +67,10 @@ const iniciarRoboDeLembretes = () => {
         );
       }
 
+
       // ==========================================
       // DISPAROS DE RETIRADA / ENTREGA (SAÍDAS)
       // ==========================================
-
       const saidasAmanha = await OrdemDeServico.findAll({
         where: {
           status: "aprovada",
@@ -78,15 +78,10 @@ const iniciarRoboDeLembretes = () => {
         },
       });
       for (const os of saidasAmanha) {
-        const verboAmanha =
-          os.tipo_entrega === "entrega" ? "receberá" : "retirará";
-        const tituloAmanha =
-          os.tipo_entrega === "entrega"
-            ? "🚚 Entrega P/ Amanhã"
-            : "📦 Retirada P/ Amanhã";
+        const verboAmanha = os.tipo_entrega === "entrega" ? "receberá" : "retirará";
+        const tituloAmanha = os.tipo_entrega === "entrega" ? "🚚 Entrega P/ Amanhã" : "📦 Retirada P/ Amanhã";
 
-        const acaoClienteAmanha =
-          os.tipo_entrega === "entrega"
+        const acaoClienteAmanha = os.tipo_entrega === "entrega"
             ? `Aguarde a entrega no seu endereço ${horarioAmanhaStr}.`
             : `Venha retirar na loja ${horarioAmanhaStr}.`;
 
@@ -96,7 +91,10 @@ const iniciarRoboDeLembretes = () => {
           `Sua reserva #${os.id} está agendada para amanhã. ${acaoClienteAmanha}`,
           `/my-reservations/${os.id}`,
         );
-        await notificarEquipe(
+
+        // 🎯 Tiro Certeiro: O cara de reservas separa a máquina hoje para amanhã
+        await notificarPorPermissao(
+          "gerenciar_reservas",
           tituloAmanha,
           `O cliente da reserva #${os.id} ${verboAmanha} os equipamentos amanhã. Verifique o estoque e deixe separado.`,
           `/admin`,
@@ -111,13 +109,9 @@ const iniciarRoboDeLembretes = () => {
       });
       for (const os of saidasHoje) {
         const verboHoje = os.tipo_entrega === "entrega" ? "recebe" : "retira";
-        const tituloHoje =
-          os.tipo_entrega === "entrega"
-            ? "🚚 Entrega de Hoje"
-            : "📦 Retirada de Hoje";
+        const tituloHoje = os.tipo_entrega === "entrega" ? "🚚 Entrega de Hoje" : "📦 Retirada de Hoje";
 
-        const acaoClienteHoje =
-          os.tipo_entrega === "entrega"
+        const acaoClienteHoje = os.tipo_entrega === "entrega"
             ? `Aguarde a entrega no seu endereço ${horarioHojeStr}.`
             : `Venha retirar na loja ${horarioHojeStr}.`;
 
@@ -127,7 +121,11 @@ const iniciarRoboDeLembretes = () => {
           `Sua reserva #${os.id} começa hoje. ${acaoClienteHoje}`,
           `/my-reservations/${os.id}`,
         );
-        await notificarEquipe(
+
+        // 🎯 Tiro Certeiro: Motorista avisa se for entregar, Balcão avisa se for buscar na loja
+        const permissaoAlvo = os.tipo_entrega === "entrega" ? "fazer_vistoria" : "gerenciar_reservas";
+        await notificarPorPermissao(
+          permissaoAlvo,
           tituloHoje,
           `O cliente da reserva #${os.id} ${verboHoje} os equipamentos hoje.`,
           `/admin`,
@@ -137,7 +135,6 @@ const iniciarRoboDeLembretes = () => {
       // ==========================================
       // DISPAROS DE DEVOLUÇÃO / RETORNO
       // ==========================================
-
       const devolucoesAmanha = await OrdemDeServico.findAll({
         where: {
           status: "em_andamento",
@@ -145,11 +142,9 @@ const iniciarRoboDeLembretes = () => {
         },
       });
       for (const os of devolucoesAmanha) {
-        const verboDevolucaoAmanha =
-          os.tipo_entrega === "entrega" ? "ser buscada" : "ser devolvida";
+        const verboDevolucaoAmanha = os.tipo_entrega === "entrega" ? "ser buscada" : "ser devolvida";
 
-        const acaoDevAmanha =
-          os.tipo_entrega === "entrega"
+        const acaoDevAmanha = os.tipo_entrega === "entrega"
             ? `Aguarde nossa equipe buscar os equipamentos ${horarioAmanhaStr}.`
             : `Traga os equipamentos de volta na loja ${horarioAmanhaStr}.`;
 
@@ -159,7 +154,11 @@ const iniciarRoboDeLembretes = () => {
           `Sua locação #${os.id} termina amanhã. ${acaoDevAmanha}`,
           `/my-reservations/${os.id}`,
         );
-        await notificarEquipe(
+
+        // 🎯 Tiro Certeiro
+        const permissaoAlvoDevAmanha = os.tipo_entrega === "entrega" ? "fazer_vistoria" : "gerenciar_reservas";
+        await notificarPorPermissao(
+          permissaoAlvoDevAmanha,
           "🔄 Retorno P/ Amanhã",
           `A reserva #${os.id} deve ${verboDevolucaoAmanha} amanhã. Prepare-se para a vistoria.`,
           `/admin`,
@@ -173,11 +172,9 @@ const iniciarRoboDeLembretes = () => {
         },
       });
       for (const os of devolucoesHoje) {
-        const verboDevolucaoHoje =
-          os.tipo_entrega === "entrega" ? "buscada" : "devolvida";
+        const verboDevolucaoHoje = os.tipo_entrega === "entrega" ? "buscada" : "devolvida";
 
-        const acaoDevHoje =
-          os.tipo_entrega === "entrega"
+        const acaoDevHoje = os.tipo_entrega === "entrega"
             ? `Nossa equipe passará para buscar os equipamentos ${horarioHojeStr}.`
             : `Aguardamos a devolução na loja ${horarioHojeStr}.`;
 
@@ -187,7 +184,11 @@ const iniciarRoboDeLembretes = () => {
           `Sua reserva #${os.id} encerra hoje. ${acaoDevHoje}`,
           `/my-reservations/${os.id}`,
         );
-        await notificarEquipe(
+
+        // 🎯 Tiro Certeiro
+        const permissaoAlvoDevHoje = os.tipo_entrega === "entrega" ? "fazer_vistoria" : "gerenciar_reservas";
+        await notificarPorPermissao(
+          permissaoAlvoDevHoje,
           "🚨 Recebimento Hoje",
           `A reserva #${os.id} vence hoje e deve ser ${verboDevolucaoHoje}. Fique atento.`,
           `/admin`,
@@ -195,7 +196,7 @@ const iniciarRoboDeLembretes = () => {
       }
 
       console.log(
-        "✅ [CRON] Varredura finalizada. Lembretes enviados com horários dinâmicos.",
+        "✅ [CRON] Varredura finalizada. Lembretes enviados com horários dinâmicos e permissões alvo.",
       );
     } catch (error) {
       console.error("❌ [CRON] Erro ao rodar os lembretes:", error);

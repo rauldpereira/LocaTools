@@ -29,11 +29,15 @@ const AdminDashboard: React.FC = () => {
 
   // Ajusta a aba inicial dependendo do que o cara tem permissão de ver
   useEffect(() => {
-    if (hasPermission("gerenciar_reservas") || hasPermission("fazer_vistoria"))
+    if (
+      hasPermission("gerenciar_reservas") || 
+      hasPermission("fazer_vistoria") || 
+      hasPermission("ver_financeiro") 
+    )
       setActiveTab("reservas");
     else if (hasPermission("gerenciar_estoque")) setActiveTab("equipamentos");
     else if (hasPermission("configuracoes")) setActiveTab("frete");
-    else if (hasPermission("ver_financeiro")) setActiveTab("relatorios");
+    else if (hasPermission("ver_financeiro")) setActiveTab("relatorios"); // Fallback
   }, [user]);
 
   // Se não tá logado, ou não é nem admin, nem funcionário
@@ -60,7 +64,8 @@ const AdminDashboard: React.FC = () => {
     switch (activeTab) {
       case "reservas":
         return hasPermission("gerenciar_reservas") ||
-          hasPermission("fazer_vistoria") ? (
+          hasPermission("fazer_vistoria") ||
+          hasPermission("ver_financeiro") ? ( // 👈 AQUI: Permite renderizar o componente
           <div style={contentContainerStyle}>
             <h2 style={headerStyle}>Gerenciamento de Reservas e Vistorias</h2>
             <AdminReservationsList />
@@ -237,9 +242,10 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         <nav style={{ marginTop: "10px", padding: "10px" }}>
-
+          
           {(hasPermission("gerenciar_reservas") ||
-            hasPermission("fazer_vistoria")) && (
+            hasPermission("fazer_vistoria") ||
+            hasPermission("ver_financeiro")) && (
             <MenuItem
               label="Reservas & Pedidos"
               icon={Icons.reservas}
