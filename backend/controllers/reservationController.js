@@ -903,7 +903,7 @@ const skipReturnInspection = async (req, res) => {
             await notificarUsuario(
                 userIdNotify,
                 'Assinatura Contrato Final Pendente',
-                `A devolução do pedido #${req.params.id} foi concluída! Acesse para realizar a assinatura do Contrato.`,
+                `A devolução do pedido #${req.params.id} foi concluída! Nosso funcionario lhe entregará o Contrato Final para assinar.`,
                 `/my-reservations/${req.params.id}`
             );
         }
