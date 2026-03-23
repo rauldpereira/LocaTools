@@ -124,6 +124,9 @@ const ReservationDetailsPage: React.FC = () => {
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
 
+  const [showConfirmReturnModal, setShowConfirmReturnModal] = useState(false);
+  const [isRequestingReturn, setIsRequestingReturn] = useState(false);
+
   const fetchOrderDetails = async () => {
     if (!token || !orderId) return;
     try {
@@ -432,12 +435,8 @@ const ReservationDetailsPage: React.FC = () => {
     }
   };
 
-  const handleRequestReturn = async () => {
-    if (
-      !window.confirm("Avisar a loja que o equipamento já pode ser recolhido?")
-    )
-      return;
-
+  const confirmRequestReturn = async () => {
+    setIsRequestingReturn(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.put(
@@ -445,10 +444,16 @@ const ReservationDetailsPage: React.FC = () => {
         {},
         config,
       );
-      alert("Aviso enviado para a loja!");
-      fetchOrderDetails();
+      
+      setOrder((prev) => prev ? { ...prev, solicitou_devolucao: true } : prev);
+      
+      // Fecha o modal de confirmação
+      setShowConfirmReturnModal(false);
     } catch (error) {
-      alert("Erro ao solicitar recolhimento.");
+      console.error("Erro ao solicitar recolhimento:", error);
+      alert("Erro de conexão ao tentar solicitar. Tente novamente.");
+    } finally {
+      setIsRequestingReturn(false);
     }
   };
 
@@ -974,32 +979,85 @@ const ReservationDetailsPage: React.FC = () => {
             </p>
 
             <button
-              onClick={handleRequestReturn}
-              disabled={order.solicitou_devolucao}
+              onClick={() => setShowConfirmReturnModal(true)}
+              disabled={order.solicitou_devolucao || order.coleta_confirmada}
               style={{
                 padding: "12px 25px",
                 backgroundColor: order.coleta_confirmada
                   ? "#17a2b8"
                   : order.solicitou_devolucao
-                    ? "#28a745"
-                    : "#007bff",
+                    ? "#28a745" 
+                    : "#007bff", 
                 color: "white",
                 border: "none",
                 borderRadius: "6px",
                 fontWeight: "bold",
                 fontSize: "1.1rem",
-                cursor: order.solicitou_devolucao ? "not-allowed" : "pointer",
+                cursor: (order.solicitou_devolucao || order.coleta_confirmada) ? "not-allowed" : "pointer",
                 boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                transition: "all 0.3s ease"
               }}
             >
               {order.coleta_confirmada
                 ? "🚚 Caminhão a Caminho!"
                 : order.solicitou_devolucao
-                  ? "✅ Coleta Solicitada"
+                  ? "✅ Coleta Solicitada com Sucesso"
                   : "🚚 Solicitar Recolhimento da Máquina"}
             </button>
           </div>
         )}
+
+      {/* MODAL DE CONFIRMAÇÃO */}
+      {showConfirmReturnModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)",
+          display: "flex", justifyContent: "center", alignItems: "center",
+          zIndex: 1000, padding: "20px"
+        }}>
+          <div style={{
+            background: "white", padding: "2rem", borderRadius: "12px",
+            width: "450px", maxWidth: "100%", boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+            animation: "fadeIn 0.2s ease-out"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#007bff", marginBottom: "15px" }}>
+              <span style={{ fontSize: "2rem" }}>🚚</span>
+              <h2 style={{ margin: 0, fontSize: "1.5rem" }}>Confirmar Coleta</h2>
+            </div>
+            
+            <p style={{ color: "#444", fontSize: "1.05rem", lineHeight: "1.5", marginBottom: "10px" }}>
+              Você já terminou de utilizar os equipamentos desta reserva?
+            </p>
+            <p style={{ color: "#666", fontSize: "0.95rem", marginBottom: "25px" }}>
+              Ao confirmar, nossa equipe de logística será notificada imediatamente para agendar o recolhimento no endereço da sua obra.
+            </p>
+
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowConfirmReturnModal(false)}
+                disabled={isRequestingReturn}
+                style={{
+                  padding: "10px 20px", border: "1px solid #ccc", background: "white",
+                  borderRadius: "6px", cursor: "pointer", fontWeight: "bold", color: "#555"
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmRequestReturn}
+                disabled={isRequestingReturn}
+                style={{
+                  padding: "10px 20px", border: "none", background: "#007bff", color: "white",
+                  borderRadius: "6px", cursor: isRequestingReturn ? "wait" : "pointer", fontWeight: "bold",
+                  display: "flex", alignItems: "center", gap: "8px"
+                }}
+              >
+                {isRequestingReturn ? "Enviando..." : "Sim, solicitar coleta"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BLOCO DE DÍVIDAS / PREJUÍZO */}
       {podeVerFinanceiro && itensComPrejuizo.length > 0 && (
