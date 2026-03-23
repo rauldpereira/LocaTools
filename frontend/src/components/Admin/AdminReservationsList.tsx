@@ -25,14 +25,16 @@ type TabKey =
 const AdminReservationsList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabKey>("urgentes");
-
   const { token, hasPermission, user } = useAuth();
 
   const podeGerenciarReservas = hasPermission("gerenciar_reservas");
   const podeFazerVistoria = hasPermission("fazer_vistoria");
-  const podeVerFinanceiro =
-    user?.tipo_usuario === "admin" || hasPermission("ver_financeiro");
+
+  const podeReceberPagamentos = user?.tipo_usuario === "admin" || hasPermission("receber_pagamentos");
+  
+  const abaInicial = (podeGerenciarReservas || podeFazerVistoria) ? "urgentes" : "financeiro";
+
+  const [activeTab, setActiveTab] = useState<TabKey>(abaInicial);
 
   const fetchAllOrders = useCallback(async () => {
     if (!token) return;
@@ -434,57 +436,56 @@ const AdminReservationsList: React.FC = () => {
           paddingBottom: "2px",
         }}
       >
-        <button
-          onClick={() => setActiveTab("urgentes")}
-          style={getTabStyle(activeTab === "urgentes", true)}
-        >
-          🚨 Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})
-        </button>
+        {(podeGerenciarReservas || podeFazerVistoria) && (
+          <button
+            onClick={() => setActiveTab("urgentes")}
+            style={getTabStyle(activeTab === "urgentes", true)}
+          >
+            🚨 Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})
+          </button>
+        )}
 
-        {/* NOVA ABA DO FINANCEIRO */}
-        {podeVerFinanceiro && (
+        {/* ABA DO CAIXA/PAGAMENTOS */}
+        {podeReceberPagamentos && ( 
           <button
             onClick={() => setActiveTab("financeiro")}
             style={getTabStyle(activeTab === "financeiro", ordersEmPrejuizo.length > 0)}
             className={ordersEmPrejuizo.length > 0 ? "piscar-alerta" : ""}
           >
-            💲 Financeiro ({ordersAwaitingFinalPayment.length + ordersAbandoned.length + ordersEmPrejuizo.length})
+            💲 Caixa & Cobranças ({ordersAwaitingFinalPayment.length + ordersAbandoned.length + ordersEmPrejuizo.length})
           </button>
         )}
 
-        {/* Notificação contando só os de Hoje */}
-        <button
-          onClick={() => setActiveTab("saidas")}
-          style={getTabStyle(activeTab === "saidas")}
-        >
-          🚚 Saídas ({ordersToday.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("devolucoes")}
-          style={getTabStyle(activeTab === "devolucoes")}
-        >
-          🔄 Devoluções ({ordersForReturnInspection.length})
-        </button>
-
         {(podeGerenciarReservas || podeFazerVistoria) && (
           <>
+            <button
+              onClick={() => setActiveTab("saidas")}
+              style={getTabStyle(activeTab === "saidas")}
+            >
+              🚚 Saídas ({ordersToday.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("devolucoes")}
+              style={getTabStyle(activeTab === "devolucoes")}
+            >
+              🔄 Devoluções ({ordersForReturnInspection.length})
+            </button>
             <button
               onClick={() => setActiveTab("pendencias")}
               style={getTabStyle(activeTab === "pendencias")}
             >
               ✍️ Pendências ({qtdePendencias})
             </button>
-
-            {/* O histórico a gente deixa só pra quem gerencia reservas mesmo */}
-            {podeGerenciarReservas && (
-              <button
-                onClick={() => setActiveTab("historico")}
-                style={getTabStyle(activeTab === "historico")}
-              >
-                ✅ Histórico
-              </button>
-            )}
           </>
+        )}
+
+        {podeGerenciarReservas && (
+          <button
+            onClick={() => setActiveTab("historico")}
+            style={getTabStyle(activeTab === "historico")}
+          >
+            ✅ Histórico
+          </button>
         )}
       </div>
 
@@ -876,9 +877,9 @@ const AdminReservationsList: React.FC = () => {
         )}
 
         {/* ABA: FINANCEIRO */}
-        {podeVerFinanceiro && activeTab === "financeiro" && (
+        {podeReceberPagamentos && activeTab === "financeiro" && ( 
           <>
-            {/* SINAL PENDENTE (Retenção) */}
+            {/* SINAL PENDENTE */}
             {renderOrderTable(
               "Retenção: Clientes no Checkout (Pagamento do Sinal Pendente)",
               ordersAbandoned,

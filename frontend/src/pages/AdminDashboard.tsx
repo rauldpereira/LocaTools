@@ -32,12 +32,12 @@ const AdminDashboard: React.FC = () => {
     if (
       hasPermission("gerenciar_reservas") || 
       hasPermission("fazer_vistoria") || 
-      hasPermission("ver_financeiro") 
+      hasPermission("receber_pagamentos")
     )
       setActiveTab("reservas");
     else if (hasPermission("gerenciar_estoque")) setActiveTab("equipamentos");
     else if (hasPermission("configuracoes")) setActiveTab("frete");
-    else if (hasPermission("ver_financeiro")) setActiveTab("relatorios"); // Fallback
+    else if (hasPermission("ver_financeiro")) setActiveTab("relatorios"); 
   }, [user]);
 
   // Se não tá logado, ou não é nem admin, nem funcionário
@@ -65,7 +65,7 @@ const AdminDashboard: React.FC = () => {
       case "reservas":
         return hasPermission("gerenciar_reservas") ||
           hasPermission("fazer_vistoria") ||
-          hasPermission("ver_financeiro") ? ( // 👈 AQUI: Permite renderizar o componente
+          hasPermission("receber_pagamentos") ? (
           <div style={contentContainerStyle}>
             <h2 style={headerStyle}>Gerenciamento de Reservas e Vistorias</h2>
             <AdminReservationsList />
@@ -245,7 +245,7 @@ const AdminDashboard: React.FC = () => {
           
           {(hasPermission("gerenciar_reservas") ||
             hasPermission("fazer_vistoria") ||
-            hasPermission("ver_financeiro")) && (
+            hasPermission("receber_pagamentos")) && (
             <MenuItem
               label="Reservas & Pedidos"
               icon={Icons.reservas}

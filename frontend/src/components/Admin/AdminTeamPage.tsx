@@ -5,7 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 const PERMISSOES_DISPONIVEIS = [
   { id: 'gerenciar_reservas', nome: '📅 Gerenciar Reservas (Balcão e OS)' },
   { id: 'gerenciar_estoque', nome: '📦 Gerenciar Estoque (Equipamentos)' },
-  { id: 'ver_financeiro', nome: '💰 Financeiro e Relatórios' },
+  { id: 'receber_pagamentos', nome: '💲 Operar Caixa e Recebimentos (Sinal/Devolução)' },
+  { id: 'ver_financeiro', nome: '📈 Relatórios e Dashboards Financeiros' },
   { id: 'fazer_vistoria', nome: '📸 Fazer Vistorias (Pátio/Motorista)' },
   { id: 'configuracoes', nome: '⚙️ Configurações (Frete, Feriados)' }
 ];
