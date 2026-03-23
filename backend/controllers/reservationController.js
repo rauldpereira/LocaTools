@@ -1242,7 +1242,7 @@ const dispatchOrder = async (req, res) => {
         const tituloNotificacao = isEntrega ? '🚚 Saiu para Entrega!' : '✅ Pronto para Retirada!';
         const textoNotificacao = isEntrega 
             ? `Seu pedido #${order.id} está a caminho. Prepare-se para receber e assinar a vistoria com nossa equipe.`
-            : `Seu equipamento do pedido #${order.id} já está separado e testado no balcão. Pode vir buscar!`;
+            : `Seu equipamento do pedido #${order.id} já está separado e testado na Loja. Pode vir buscar!`;
 
         // Avisa o cliente na hora!
         await notificarUsuario(order.id_usuario, tituloNotificacao, textoNotificacao, `/my-reservations/${order.id}`);

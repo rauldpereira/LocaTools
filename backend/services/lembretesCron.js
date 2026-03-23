@@ -122,7 +122,7 @@ const iniciarRoboDeLembretes = () => {
           `/my-reservations/${os.id}`,
         );
 
-        // 🎯 Tiro Certeiro: Motorista avisa se for entregar, Balcão avisa se for buscar na loja
+        // Motorista avisa se for entregar, Balcão avisa se for buscar na loja
         const permissaoAlvo = os.tipo_entrega === "entrega" ? "fazer_vistoria" : "gerenciar_reservas";
         await notificarPorPermissao(
           permissaoAlvo,

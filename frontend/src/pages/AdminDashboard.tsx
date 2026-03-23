@@ -10,6 +10,7 @@ import MaintenanceDashboard from "../components/MaintenanceDashboard";
 import AdminFreightConfig from "../pages/AdminFreightConfig";
 import AdminCalendarPage from "../components/Admin/GerenciamentoCalendario";
 import AdminTeamPage from "../components/Admin/AdminTeamPage";
+import EquipamentosEmLocacao from "../components/Admin/EquipamentosEmLocacao";
 
 const Icons = {
   dashboard: "📊",
@@ -102,6 +103,34 @@ const AdminDashboard: React.FC = () => {
 
             <div style={{ marginBottom: "30px" }}>
               <MaintenanceDashboard />
+            </div>
+
+            {/* EQUIPAMENTOS EM LOCAÇÃO */}
+            <div
+              style={{
+                marginBottom: "30px",
+                padding: "25px",
+                backgroundColor: "#fff",
+                borderRadius: "12px",
+                boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
+                border: "1px solid #f0f0f0",
+              }}
+            >
+              <h4
+                style={{
+                  marginTop: 0,
+                  marginBottom: "20px",
+                  color: "#0d47a1",
+                  borderBottom: "2px solid #e3f2fd",
+                  paddingBottom: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}
+              >
+                🚜 Equipamentos Atualmente em Locação
+              </h4>
+              <EquipamentosEmLocacao />
             </div>
 
             <div

@@ -631,7 +631,7 @@ const AdminReservationsList: React.FC = () => {
                       >
                         {order.tipo_entrega === "entrega"
                           ? "🚚 Em Trânsito"
-                          : "✅ No Balcão"}
+                          : "✅ Na Loja"}
                       </span>
 
                       <Link to={`/admin/vistoria/${order.id}`}>
@@ -648,7 +648,7 @@ const AdminReservationsList: React.FC = () => {
                         >
                           {order.tipo_entrega === "entrega"
                             ? "📋 Fazer Vistoria na Obra"
-                            : "🏪 Fazer Vistoria no Balcão"}
+                            : "🏪 Fazer Vistoria no Loja"}
                         </button>
                       </Link>
                     </>
@@ -732,7 +732,7 @@ const AdminReservationsList: React.FC = () => {
                     >
                       {order.tipo_entrega === "entrega"
                         ? "🚚 Vistoria de Coleta"
-                        : "🏪 Vistoria no Balcão"}
+                        : "🏪 Vistoria na Loja"}
                     </button>
                   </Link>
 

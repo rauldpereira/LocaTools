@@ -221,7 +221,7 @@ const getFinancialReport = async (req, res) => {
               if (transacao.includes('recuperacao')) {
                 desc = `Dívida Quitada (B.O) - Pedido #${p.id} - ${clienteNome}`;
               } else if (transacao.includes('manual') || transacao.includes('final')) {
-                desc = `Pagamento Final (Balcão) - Pedido #${p.id} - ${clienteNome}`;
+                desc = `Pagamento Final - Pedido #${p.id} - ${clienteNome}`;
               } else {
                 desc = `Sinal (Reserva) - Pedido #${p.id} - ${clienteNome}`;
               }
@@ -262,7 +262,7 @@ const getFinancialReport = async (req, res) => {
           extrato.push({
             id: `OS-${p.id}-FINAL`,
             data: p.updatedAt, 
-            descricao: `Pagamento Final (Balcão) - Pedido #${p.id} - ${clienteNome}`,
+            descricao: `Pagamento Final - Pedido #${p.id} - ${clienteNome}`,
             valor: parseFloat(valorRestante),
             tipo: "RECEITA",
             isRecuperacao: false,

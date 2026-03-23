@@ -470,7 +470,7 @@ const ReservationDetailsPage: React.FC = () => {
   const formatarPagamento = (forma: string | undefined) => {
     if (!forma) return "Manual";
     const map: any = {
-      manual_balcao: "Pagamento em Balcão (Manual)",
+      manual_balcao: "Pagamento Manual",
       pix: "Pix",
       cartao: "Cartão de Crédito/Débito",
       dinheiro: "Dinheiro",
@@ -759,7 +759,7 @@ const ReservationDetailsPage: React.FC = () => {
                 badgeColor = "#28a745";
                 badgeBg = "#e8f5e9";
                 badgeBorder = "#c8e6c9";
-                badgeText = "✅ PRONTO PARA RETIRADA NO BALCÃO";
+                badgeText = "✅ PRONTO PARA RETIRADA NA LOJA";
               }
             } else if (order.status === "em_andamento") {
               badgeColor = "#2e7d32";
@@ -1376,7 +1376,7 @@ const ReservationDetailsPage: React.FC = () => {
             concluída.
             {order.tipo_entrega === "entrega"
               ? " O motorista coletará sua assinatura agora no momento da entrega."
-              : " Nossa equipe no balcão coletará sua assinatura agora."}
+              : " Nossa equipe na loja coletará sua assinatura agora."}
           </div>
         )}
 
@@ -1398,7 +1398,7 @@ const ReservationDetailsPage: React.FC = () => {
             devolução foi registrada.
             {order.tipo_entrega === "entrega"
               ? " O motorista coletará sua assinatura para encerrar o contrato no recolhimento."
-              : " Assine no balcão para encerrar o contrato."}
+              : " Assine na loja para encerrar o contrato."}
           </div>
         )}
 

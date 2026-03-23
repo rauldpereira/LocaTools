@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 
 const PERMISSOES_DISPONIVEIS = [
-  { id: 'gerenciar_reservas', nome: '📅 Gerenciar Reservas (Balcão e OS)' },
+  { id: 'gerenciar_reservas', nome: '📅 Gerenciar Reservas (Entregas e Saidas, OS)' },
   { id: 'gerenciar_estoque', nome: '📦 Gerenciar Estoque (Equipamentos)' },
   { id: 'receber_pagamentos', nome: '💲 Operar Caixa e Recebimentos (Sinal/Devolução)' },
   { id: 'ver_financeiro', nome: '📈 Relatórios e Dashboards Financeiros' },
