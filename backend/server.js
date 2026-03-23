@@ -1,5 +1,8 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const http = require('http');
+const { Server } = require('socket.io');
+
 const userRoutes = require('./routes/userRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes'); 
 const reservationRoutes = require('./routes/reservationRoutes');
@@ -22,6 +25,35 @@ dotenv.config({ path: '.env', quiet: true });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const server = http.createServer(app);
+
+//  Cria o servidor de WebSockets por cima do HTTP
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
+  }
+});
+
+// Mapeamento de quem está online
+global.io = io; 
+global.usuariosOnline = new Map(); 
+
+io.on('connection', (socket) => {
+  // Quando o React conectar, ele vai mandar o ID do usuário logado
+  const userId = socket.handshake.query.userId;
+  
+  if (userId) {
+    global.usuariosOnline.set(String(userId), socket.id);
+    console.log(`Usuário ${userId} conectou no rádio (Socket: ${socket.id})`);
+  }
+
+  socket.on('disconnect', () => {
+    global.usuariosOnline.delete(String(userId));
+    console.log(`Usuário ${userId} desconectou.`);
+  });
+});
 
 app.use(cors());
 
@@ -54,6 +86,6 @@ app.get('/', (req, res) => {
 iniciarRoboDeLembretes();
 console.log('⏱️ Serviço de CRON (Lembretes Automáticos) ativado.');
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT} com WebSocket ativado!`);
 });
