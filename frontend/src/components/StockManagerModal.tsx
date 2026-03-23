@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import UnitCalendar from './Admin/UnitCalendar';
+import BalcaoCheckoutModal from './Admin/BalcaoCheckoutModal';
 
 interface TipoAvaria {
   id: number;
@@ -12,6 +13,7 @@ interface TipoAvaria {
 interface EquipamentoComAvarias {
   id: number;
   nome: string;
+  preco_diaria?: string | number;
   TipoAvarias: TipoAvaria[];
 }
 
@@ -147,8 +149,9 @@ const UnitItem: React.FC<{
   tiposAvaria: TipoAvaria[],
   token: string | null,
   onDelete: (id: number) => void,
-  onUpdate: () => void
-}> = ({ unit, tiposAvaria, token, onDelete, onUpdate }) => {
+  onUpdate: () => void,
+  onOpenBalcao: (unitId: number) => void
+}> = ({ unit, tiposAvaria, token, onDelete, onUpdate, onOpenBalcao }) => {
 
   const [status, setStatus] = useState(unit.status);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -165,11 +168,9 @@ const UnitItem: React.FC<{
   const [showTransplantModal, setShowTransplantModal] = useState(false);
   const [isTransplanting, setIsTransplanting] = useState(false);
 
-  // Agora ele só roda quando os dados REAIS mudam, e respeita a hierarquia.
   useEffect(() => {
     let calculatedStatus: 'disponivel' | 'manutencao' | 'alugado' | 'inativo' = unit.status;
 
-    // Se o banco diz que é inativo, respeita o inativo.
     if (unit.status !== 'inativo') {
         if (unit.ItensReserva && unit.ItensReserva.length > 0) {
           const today = new Date();
@@ -209,7 +210,6 @@ const UnitItem: React.FC<{
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      // Se o usuário mudou o select para "manutencao" ou "inativo", checa se tem conflito no futuro
       if ((status === 'manutencao' || status === 'inativo') && unit.status !== status) {
         const confRes = await axios.get(`http://localhost:3001/api/units/${unit.id}/conflicts`, config);
         
@@ -234,14 +234,14 @@ const UnitItem: React.FC<{
 
     try {
         await axios.put(`http://localhost:3001/api/units/${unit.id}`, {
-          status: status, // Manda o status que tá no select!
+          status: status,
           avarias_atuais: avariasIDs,
           codigo_serial: serial
         }, config);
 
         alert('Unidade salva com sucesso!');
         setIsEditingSerial(false);
-        onUpdate(); // Chama a atualização da tela
+        onUpdate();
     } catch (error: any) {
         alert(error.response?.data?.error || 'Erro ao salvar a unidade.');
     }
@@ -251,11 +251,8 @@ const UnitItem: React.FC<{
     setIsTransplanting(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      
       await axios.post(`http://localhost:3001/api/units/reallocate`, { reallocations }, config);
-
       await saveUnitData(config);
-      
       setShowTransplantModal(false);
     } catch (error: any) {
       alert(error.response?.data?.error || 'Erro ao Trocar as máquinas.');
@@ -319,7 +316,7 @@ const UnitItem: React.FC<{
         <select
           value={status}
           onChange={e => setStatus(e.target.value as any)}
-          disabled={unit.status === 'alugado'} // Só bloqueia se o banco disser que tá alugado (proteção real)
+          disabled={unit.status === 'alugado'}
           style={{
             padding: '6px',
             borderRadius: '4px',
@@ -334,7 +331,24 @@ const UnitItem: React.FC<{
           <option value="inativo">⚫ Inativo / Vendido</option>
         </select>
 
-        {/* BOTÃO AZUL: VER AGENDA */}
+        {/* ALUGAR NO BALCÃO*/}
+        <button
+          onClick={() => onOpenBalcao(unit.id)}
+          disabled={status === 'alugado' || status === 'inativo'} 
+          style={{
+            backgroundColor: (status === 'alugado' || status === 'inativo') ? '#6c757d' : '#28a745',
+            color: 'white', border: 'none', padding: '7px 12px',
+            borderRadius: '4px', fontWeight: 'bold',
+            cursor: (status === 'alugado' || status === 'inativo') ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', gap: '5px',
+            opacity: (status === 'alugado' || status === 'inativo') ? 0.6 : 1
+          }}
+          title={status === 'alugado' ? 'Máquina já alugada hoje' : 'Criar reserva rápida de balcão'}
+        >
+          🤝 Balcão
+        </button>
+
+        {/* VER AGENDA */}
         <button
           onClick={() => setShowCalendar(!showCalendar)}
           style={{
@@ -440,6 +454,9 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
   const [newSerial, setNewSerial] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [isBalcaoModalOpen, setIsBalcaoModalOpen] = useState(false);
+  const [selectedUnidadeIdBalcao, setSelectedUnidadeIdBalcao] = useState<number | null>(null);
+
   const fetchData = useCallback(async () => {
     if (!equipmentId || !isOpen) return;
     try {
@@ -543,12 +560,51 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
               token={token}
               onDelete={handleDelete}
               onUpdate={fetchData}
+              onOpenBalcao={(id) => {
+                setSelectedUnidadeIdBalcao(id);
+                setIsBalcaoModalOpen(true);
+              }}
             />
           ))}
           {units.length === 0 && !loading && <p style={{ textAlign: 'center', color: '#999' }}>Nenhuma unidade cadastrada.</p>}
         </div>
 
       </div>
+
+      {/* MODAL DE CHECKOUT DO BALCÃO */}
+      {isBalcaoModalOpen && selectedUnidadeIdBalcao && equipment && (
+        (() => {
+          // Acha a unidade que foi clicada para pegar as reservas dela
+          const selectedUnit = units.find(u => u.id === selectedUnidadeIdBalcao);
+          
+          return (
+            <BalcaoCheckoutModal
+              unidadeId={selectedUnidadeIdBalcao}
+              equipamentoNome={equipment.nome}
+              precoDiaria={equipment.preco_diaria || 0}
+              
+              reservations={selectedUnit ? (selectedUnit.ItensReserva || []).filter(res => {
+                  if (res.status === 'manutencao') return true; 
+                  if (res.OrdemDeServico) {
+                      const statusAtivos = ['pendente', 'aprovada', 'aguardando_assinatura', 'em_andamento', 'aguardando_pagamento_final'];
+                      return statusAtivos.includes(res.OrdemDeServico.status);
+                  }
+                  return false;
+              }) : []}
+              
+              onClose={() => {
+                setIsBalcaoModalOpen(false);
+                setSelectedUnidadeIdBalcao(null);
+              }}
+              onSuccess={() => {
+                setIsBalcaoModalOpen(false);
+                setSelectedUnidadeIdBalcao(null);
+                fetchData();
+              }}
+            />
+          );
+        })()
+      )}
     </div>
   );
 };

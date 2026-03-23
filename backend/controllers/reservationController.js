@@ -1307,6 +1307,91 @@ const confirmPickup = async (req, res) => {
     }
 };
 
+// Criar reserva rápida pelo balcão
+const criarReservaBalcao = async (req, res) => {
+    const { unidade_id, data_inicio, data_fim, cliente, pagamento } = req.body;
+    const transaction = await OrdemDeServico.sequelize.transaction();
+
+    try {
+      // Limpa pontuações do CPF/CNPJ pra contar os números
+      const apenasNumeros = cliente.cpf_cnpj.replace(/\D/g, '');
+      const isCnpj = apenasNumeros.length > 11;
+
+      // RESOLVER O CLIENTE Busca CPF OU CNPJ
+      let usuario = await Usuario.findOne({ 
+        where: { 
+          [Op.or]: [
+            { cpf: cliente.cpf_cnpj },
+            { cnpj: cliente.cpf_cnpj }
+          ]
+        } 
+      });
+
+      if (!usuario) {
+        // Cria a conta com os dados do balcão
+        usuario = await Usuario.create({
+          nome: cliente.nome,
+          telefone: cliente.telefone,
+          cpf: isCnpj ? null : cliente.cpf_cnpj,
+          cnpj: isCnpj ? cliente.cpf_cnpj : null,
+          tipo_pessoa: isCnpj ? 'pj' : 'pf', 
+          razao_social: isCnpj ? cliente.nome : null, 
+          email: cliente.email,
+          senha: Math.random().toString(36).slice(-10), 
+          tipo_usuario: 'cliente',
+        }, { transaction });
+      }
+    
+      const dataInicio = new Date(data_inicio);
+      const dataFim = new Date(data_fim);
+      const diffTime = Math.abs(dataFim - dataInicio);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; 
+
+      const unidade = await Unidade.findByPk(unidade_id, {
+        include: [{ 
+          model: Equipamento, 
+          as: 'Equipamento'
+        }]
+      });
+
+      if (!unidade) throw new Error("Máquina não encontrada.");
+
+      const valorTotal = diffDays * Number(unidade.Equipamento.preco_diaria);
+
+      // CRIAR A ORDEM DE SERVIÇO
+      const novaOS = await OrdemDeServico.create({
+        id_usuario: usuario.id,
+        status: 'aguardando_assinatura', 
+        data_inicio,
+        data_fim,
+        valor_total: valorTotal,
+        valor_sinal: pagamento.valor_sinal || 0,
+        tipo_entrega: 'retirada',
+        custo_frete: 0
+      }, { transaction });
+
+      // VINCULAR A MÁQUINA ESPECÍFICA AO PEDIDO
+      await ItemReserva.create({
+        pedido_id: novaOS.id,
+        id_ordem_servico: novaOS.id,
+        id_unidade: unidade.id,
+        unidade_id: unidade.id, 
+        preco_unitario: unidade.Equipamento.preco_diaria,
+        data_inicio: data_inicio,
+        data_fim: data_fim
+      }, { transaction });
+
+      await transaction.commit();
+
+      res.status(201).json({ message: "Reserva de balcão criada!", orderId: novaOS.id });
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Erro na reserva de balcão:', error);
+      res.status(500).json({ error: error.message || 'Erro ao criar reserva no balcão' });
+    }
+};
+
 module.exports = {
     createOrder,
     getMyOrders,
@@ -1328,5 +1413,6 @@ module.exports = {
     generateReturnContract,
     dispatchOrder, 
     requestReturn,
-    confirmPickup
+    confirmPickup,
+    criarReservaBalcao
 };

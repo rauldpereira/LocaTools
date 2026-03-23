@@ -21,29 +21,34 @@ const {
     generateReturnContract,
     dispatchOrder,
     requestReturn,
-    confirmPickup
+    confirmPickup,
+    criarReservaBalcao
 } = require('../controllers/reservationController');
 
 const { protect, checkPermissao } = require('../middlewares/authMiddleware');
 
 router.post('/', protect, createOrder);
 
+router.post('/balcao', protect, checkPermissao('gerenciar_reservas'), criarReservaBalcao);
+
 router.get('/my', protect, getMyOrders);
 router.get('/all', protect, checkPermissao('gerenciar_reservas', 'fazer_vistoria'), getAllOrders);
-
 router.get('/contract/:id', protect, generateContract);
+router.get('/return-contract/:id', protect, generateReturnContract);
+
 router.get('/:id', protect, getOrderById);
+
+// ROTAS DE AÇÕES DO PEDIDO
 router.post('/:id/check-reschedule', protect, checkRescheduleAvailability);
 router.put('/:id/sign', protect, signContract);
 router.put('/:id/cancel', protect, cancelOrder);
 router.put('/:id/reschedule', protect, rescheduleOrder);
 router.post('/:id/return-signature', protect, saveReturnSignature);
-router.get('/return-contract/:id', protect, generateReturnContract);
 router.put('/:id/dispatch', protect, dispatchOrder);
 router.put('/:id/request-return', protect, requestReturn);
 router.put('/:id/confirm-pickup', protect, confirmPickup);
 
-// ROTAS DE OPERAÇÃO
+// ROTAS DE OPERAÇÃO INTERNA
 router.get('/:id/calculate-penalty', protect, checkPermissao('gerenciar_reservas'), calcularMultaAtraso);
 router.put('/:id', protect, checkPermissao('gerenciar_reservas'), updateOrderStatus);
 router.put('/:id/skip-inspection', protect, checkPermissao('gerenciar_reservas'), skipReturnInspection);

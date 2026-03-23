@@ -15,12 +15,16 @@ interface UnitCalendarProps {
     reservations: Reservation[];
     token: string | null;
     onUpdate: () => void;
+    isPicker?: boolean; 
+    onSelectRange?: (start: Date, end: Date) => void;
 }
 
-const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token, onUpdate }) => {
+const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token, onUpdate, isPicker, onSelectRange }) => {
 
     const [pendingSelection, setPendingSelection] = useState<{ start: Date, end: Date } | null>(null);
     const [maintenanceReason, setMaintenanceReason] = useState('');
+    
+    const [pickerSelection, setPickerSelection] = useState<[Date, Date] | null>(null);
 
     const getTileClassName = ({ date, view }: { date: Date, view: string }) => {
         if (view !== 'month') return null;
@@ -47,6 +51,35 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
     const handleDateChange = async (value: any) => {
         const [start, end] = Array.isArray(value) ? value : [value, value];
 
+        // MODO PICKER, APENAS SELEÇÃO DE PERÍODO PARA NOVA RESERVA
+        if (isPicker) {
+            const sTime = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 12, 0, 0).getTime();
+            const eTime = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 12, 0, 0).getTime();
+
+            // Verifica se no MEIO do período selecionado existe um dia bloqueado
+            const hasConflict = reservations.some(res => {
+                const cleanStart = String(res.data_inicio).substring(0, 10);
+                const cleanEnd = String(res.data_fim).substring(0, 10);
+                const rStart = new Date(cleanStart + "T12:00:00").getTime();
+                const rEnd = new Date(cleanEnd + "T12:00:00").getTime();
+
+                // Lógica de overlap (sobreposição de datas)
+                return Math.max(sTime, rStart) <= Math.min(eTime, rEnd);
+            });
+
+            if (hasConflict) {
+                alert('⚠️ Atenção: O período selecionado entra em conflito com uma máquina já alugada ou em manutenção. Escolha datas livres!');
+                setPickerSelection(null);
+                if (onSelectRange) onSelectRange(null as any, null as any);
+                return;
+            }
+
+            setPickerSelection([start, end]);
+            if (onSelectRange) onSelectRange(start, end);
+            return;
+        }
+
+        // MODO MANUTENÇÃO
         if (!token) return;
 
         const clickedDate = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 12, 0, 0).getTime();
@@ -54,10 +87,8 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
         const existingBlock = reservations.find(res => {
             const cleanStart = String(res.data_inicio).substring(0, 10);
             const cleanEnd = String(res.data_fim).substring(0, 10);
-
             const rStart = new Date(cleanStart + "T12:00:00").getTime();
             const rEnd = new Date(cleanEnd + "T12:00:00").getTime();
-
             return clickedDate >= rStart && clickedDate <= rEnd;
         });
 
@@ -82,6 +113,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
         setMaintenanceReason('');
     };
 
+    // Função de confirmar manutenção
     const confirmMaintenanceBlock = async (force = false) => {
         if (!pendingSelection || !token) return;
 
@@ -95,15 +127,12 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                 data_fim: endStr,
                 motivo: maintenanceReason || 'Manutenção Preventiva',
                 forceReallocation: force 
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            }, { headers: { Authorization: `Bearer ${token}` } });
 
             alert('✅ Bloqueio realizado com sucesso!');
             setPendingSelection(null);
             setMaintenanceReason('');
             onUpdate();
-            
         } catch (error: any) {
             if (error.response?.status === 409 && error.response?.data?.requiresConfirmation) {
                 if (window.confirm(error.response.data.message)) {
@@ -118,7 +147,6 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
         }
     };
 
-
     return (
         <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             
@@ -126,6 +154,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                 tileClassName={getTileClassName}
                 selectRange={true}
                 onChange={handleDateChange}
+                value={isPicker ? pickerSelection : undefined} 
             />
             
             <div style={{ fontSize: '0.8rem', marginTop: '5px', display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '15px' }}>
@@ -133,16 +162,9 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                 <span style={{ color: '#ffc800' }}>■ Manutenção</span>
             </div>
 
-            {pendingSelection && (
-                <div style={{
-                    backgroundColor: '#fff3cd', 
-                    padding: '15px', 
-                    borderRadius: '8px', 
-                    border: '1px solid #ffeeba',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    marginTop: '10px'
-                }}>
+            {/* O formulário de manutenção SÓ aparece se NÃO estiver no modo picker */}
+            {!isPicker && pendingSelection && (
+                <div style={{ backgroundColor: '#fff3cd', padding: '15px', borderRadius: '8px', border: '1px solid #ffeeba', width: '100%', boxSizing: 'border-box', marginTop: '10px' }}>
                     <h4 style={{ margin: '0 0 10px 0', color: '#856404' }}>
                         Bloquear de {pendingSelection.start.toLocaleDateString()} a {pendingSelection.end.toLocaleDateString()}
                     </h4>
