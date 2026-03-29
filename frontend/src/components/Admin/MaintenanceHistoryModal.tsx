@@ -31,6 +31,9 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
     const [history, setHistory] = useState<MaintenanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [filterStartDate, setFilterStartDate] = useState('');
+    const [filterEndDate, setFilterEndDate] = useState('');
+
     useEffect(() => {
         if (!isOpen || !unitId) return;
 
@@ -50,6 +53,17 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
         fetchHistory();
     }, [isOpen, unitId, token]);
 
+    // filtra o histórico
+    const filteredHistory = history.filter(record => {
+        const rStart = record.data_inicio.substring(0, 10);
+        const rEnd = record.data_fim.substring(0, 10);
+
+        if (filterStartDate && rEnd < filterStartDate) return false;
+        if (filterEndDate && rStart > filterEndDate) return false;
+        
+        return true;
+    });
+
     const handleDownloadPDF = () => {
         const doc = new jsPDF();
         
@@ -64,7 +78,20 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
         doc.text(`Número de Série: ${unitSerial || 'Sem S/N'}`, 14, 44);
         doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 14, 50);
 
-        const tableData = history.map(record => {
+        // Ajusta o texto do período no PDF dependendo do filtro selecionado
+        let periodoTexto = 'Todo o histórico';
+        if (filterStartDate && filterEndDate) {
+            periodoTexto = `${parseDateLocal(filterStartDate)} a ${parseDateLocal(filterEndDate)}`;
+        } else if (filterStartDate) {
+            periodoTexto = `A partir de ${parseDateLocal(filterStartDate)}`;
+        } else if (filterEndDate) {
+            periodoTexto = `Até ${parseDateLocal(filterEndDate)}`;
+        }
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Período do Relatório: ${periodoTexto}`, 14, 56);
+
+        const tableData = filteredHistory.map(record => {
             const inicio = parseDateLocal(record.data_inicio);
             const fim = parseDateLocal(record.data_fim);
             
@@ -79,14 +106,14 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
         });
 
         autoTable(doc, {
-            startY: 58,
+            startY: 64,
             head: [['Data de Entrada', 'Data de Saída', 'Status', 'Motivo da Manutenção']],
             body: tableData,
             theme: 'striped',
             headStyles: { fillColor: [44, 62, 80] }
         });
 
-        doc.save(`Histórico_Manutencao_Unidade_${unitId}.pdf`);
+        doc.save(`Historico_Manutencao_Unidade_${unitId}.pdf`);
     };
 
     if (!isOpen) return null;
@@ -104,14 +131,47 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
                     <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#333' }}>&times;</button>
                 </div>
 
-                {/* CORPO / TABELA */}
+                {/* CORPO */}
                 <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <h3 style={{ margin: 0, color: '#333' }}>Registro de Ocorrências</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', flexWrap: 'wrap', gap: '15px' }}>
+                        <div>
+                            <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>Registro de Ocorrências</h3>
+                            
+                            {/*FILTRO DE DATAS */}
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <label style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold' }}>De:</label>
+                                    <input 
+                                        type="date" 
+                                        value={filterStartDate} 
+                                        onChange={e => setFilterStartDate(e.target.value)} 
+                                        style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none' }} 
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <label style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold' }}>Até:</label>
+                                    <input 
+                                        type="date" 
+                                        value={filterEndDate} 
+                                        onChange={e => setFilterEndDate(e.target.value)} 
+                                        style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none' }} 
+                                    />
+                                </div>
+                                {(filterStartDate || filterEndDate) && (
+                                    <button 
+                                        onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }} 
+                                        style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}
+                                    >
+                                        Limpar Filtros
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
                         <button 
                             onClick={handleDownloadPDF} 
-                            disabled={history.length === 0}
-                            style={{ padding: '8px 15px', backgroundColor: history.length === 0 ? '#ccc' : '#e65100', color: 'white', border: 'none', borderRadius: '4px', cursor: history.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}
+                            disabled={filteredHistory.length === 0}
+                            style={{ padding: '8px 15px', backgroundColor: filteredHistory.length === 0 ? '#ccc' : '#e65100', color: 'white', border: 'none', borderRadius: '4px', cursor: filteredHistory.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}
                         >
                             Gerar PDF
                         </button>
@@ -122,6 +182,10 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
                     ) : history.length === 0 ? (
                         <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#e8f5e9', borderRadius: '8px', color: '#2e7d32', border: '1px dashed #a5d6a7' }}>
                             <strong>Essa unidade nunca foi para manutenção!</strong>
+                        </div>
+                    ) : filteredHistory.length === 0 ? (
+                        <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#fff3cd', borderRadius: '8px', color: '#856404', border: '1px dashed #ffeeba' }}>
+                            <strong>Nenhuma manutenção encontrada para este período.</strong>
                         </div>
                     ) : (
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -134,7 +198,8 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
                                 </tr>
                             </thead>
                             <tbody>
-                                {history.map((record) => {
+                                {/* LISTA FILTRADA */}
+                                {filteredHistory.map((record) => {
                                     const hoje = new Date().toISOString().substring(0, 10);
                                     let statusExibicao = 'Concluída';
                                     let color = '#6c757d';
