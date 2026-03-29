@@ -27,6 +27,10 @@ const AdminReservationsList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { token, hasPermission, user } = useAuth();
 
+  const [filterId, setFilterId] = useState("");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+
   const podeGerenciarReservas = hasPermission("gerenciar_reservas");
   const podeFazerVistoria = hasPermission("fazer_vistoria");
 
@@ -57,6 +61,27 @@ const AdminReservationsList: React.FC = () => {
     fetchAllOrders();
   }, [fetchAllOrders]);
 
+  // APLICA O FILTRO ANTES DE DIVIDIR NAS ABAS
+  const filteredOrders = orders.filter((o) => {
+    let matchId = true;
+    if (filterId) {
+      // Remove tudo que não é número da busca e checa se o ID do pedido inclui o número
+      matchId = o.id.toString().includes(filterId.replace(/\D/g, ""));
+    }
+
+    let matchDate = true;
+    if (filterStartDate || filterEndDate) {
+      const oStart = o.data_inicio.substring(0, 10);
+      const oEnd = o.data_fim.substring(0, 10);
+      
+      // Verifica intersecção de datas
+      if (filterStartDate && oEnd < filterStartDate) matchDate = false;
+      if (filterEndDate && oStart > filterEndDate) matchDate = false;
+    }
+
+    return matchId && matchDate;
+  });
+
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
@@ -65,7 +90,7 @@ const AdminReservationsList: React.FC = () => {
   const sortByIdDesc = (a: Order, b: Order) => b.id - a.id;
 
   // --- FILTROS DE CATEGORIA ---
-  const ordersToday = orders
+  const ordersToday = filteredOrders
     .filter(
       (o) =>
         (o.status === "aprovada" || o.status === "saiu_para_entrega") &&
@@ -74,7 +99,7 @@ const AdminReservationsList: React.FC = () => {
     )
     .sort(sortByDateAsc);
 
-  const ordersDelayed = orders
+  const ordersDelayed = filteredOrders
     .filter(
       (o) =>
         o.status === "aprovada" &&
@@ -83,7 +108,7 @@ const AdminReservationsList: React.FC = () => {
     )
     .sort(sortByDateAsc);
 
-  const ordersFutureScheduled = orders
+  const ordersFutureScheduled = filteredOrders
     .filter(
       (o) =>
         o.status === "aprovada" &&
@@ -92,7 +117,7 @@ const AdminReservationsList: React.FC = () => {
     )
     .sort(sortByDateAsc);
 
-  const ordersDelayedReturn = orders
+  const ordersDelayedReturn = filteredOrders
     .filter((o) => {
       if (o.status !== "em_andamento") return false;
       const dataFim = parseDateStringAsLocal(o.data_fim);
@@ -101,28 +126,28 @@ const AdminReservationsList: React.FC = () => {
     })
     .sort(sortByDateAsc);
 
-  const ordersAwaitingSignature = orders
+  const ordersAwaitingSignature = filteredOrders
     .filter((o) => o.status === "aguardando_assinatura")
     .sort(sortByIdDesc);
-  const ordersAwaitingFinalPayment = orders
+  const ordersAwaitingFinalPayment = filteredOrders
     .filter((o) => o.status === "aguardando_pagamento_final")
     .sort(sortByIdDesc);
-  const ordersAbandoned = orders
+  const ordersAbandoned = filteredOrders
     .filter((o) => o.status === "pendente")
     .sort(sortByIdDesc);
-  const ordersEmPrejuizo = orders
+  const ordersEmPrejuizo = filteredOrders
     .filter((o) => o.status === "PREJUIZO")
     .sort(sortByIdDesc);
-  const finalizedOrders = orders
+  const finalizedOrders = filteredOrders
     .filter((o) => o.status === "finalizada")
     .sort(sortByIdDesc);
-  const cancelledOrders = orders
+  const cancelledOrders = filteredOrders
     .filter((o) => o.status === "cancelada")
     .sort(sortByIdDesc);
-  const ordersAwaitingReturnSignature = orders
+  const ordersAwaitingReturnSignature = filteredOrders
     .filter((o) => o.status === "aguardando_assinatura_devolucao")
     .sort(sortByIdDesc);
-  const ordersForReturnInspection = orders
+  const ordersForReturnInspection = filteredOrders
     .filter((o) => o.status === "em_andamento")
     .sort(sortByDateAsc);
 
@@ -425,6 +450,47 @@ const AdminReservationsList: React.FC = () => {
 
   return (
     <div style={{ width: "100%", padding: "20px 0" }}>
+      
+      {/*FILTROS GLOBAIS */}
+      <div style={{ display: "flex", gap: "15px", marginBottom: "25px", flexWrap: "wrap", alignItems: "flex-end", backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          <label style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#495057" }}>ID do Pedido:</label>
+          <input 
+            type="text" 
+            placeholder="Ex: 12" 
+            value={filterId} 
+            onChange={(e) => setFilterId(e.target.value)} 
+            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ced4da", outline: "none", width: "120px" }} 
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          <label style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#495057" }}>Período (De):</label>
+          <input 
+            type="date" 
+            value={filterStartDate} 
+            onChange={(e) => setFilterStartDate(e.target.value)} 
+            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ced4da", outline: "none" }} 
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          <label style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#495057" }}>Período (Até):</label>
+          <input 
+            type="date" 
+            value={filterEndDate} 
+            onChange={(e) => setFilterEndDate(e.target.value)} 
+            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ced4da", outline: "none" }} 
+          />
+        </div>
+        {(filterId || filterStartDate || filterEndDate) && (
+          <button 
+            onClick={() => { setFilterId(""); setFilterStartDate(""); setFilterEndDate(""); }} 
+            style={{ padding: "8px 15px", backgroundColor: "#dc3545", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", height: "fit-content", marginBottom: "2px" }}
+          >
+            Limpar Filtros
+          </button>
+        )}
+      </div>
+
       {/* MENUS DAS ABAS */}
       <div
         style={{
