@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { Link } from "react-router-dom";
 
 import MaintenanceHistoryModal from "../components/Admin/MaintenanceHistoryModal";
 
@@ -74,6 +75,7 @@ interface OcorrenciaBO {
   valor: string;
   resolvido: boolean;
   obs: string;
+  pedidoId?: number;
 }
 interface InventarioItem {
   id: number;
@@ -1119,7 +1121,8 @@ const AdminReportsPage: React.FC = () => {
                 <SortableTh label="Cliente" sortKey="cliente" />
                 <SortableTh label="Valor" sortKey="valor" />
                 <SortableTh label="Status" sortKey="resolvido" />
-                <th>Obs</th>
+                <th style={thStyle}>Obs</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>Ação</th>
               </tr>
             </thead>
             <tbody>
@@ -1179,6 +1182,28 @@ const AdminReportsPage: React.FC = () => {
                     }}
                   >
                     {bo.obs}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: "center" }}>
+                    {bo.pedidoId ? (
+                      <Link to={`/my-reservations/${bo.pedidoId}`}>
+                        <button
+                          style={{
+                            backgroundColor: "#007bff",
+                            color: "white",
+                            padding: "6px 12px",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          Ver Pedido
+                        </button>
+                      </Link>
+                    ) : (
+                      <span style={{ color: "#999", fontSize: "0.85rem", fontStyle: "italic" }}>N/A</span>
+                    )}
                   </td>
                 </tr>
               ))}

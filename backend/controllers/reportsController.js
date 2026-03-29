@@ -543,6 +543,7 @@ const getOperationalReport = async (req, res) => {
       valor: bo.valor_prejuizo,
       resolvido: bo.resolvido,
       obs: bo.observacao,
+      pedidoId: bo.itemReserva?.OrdemDeServico?.id
     }));
 
     const listaInventario = inventario.map((uni) => {
