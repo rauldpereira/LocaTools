@@ -113,6 +113,9 @@ const AdminReportsPage: React.FC = () => {
   });
   const [endDate, setEndDate] = useState(() => toISODateString(new Date()));
 
+  const [ocorrenciaStart, setOcorrenciaStart] = useState("");
+  const [ocorrenciaEnd, setOcorrenciaEnd] = useState("");
+
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<{
     key: string;
@@ -207,6 +210,16 @@ const AdminReportsPage: React.FC = () => {
       });
     }
     return processed;
+  };
+
+  const getFilteredOcorrencias = () => {
+    if (!operationalData) return [];
+    return operationalData.ocorrencias.filter((bo) => {
+      const boDate = bo.data.substring(0, 10);
+      if (ocorrenciaStart && boDate < ocorrenciaStart) return false;
+      if (ocorrenciaEnd && boDate > ocorrenciaEnd) return false;
+      return true;
+    });
   };
 
   const handleExportPDF = () => {
@@ -1052,18 +1065,50 @@ const AdminReportsPage: React.FC = () => {
               justifyContent: "space-between",
               alignItems: "center",
               marginBottom: "20px",
+              flexWrap: "wrap",
+              gap: "15px"
             }}
           >
             <h3 style={{ ...cardTitleStyle, borderBottom: "none", margin: 0 }}>
               🚨 Relatório de Ocorrências
             </h3>
-            <input
-              type="text"
-              placeholder="Buscar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ ...inputStyle, width: "300px" }}
-            />
+            
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <label style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold' }}>De:</label>
+                    <input 
+                        type="date" 
+                        value={ocorrenciaStart} 
+                        onChange={e => setOcorrenciaStart(e.target.value)} 
+                        style={inputStyle} 
+                    />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <label style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold' }}>Até:</label>
+                    <input 
+                        type="date" 
+                        value={ocorrenciaEnd} 
+                        onChange={e => setOcorrenciaEnd(e.target.value)} 
+                        style={inputStyle} 
+                    />
+                </div>
+                {(ocorrenciaStart || ocorrenciaEnd) && (
+                    <button 
+                        onClick={() => { setOcorrenciaStart(''); setOcorrenciaEnd(''); }} 
+                        style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}
+                    >
+                        Limpar Datas
+                    </button>
+                )}
+
+                <input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{ ...inputStyle, width: "200px" }}
+                />
+            </div>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead style={{ backgroundColor: "#333", color: "white" }}>
@@ -1078,7 +1123,7 @@ const AdminReportsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {processTableData(operationalData.ocorrencias, [
+              {processTableData(getFilteredOcorrencias(), [
                 "equipamento",
                 "cliente",
                 "tipo",
