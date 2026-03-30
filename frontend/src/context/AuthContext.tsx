@@ -7,7 +7,9 @@ interface UserData {
     email: string;
     tipo_usuario: 'cliente' | 'admin' | 'funcionario'; 
     permissoes?: string[];
+    precisa_trocar_senha?: boolean;
 }
+
 
 interface AuthContextType {
     user: UserData | null;

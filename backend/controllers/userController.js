@@ -14,7 +14,7 @@ const registerUser = async (req, res) => {
     // Validação de Força da Senha no Cadastro 
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
     if (!passwordRegex.test(senha)) {
-        return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres, contendo letras e números.' });
+      return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres, contendo letras e números.' });
     }
 
     const userExists = await Usuario.findOne({ where: { email } });
@@ -23,19 +23,19 @@ const registerUser = async (req, res) => {
     }
 
     if (tipo_pessoa === 'fisica') {
-        if (!cpf || !rg) {
-            return res.status(400).json({ error: 'CPF e RG são obrigatórios para Pessoa Física.' });
-        }
-        const cpfExists = await Usuario.findOne({ where: { cpf } });
-        if (cpfExists) return res.status(400).json({ error: 'CPF já cadastrado.' });
+      if (!cpf || !rg) {
+        return res.status(400).json({ error: 'CPF e RG são obrigatórios para Pessoa Física.' });
+      }
+      const cpfExists = await Usuario.findOne({ where: { cpf } });
+      if (cpfExists) return res.status(400).json({ error: 'CPF já cadastrado.' });
     }
 
     if (tipo_pessoa === 'juridica') {
-        if (!cnpj) {
-            return res.status(400).json({ error: 'CNPJ é obrigatório para Empresa.' });
-        }
-        const cnpjExists = await Usuario.findOne({ where: { cnpj } });
-        if (cnpjExists) return res.status(400).json({ error: 'CNPJ já cadastrado.' });
+      if (!cnpj) {
+        return res.status(400).json({ error: 'CNPJ é obrigatório para Empresa.' });
+      }
+      const cnpjExists = await Usuario.findOne({ where: { cnpj } });
+      if (cnpjExists) return res.status(400).json({ error: 'CNPJ já cadastrado.' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -48,7 +48,6 @@ const registerUser = async (req, res) => {
       telefone,
       tipo_usuario: 'cliente',
       tipo_pessoa,
-      
       cpf: tipo_pessoa === 'fisica' ? cpf : null,
       rg: tipo_pessoa === 'fisica' ? rg : null,
       cnpj: tipo_pessoa === 'juridica' ? cnpj : null,
@@ -78,14 +77,14 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
     const token = jwt.sign(
-      { id: user.id, nome: user.nome, tipo_usuario: user.tipo_usuario },
+      { id: user.id, nome: user.nome, tipo_usuario: user.tipo_usuario, precisa_trocar_senha: user.precisa_trocar_senha },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
     res.status(200).json({
       message: 'Login bem-sucedido.',
       token,
-      usuario: { id: user.id, nome: user.nome, email: user.email, tipo_usuario: user.tipo_usuario },
+      usuario: { id: user.id, nome: user.nome, email: user.email, tipo_usuario: user.tipo_usuario, precisa_trocar_senha: user.precisa_trocar_senha },
     });
   } catch (error) {
     console.error('Erro ao fazer login:', error);
@@ -119,27 +118,52 @@ const updateProfile = async (req, res) => {
 const changePassword = async (req, res) => {
   const { old_senha, new_senha } = req.body;
   const { id } = req.user;
+
   try {
     const user = await Usuario.findByPk(id);
     if (!user) {
       return res.status(404).json({ error: 'Usuário não encontrado.' });
     }
-    
-    const isOldPasswordCorrect = await bcrypt.compare(old_senha, user.senha_hash);
-    if (!isOldPasswordCorrect) {
-      return res.status(401).json({ error: 'A senha antiga está incorreta.' });
+
+    if (!user.precisa_trocar_senha) {
+      if (!old_senha) {
+        return res.status(400).json({ error: 'A senha antiga é obrigatória.' });
+      }
+      const isOldPasswordCorrect = await bcrypt.compare(old_senha, user.senha_hash);
+      if (!isOldPasswordCorrect) {
+        return res.status(401).json({ error: 'A senha atual está incorreta.' });
+      }
     }
 
     // Requisitos: Mínimo 8 caracteres, pelo menos uma letra e um número.
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
     if (!passwordRegex.test(new_senha)) {
-        return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres, contendo pelo menos letras e números.' });
+      return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres, contendo pelo menos letras e números.' });
     }
 
     const salt = await bcrypt.genSalt(10);
     const new_senha_hash = await bcrypt.hash(new_senha, salt);
-    await user.update({ senha_hash: new_senha_hash });
-    res.status(200).json({ message: 'Senha atualizada com sucesso.' });
+
+    await user.update({
+      senha_hash: new_senha_hash,
+      precisa_trocar_senha: false
+    });
+
+    const newToken = jwt.sign(
+      {
+        id: user.id,
+        nome: user.nome,
+        tipo_usuario: user.tipo_usuario,
+        precisa_trocar_senha: false
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.status(200).json({
+      message: 'Senha atualizada com sucesso.',
+      token: newToken
+    });
   } catch (error) {
     console.error('Erro ao mudar a senha:', error);
     res.status(500).json({ error: 'Erro interno do servidor.' });
@@ -156,7 +180,7 @@ const getTeam = async (req, res) => {
       where: {
         tipo_usuario: ['admin', 'funcionario']
       },
-      attributes: ['id', 'nome', 'email', 'tipo_usuario', 'permissoes']
+      attributes: ['id', 'nome', 'email', 'cpf', 'tipo_usuario', 'permissoes']
     });
 
     res.json(team);
@@ -195,25 +219,28 @@ const createFuncionario = async (req, res) => {
       return res.status(403).json({ error: 'Acesso negado.' });
     }
 
-    const { nome, email, senha, tipo_usuario } = req.body;
+    const { nome, email, cpf, senha, tipo_usuario } = req.body;
 
-    if (!nome || !email || !senha) {
-      return res.status(400).json({ error: 'Preencha todos os campos.' });
+    if (!nome || !email || !senha || !cpf) {
+      return res.status(400).json({ error: 'Preencha todos os campos obrigatórios (Nome, Email, CPF e Senha).' });
     }
 
-    // Validação de Força da Senha para Funcionários 
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
     if (!passwordRegex.test(senha)) {
-        return res.status(400).json({ error: 'A senha do funcionário deve ter no mínimo 8 caracteres, contendo letras e números.' });
+      return res.status(400).json({ error: 'A senha do funcionário deve ter no mínimo 8 caracteres, contendo letras e números.' });
     }
 
-    // Checa se o email já tá em uso
     const userExists = await Usuario.findOne({ where: { email } });
     if (userExists) {
       return res.status(400).json({ error: 'Este email já está cadastrado.' });
     }
 
-    // Criptografa a senha
+    // Não deixa cadastrar CPF duplicado
+    const cpfExists = await Usuario.findOne({ where: { cpf } });
+    if (cpfExists) {
+      return res.status(400).json({ error: 'Este CPF já está vinculado a outra conta.' });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const senha_hash = await bcrypt.hash(senha, salt);
 
@@ -221,12 +248,14 @@ const createFuncionario = async (req, res) => {
     const novoFuncionario = await Usuario.create({
       nome,
       email,
+      cpf,
       senha_hash,
       tipo_usuario: tipo_usuario || 'funcionario',
+      tipo_pessoa: 'fisica',
       permissoes: []
     });
 
-    res.status(201).json({ message: 'Colaborador criado com sucesso!', usuario: { id: novoFuncionario.id, nome, email } });
+    res.status(201).json({ message: 'Colaborador criado com sucesso!', usuario: { id: novoFuncionario.id, nome, email, cpf } });
   } catch (error) {
     console.error('Erro ao criar colaborador:', error);
     res.status(500).json({ error: 'Erro interno ao criar colaborador.' });
@@ -240,14 +269,13 @@ const updateFuncionarioDados = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { nome, email, senha, tipo_usuario } = req.body;
+    const { nome, email, cpf, senha, tipo_usuario } = req.body;
 
     const usuario = await Usuario.findByPk(id);
     if (!usuario) {
       return res.status(404).json({ error: 'Usuário não encontrado.' });
     }
 
-    // TRAVA: IMPEDE REBAIXAR O ÚLTIMO ADMIN
     if (usuario.tipo_usuario === 'admin' && tipo_usuario !== 'admin') {
       const adminCount = await Usuario.count({ where: { tipo_usuario: 'admin' } });
       if (adminCount <= 1) {
@@ -255,22 +283,26 @@ const updateFuncionarioDados = async (req, res) => {
       }
     }
 
-    // Se o email mudou, checar se o novo email já existe
     if (email !== usuario.email) {
-       const emailExists = await Usuario.findOne({ where: { email } });
-       if (emailExists) return res.status(400).json({ error: 'Este e-mail já está em uso por outra conta.' });
+      const emailExists = await Usuario.findOne({ where: { email } });
+      if (emailExists) return res.status(400).json({ error: 'Este e-mail já está em uso por outra conta.' });
     }
 
-    const updateData = { nome, email, tipo_usuario };
+    if (cpf && cpf !== usuario.cpf) {
+      const cpfExists = await Usuario.findOne({ where: { cpf } });
+      if (cpfExists) return res.status(400).json({ error: 'Este CPF já está em uso por outro colaborador.' });
+    }
 
-    // Se o admin digitou uma senha nova, a gente valida e criptografa
+    const updateData = { nome, email, cpf, tipo_usuario };
+
     if (senha && senha.trim() !== '') {
-        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-        if (!passwordRegex.test(senha)) {
-            return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres, contendo letras e números.' });
-        }
-        const salt = await bcrypt.genSalt(10);
-        updateData.senha_hash = await bcrypt.hash(senha, salt);
+      if (senha.length < 6) {
+        return res.status(400).json({ error: 'A senha provisória deve ter pelo menos 6 dígitos.' });
+      }
+      const salt = await bcrypt.genSalt(10);
+      updateData.senha_hash = await bcrypt.hash(senha, salt);
+
+      updateData.precisa_trocar_senha = true;
     }
 
     await usuario.update(updateData);

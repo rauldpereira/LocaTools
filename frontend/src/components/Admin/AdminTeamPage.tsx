@@ -15,6 +15,7 @@ interface UsuarioEquipe {
   id: number;
   nome: string;
   email: string;
+  cpf?: string;
   tipo_usuario: string;
   permissoes: string[];
 }
@@ -31,11 +32,11 @@ const AdminTeamPage: React.FC = () => {
 
   // Modal de Criação
   const [modalCriarAberto, setModalCriarAberto] = useState(false);
-  const [novoUser, setNovoUser] = useState({ nome: '', email: '', senha: '', tipo_usuario: 'funcionario' });
+  const [novoUser, setNovoUser] = useState({ nome: '', email: '', cpf: '', senha: '', tipo_usuario: 'funcionario' });
 
   // Modal de Edição (Dados, Senha e Cargo)
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
-  const [dadosEdicao, setDadosEdicao] = useState({ id: 0, nome: '', email: '', novaSenha: '', tipo_usuario: 'funcionario' });
+  const [dadosEdicao, setDadosEdicao] = useState({ id: 0, nome: '', email: '', cpf: '', novaSenha: '', tipo_usuario: 'funcionario' });
 
   useEffect(() => {
     carregarEquipe();
@@ -52,6 +53,47 @@ const AdminTeamPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // MÁSCARA DE CPF 
+  const applyCpfMask = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
+      .replace(/(-\d{2})\d+?$/, "$1");
+  };
+
+  // 🚀 VALIDADOR MATEMÁTICO DE CPF 🚀
+  const validarCPF = (cpf: string) => {
+    cpf = cpf.replace(/\D/g, '');
+    if (cpf.length !== 11) return false;
+    
+    // Bloqueia CPFs com todos os números iguais (ex: 00000000000)
+    if (/^(\d)\1{10}$/.test(cpf)) return false; 
+
+    let soma = 0;
+    let resto;
+
+    // Valida 1º dígito
+    for (let i = 1; i <= 9; i++) {
+      soma = soma + parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    }
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+
+    soma = 0;
+    // Valida 2º dígito
+    for (let i = 1; i <= 10; i++) {
+      soma = soma + parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    }
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(10, 11))) return false;
+
+    return true;
   };
 
   // --- FUNÇÕES DE PERMISSÕES ---
@@ -86,11 +128,18 @@ const AdminTeamPage: React.FC = () => {
   // --- FUNÇÕES DE CRIAÇÃO ---
   const criarFuncionario = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cpfLimpo = novoUser.cpf.replace(/\D/g, '');
+    
+    if (!validarCPF(cpfLimpo)) {
+        return alert("CPF inválido! Verifique os números digitados e tente novamente.");
+    }
+
     try {
-      await axios.post('http://localhost:3001/api/team', novoUser, getConfig());
+      const payload = { ...novoUser, cpf: cpfLimpo };
+      await axios.post('http://localhost:3001/api/team', payload, getConfig());
       alert('Colaborador criado com sucesso!');
       setModalCriarAberto(false);
-      setNovoUser({ nome: '', email: '', senha: '', tipo_usuario: 'funcionario' });
+      setNovoUser({ nome: '', email: '', cpf: '', senha: '', tipo_usuario: 'funcionario' });
       carregarEquipe();
     } catch (error: any) {
       alert(error.response?.data?.error || 'Erro ao criar funcionário.');
@@ -103,6 +152,7 @@ const AdminTeamPage: React.FC = () => {
       id: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
+      cpf: usuario.cpf ? applyCpfMask(usuario.cpf) : '',
       novaSenha: '',
       tipo_usuario: usuario.tipo_usuario
     });
@@ -111,10 +161,17 @@ const AdminTeamPage: React.FC = () => {
 
   const salvarEdicaoDados = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cpfLimpo = dadosEdicao.cpf.replace(/\D/g, '');
+    
+    if (cpfLimpo && !validarCPF(cpfLimpo)) {
+        return alert("CPF inválido! Verifique os números digitados e tente novamente.");
+    }
+
     try {
       await axios.put(`http://localhost:3001/api/team/${dadosEdicao.id}/dados`, {
         nome: dadosEdicao.nome,
         email: dadosEdicao.email,
+        cpf: cpfLimpo,
         senha: dadosEdicao.novaSenha || undefined,
         tipo_usuario: dadosEdicao.tipo_usuario
       }, getConfig());
@@ -157,7 +214,7 @@ const AdminTeamPage: React.FC = () => {
           <thead>
             <tr style={{ backgroundColor: '#f8f9fa', color: '#333', textAlign: 'left' }}>
               <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6' }}>Nome</th>
-              <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6' }}>Email</th>
+              <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6' }}>Email / CPF</th>
               <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6' }}>Cargo</th>
               <th style={{ padding: '12px', borderBottom: '2px solid #dee2e6', textAlign: 'center' }}>Ações</th>
             </tr>
@@ -172,7 +229,10 @@ const AdminTeamPage: React.FC = () => {
                   <td style={{ padding: '12px', color: '#666' }}>
                     {user.nome} {isSelf && <span style={{ color: '#007bff', fontSize: '0.8rem', fontWeight: 'bold' }}>(Você)</span>}
                   </td>
-                  <td style={{ padding: '12px', color: '#666' }}>{user.email}</td>
+                  <td style={{ padding: '12px', color: '#666' }}>
+                    <div>{user.email}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#999' }}>{user.cpf ? applyCpfMask(user.cpf) : 'CPF não registrado'}</div>
+                  </td>
                   <td style={{ padding: '12px' }}>
                     <span style={{
                       backgroundColor: user.tipo_usuario === 'admin' ? '#ffebee' : '#e6f7ff',
@@ -236,10 +296,25 @@ const AdminTeamPage: React.FC = () => {
                 <label style={labelStyle}>Nome Completo</label>
                 <input required type="text" value={novoUser.nome} onChange={e => setNovoUser({ ...novoUser, nome: e.target.value })} style={inputStyle} />
               </div>
-              <div>
-                <label style={labelStyle}>Email (Login)</label>
-                <input required type="email" value={novoUser.email} onChange={e => setNovoUser({ ...novoUser, email: e.target.value })} style={inputStyle} />
+              
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Email (Login)</label>
+                  <input required type="email" value={novoUser.email} onChange={e => setNovoUser({ ...novoUser, email: e.target.value })} style={inputStyle} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>CPF *</label>
+                  <input 
+                    required 
+                    type="text" 
+                    placeholder="000.000.000-00"
+                    value={novoUser.cpf} 
+                    onChange={e => setNovoUser({ ...novoUser, cpf: applyCpfMask(e.target.value) })} 
+                    style={inputStyle} 
+                  />
+                </div>
               </div>
+
               <div>
                 <label style={labelStyle}>Senha Inicial</label>
                 <input required type="password" value={novoUser.senha} onChange={e => setNovoUser({ ...novoUser, senha: e.target.value })} style={inputStyle} />
@@ -278,10 +353,25 @@ const AdminTeamPage: React.FC = () => {
                 <label style={labelStyle}>Nome Completo</label>
                 <input required type="text" value={dadosEdicao.nome} onChange={e => setDadosEdicao({ ...dadosEdicao, nome: e.target.value })} style={inputStyle} />
               </div>
-              <div>
-                <label style={labelStyle}>Email (Login)</label>
-                <input required type="email" value={dadosEdicao.email} onChange={e => setDadosEdicao({ ...dadosEdicao, email: e.target.value })} style={inputStyle} />
+              
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Email (Login)</label>
+                  <input required type="email" value={dadosEdicao.email} onChange={e => setDadosEdicao({ ...dadosEdicao, email: e.target.value })} style={inputStyle} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>CPF *</label>
+                  <input 
+                    required 
+                    type="text" 
+                    placeholder="000.000.000-00"
+                    value={dadosEdicao.cpf} 
+                    onChange={e => setDadosEdicao({ ...dadosEdicao, cpf: applyCpfMask(e.target.value) })} 
+                    style={inputStyle} 
+                  />
+                </div>
               </div>
+
               <div>
                 <label style={labelStyle}>Nível de Acesso (Cargo)</label>
                 <select
@@ -306,14 +396,33 @@ const AdminTeamPage: React.FC = () => {
 
               <div style={{ padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffeeba', marginTop: '10px' }}>
                 <label style={{ ...labelStyle, color: '#856404' }}>Redefinir Senha</label>
-                <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#856404' }}>Preencha apenas se quiser alterar a senha atual do colaborador.</p>
-                <input
-                  type="password"
-                  placeholder="Deixe em branco para não alterar"
-                  value={dadosEdicao.novaSenha}
-                  onChange={e => setDadosEdicao({ ...dadosEdicao, novaSenha: e.target.value })}
-                  style={{ ...inputStyle, borderColor: '#ffeeba' }}
-                />
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#856404' }}>
+                  A senha provisória padrão são os <strong>6 primeiros dígitos do CPF</strong> do colaborador.
+                </p>
+                
+                {dadosEdicao.novaSenha ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px', backgroundColor: '#d4edda', borderRadius: '6px', border: '1px solid #c3e6cb', color: '#155724' }}>
+                    <strong>✅ A senha será os 6 primeiros dígitos do CPF do usuário.</strong>
+                    <button type="button" onClick={() => setDadosEdicao({...dadosEdicao, novaSenha: ''})} style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', textDecoration: 'underline' }}>
+                      Cancelar Reset
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cpfLimpo = dadosEdicao.cpf.replace(/\D/g, '');
+                      if (cpfLimpo.length === 11) {
+                        setDadosEdicao({ ...dadosEdicao, novaSenha: cpfLimpo.substring(0, 6) });
+                      } else {
+                        alert("Preencha os 11 dígitos do CPF do colaborador antes de resetar a senha!");
+                      }
+                    }}
+                    style={{ padding: '8px 15px', backgroundColor: '#ffc107', color: '#856404', border: '1px solid #d39e00', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    🔄 Resetar Senha Provisória (CPF)
+                  </button>
+                )}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '15px' }}>
@@ -374,7 +483,7 @@ const modalOverlayStyle: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
 };
 const modalContentStyle: React.CSSProperties = {
-  backgroundColor: '#fff', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '500px', boxShadow: '0 5px 25px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto'
+  backgroundColor: '#fff', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '550px', boxShadow: '0 5px 25px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto'
 };
 const labelStyle: React.CSSProperties = {
   fontWeight: 'bold', color: '#333', marginBottom: '5px', display: 'block'

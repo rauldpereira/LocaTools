@@ -1,14 +1,18 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import Navbar from '../components/Navbar'; 
+import ForcePasswordChangeModal from '../components/ForcePasswordChangeModal';
 
 const Layout: React.FC = () => {
   return (
     <>
       <Navbar />
-      <div style={{ paddingTop: '60px' }}>
+      
+      <main>
         <Outlet />
-      </div>
+      </main>
+
+      <ForcePasswordChangeModal />
     </>
   );
 };

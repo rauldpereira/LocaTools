@@ -1,25 +1,24 @@
 'use strict';
 const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class Usuario extends Model {
     static associate(models) {
       Usuario.hasMany(models.Endereco, {
         foreignKey: 'id_usuario'
       });
-
       Usuario.hasMany(models.OrdemDeServico, {
         foreignKey: 'id_usuario'
       });
-
       Usuario.hasMany(models.Entrega, {
         foreignKey: 'id_motorista'
       });
-
       Usuario.hasMany(models.Vistoria, {
         foreignKey: 'id_responsavel_vistoria'
       });
     }
   }
+  
   Usuario.init({
     nome: DataTypes.STRING,
     email: DataTypes.STRING,
@@ -28,7 +27,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-
     tipo_usuario: {
       type: DataTypes.ENUM('cliente', 'admin', 'funcionario'),
       defaultValue: 'cliente'
@@ -59,6 +57,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.JSON,
       allowNull: false,
       defaultValue: []
+    },
+    precisa_trocar_senha: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false 
     },
   }, {
     sequelize,
