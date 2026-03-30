@@ -116,6 +116,8 @@ const ReservationDetailsPage: React.FC = () => {
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [lojaConfig, setLojaConfig] = useState<any>(null);
 
+  const [regimeFiscal, setRegimeFiscal] = useState<"pre_reforma" | "pos_reforma">("pos_reforma");
+
   const [showRecoverModal, setShowRecoverModal] = useState(false);
   const [recoverMethod, setRecoverMethod] = useState("pix");
   const [isRecovering, setIsRecovering] = useState(false);
@@ -158,6 +160,12 @@ const ReservationDetailsPage: React.FC = () => {
     fetchLojaConfig();
   }, [orderId, token]);
 
+  const subtotal = order ? Number(order.valor_total) - Number(order.custo_frete) : 0;
+  const valorTotalAjustado = order
+    ? Number(order.valor_total) + Number(order.taxa_avaria || 0) + Number(order.taxa_remarcacao || 0)
+    : 0;
+
+  // FATURA DE LOCAÇÃO (Padrão Súmula 31 STF)
   const handleDownloadFatura = () => {
     if (!order) return;
 
@@ -165,26 +173,12 @@ const ReservationDetailsPage: React.FC = () => {
       razaoSocial: "LOCATOOLS LOCAÇÃO DE EQUIPAMENTOS LTDA",
       cnpj: "00.000.000/0001-00",
       endereco: lojaConfig?.endereco_origem || "Endereço não cadastrado",
-      horarios: {
-        segunda: "07:00 às 18:00",
-        tercaASabado: "08:00 às 18:00",
-        domingo: "Fechado",
-      },
+      horarios: { segunda: "07:00 às 18:00", tercaASabado: "08:00 às 18:00", domingo: "Fechado" },
     };
 
     const dataRetirada = parseDateStringAsLocal(order.data_inicio);
-    const diasDaSemana = [
-      "Domingo",
-      "Segunda",
-      "Terça",
-      "Quarta",
-      "Quinta",
-      "Sexta",
-      "Sábado",
-    ];
+    const diasDaSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
     const diaSemanaIndex = dataRetirada.getDay();
-    const nomeDia = diasDaSemana[diaSemanaIndex];
-
     let horarioRetiradaDia = configLoja.horarios.tercaASabado;
     if (diaSemanaIndex === 1) horarioRetiradaDia = configLoja.horarios.segunda;
     if (diaSemanaIndex === 0) horarioRetiradaDia = configLoja.horarios.domingo;
@@ -193,7 +187,6 @@ const ReservationDetailsPage: React.FC = () => {
     const marginX = 10;
     let startY = 10;
 
-    // --- CABEÇALHO
     doc.rect(marginX, startY, 190, 25);
     doc.line(marginX + 60, startY, marginX + 60, startY + 25);
     doc.line(marginX + 140, startY, marginX + 140, startY + 25);
@@ -206,73 +199,41 @@ const ReservationDetailsPage: React.FC = () => {
     doc.text("FATURA DE LOCAÇÃO", marginX + 70, startY + 8);
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text(
-      `Data de emissão: ${new Date().toLocaleDateString("pt-BR")}`,
-      marginX + 65,
-      startY + 16,
-    );
-    doc.text(
-      `Vencimento: ${parseDateStringAsLocal(order.data_inicio).toLocaleDateString("pt-BR")}`,
-      marginX + 65,
-      startY + 22,
-    );
+    doc.text(`Data de emissão: ${new Date().toLocaleDateString("pt-BR")}`, marginX + 65, startY + 16);
+    doc.text(`Vencimento: ${dataRetirada.toLocaleDateString("pt-BR")}`, marginX + 65, startY + 22);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text(`NÚMERO: ${order.id}`, marginX + 145, startY + 14);
 
     startY += 28;
-
-    // --- DADOS DA LOCADORA
     doc.rect(marginX, startY, 190, 25);
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
     doc.text("LOCADORA", marginX + 85, startY + 4);
-
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text(
-      `Razão Social: ${configLoja.razaoSocial}`,
-      marginX + 2,
-      startY + 10,
-    );
+    doc.text(`Razão Social: ${configLoja.razaoSocial}`, marginX + 2, startY + 10);
     doc.text(`CNPJ: ${configLoja.cnpj}`, marginX + 145, startY + 10);
     doc.text(`Endereço: ${configLoja.endereco}`, marginX + 2, startY + 16);
-
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0);
-    const textoHorario = `Horário de Retirada e Devolução (${nomeDia}): ${horarioRetiradaDia}`;
-    doc.text(textoHorario, marginX + 50, startY + 22);
+    doc.text(`Horário de Retirada/Devolução (${diasDaSemana[diaSemanaIndex]}): ${horarioRetiradaDia}`, marginX + 50, startY + 22);
 
     startY += 28;
-
-    // --- DADOS DO LOCATÁRIO
     doc.rect(marginX, startY, 190, 30);
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
     doc.text("LOCATÁRIO", marginX + 85, startY + 4);
-
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     const nomeCliente = (order as any).Usuario?.nome || "Cliente Padrão";
     doc.text(`Nome/Razão Social: ${nomeCliente}`, marginX + 2, startY + 10);
-
-    const enderecoTexto = `Endereço/Entrega: ${order.tipo_entrega === "entrega" ? order.endereco_entrega : "Retirada na Loja - Locatário assume transporte"}`;
-    doc.text(enderecoTexto, marginX + 2, startY + 16, { maxWidth: 185 });
-
-    doc.text(
-      `Período de Locação: ${parseDateStringAsLocal(order.data_inicio).toLocaleDateString("pt-BR")} até ${parseDateStringAsLocal(order.data_fim).toLocaleDateString("pt-BR")}`,
-      marginX + 2,
-      startY + 26,
-    );
+    doc.text(`Endereço/Entrega: ${order.tipo_entrega === "entrega" ? order.endereco_entrega : "Retirada na Loja"}`, marginX + 2, startY + 16, { maxWidth: 185 });
+    doc.text(`Período de Locação: ${dataRetirada.toLocaleDateString("pt-BR")} até ${parseDateStringAsLocal(order.data_fim).toLocaleDateString("pt-BR")}`, marginX + 2, startY + 26);
 
     startY += 33;
-
-    // --- TABELA DE ITENS
     const tableData = order.ItemReservas.map((item) => [
       "1",
       `${item.Unidade.Equipamento.nome} (S/N #${item.Unidade.id})`,
-      `${parseDateStringAsLocal(order.data_inicio).toLocaleDateString("pt-BR")} a ${parseDateStringAsLocal(order.data_fim).toLocaleDateString("pt-BR")}`,
+      `${dataRetirada.toLocaleDateString("pt-BR")} a ${parseDateStringAsLocal(order.data_fim).toLocaleDateString("pt-BR")}`,
     ]);
 
     autoTable(doc, {
@@ -282,107 +243,211 @@ const ReservationDetailsPage: React.FC = () => {
       theme: "grid",
       margin: { left: marginX },
       tableWidth: 190,
-      headStyles: {
-        fillColor: [230, 230, 230],
-        textColor: [0, 0, 0],
-        fontSize: 8,
-        fontStyle: "bold",
-        halign: "center",
-        lineWidth: 0.1,
-        lineColor: 0,
-      },
-      bodyStyles: {
-        fontSize: 8,
-        textColor: [0, 0, 0],
-        lineWidth: 0.1,
-        lineColor: 0,
-      },
-      columnStyles: {
-        0: { halign: "center", cellWidth: 15 },
-        1: {},
-        2: { halign: "center", cellWidth: 50 },
-      },
+      headStyles: { fillColor: [230, 230, 230], textColor: [0, 0, 0], fontSize: 8, halign: "center" },
+      bodyStyles: { fontSize: 8, textColor: [0, 0, 0] },
+      columnStyles: { 0: { halign: "center", cellWidth: 15 }, 2: { halign: "center", cellWidth: 50 } },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
-
-    // --- TOTAIS
     doc.rect(marginX, finalY, 190, 15);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-
-    const subtotalAluguel =
-      Number(order.valor_total) - Number(order.custo_frete || 0);
-    const valorTotalAjustado =
-      Number(order.valor_total) +
-      Number(order.taxa_avaria || 0) +
-      Number(order.taxa_remarcacao || 0);
-
-    doc.text(
-      `SUBTOTAL: R$ ${subtotalAluguel.toFixed(2)}`,
-      marginX + 2,
-      finalY + 6,
-    );
-    doc.text(
-      `FRETE: R$ ${Number(order.custo_frete || 0).toFixed(2)}`,
-      marginX + 60,
-      finalY + 6,
-    );
-    doc.text(
-      `SINAL PAGO: R$ ${Number(order.valor_sinal || 0).toFixed(2)}`,
-      marginX + 110,
-      finalY + 6,
-    );
-
+    doc.text(`SUBTOTAL: R$ ${subtotal.toFixed(2)}`, marginX + 2, finalY + 6);
+    doc.text(`FRETE: R$ ${Number(order.custo_frete || 0).toFixed(2)}`, marginX + 60, finalY + 6);
+    doc.text(`SINAL PAGO: R$ ${Number(order.valor_sinal || 0).toFixed(2)}`, marginX + 110, finalY + 6);
     doc.setFontSize(11);
-    doc.text(
-      `TOTAL GERAL: R$ ${valorTotalAjustado.toFixed(2)}`,
-      marginX + 2,
-      finalY + 12,
-    );
+    doc.text(`TOTAL GERAL: R$ ${valorTotalAjustado.toFixed(2)}`, marginX + 2, finalY + 12);
 
-    // --- DADOS ADICIONAIS / INFORMAÇÕES LEGAIS
     const termoY = finalY + 18;
     doc.rect(marginX, termoY, 190, 38);
     doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.text(
-      "DADOS ADICIONAIS / INFORMAÇÕES FISCAIS:",
-      marginX + 2,
-      termoY + 6,
-    );
-
+    doc.text("INFORMAÇÕES FISCAIS E LEGAIS (PRÉ-REFORMA TRIBUTÁRIA):", marginX + 2, termoY + 6);
     doc.setFont("helvetica", "normal");
-    doc.text(
-      "Natureza da Operação: Locação de Bens Móveis",
-      marginX + 2,
-      termoY + 12,
-    );
-    doc.text(
-      "Locação de bens móveis sem fornecimento de mão de obra.",
-      marginX + 2,
-      termoY + 17,
-    );
-    doc.text(
-      "Dispensado da emissão de nota fiscal de serviços conforme Lei Complementar nº 116 de 31/07/2003",
-      marginX + 2,
-      termoY + 22,
-    );
-    doc.text(
-      "e Súmula Vinculante 31 do Supremo Tribunal Federal (STF).",
-      marginX + 2,
-      termoY + 27,
-    );
+    doc.text("Natureza da Operação: Locação de Bens Móveis", marginX + 2, termoY + 12);
+    doc.text("A locação de bens móveis, sem o fornecimento de mão de obra (operador), não se confunde com prestação", marginX + 2, termoY + 17);
+    doc.text("de serviços. Dispensado de emissão de Nota Fiscal de Serviços (NFS-e) por não haver incidência de ISS,", marginX + 2, termoY + 22);
+    doc.text("conforme Lei Complementar nº 116/2003 e Súmula Vinculante 31 do Supremo Tribunal Federal (STF).", marginX + 2, termoY + 27);
+    doc.setFont("helvetica", "bold");
+    doc.text("NÃO É VÁLIDO COMO RECIBO FISCAL. VÁLIDO COMO DOCUMENTO DE COBRANÇA.", marginX + 2, termoY + 34);
 
+    doc.save(`Fatura_Locacao_${order.id}.pdf`);
+  };
+
+  //  DOCUMENTO FISCAL ELETRÔNICO (DFE Pós-Reforma)
+  const handleDownloadDFE = () => {
+    if (!order) return;
+    const doc = new jsPDF();
+    const m = 10;
+    let y = 10;
+
+    const impostoIBS = valorTotalAjustado * 0.015; // 1,5%
+    const impostoCBS = valorTotalAjustado * 0.035; // 3,5%
+    const numDfe = `2026${String(order.id).padStart(4, "0")}`;
+    const chaveAcesso = Array.from({ length: 44 }, () => Math.floor(Math.random() * 10)).join('');
+
+    // CABEÇALHO DFE NACIONAL
+    doc.rect(m, y, 190, 30);
+    doc.line(m + 40, y, m + 40, y + 30);
+    doc.line(m + 130, y, m + 130, y + 30);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("BRASÃO\nREPÚBLICA", m + 12, y + 14);
+
+    doc.setFontSize(10);
+    doc.text("COMITÊ GESTOR DO IBS E RECEITA FEDERAL", m + 45, y + 8);
+    doc.setFontSize(9);
+    doc.text("DOCUMENTO FISCAL ELETRÔNICO (DFE) - PADRÃO NACIONAL", m + 45, y + 14);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Lei Complementar 214/2025 - Reforma Tributária", m + 45, y + 20);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Nº DFE:", m + 135, y + 8);
+    doc.setFontSize(12);
+    doc.setTextColor(0, 100, 200);
+    doc.text(numDfe, m + 135, y + 14);
+    doc.setTextColor(0);
+    doc.setFontSize(8);
+    doc.text(`Emissão: ${new Date().toLocaleDateString("pt-BR")}`, m + 135, y + 22);
+
+    y += 33;
+    doc.setFontSize(7);
+    doc.text(`CHAVE DE ACESSO: ${chaveAcesso}`, m, y);
+
+    y += 5;
+    // PRESTADOR / LOCADOR
+    doc.rect(m, y, 190, 20);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.text(
-      "NÃO É VÁLIDO COMO RECIBO FISCAL. VÁLIDO COMO DOCUMENTO DE TRANSPORTE/COBRANÇA.",
-      marginX + 2,
-      termoY + 34,
-    );
+    doc.text("EMITENTE (LOCADOR)", m + 2, y + 5);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text("Razão Social: LOCATOOLS LOCAÇÃO DE EQUIPAMENTOS LTDA", m + 2, y + 11);
+    doc.text("CNPJ: 00.000.000/0001-00      UF: SP      Município: Pindamonhangaba", m + 2, y + 16);
 
-    doc.save(`Fatura_Locacao_Pedido_${order.id}.pdf`);
+    y += 23;
+    // TOMADOR / LOCATÁRIO
+    doc.rect(m, y, 190, 20);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("DESTINATÁRIO (LOCATÁRIO)", m + 2, y + 5);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Nome/Razão Social: ${order.Usuario?.nome || "Cliente"}`, m + 2, y + 11);
+    doc.text(`CPF/CNPJ: 000.000.000-00      E-mail: ${order.Usuario?.email || "N/A"}`, m + 2, y + 16);
+
+    y += 23;
+    // DISCRIMINAÇÃO
+    doc.rect(m, y, 190, 45);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("DETALHAMENTO DA OPERAÇÃO DE LOCAÇÃO", m + 2, y + 5);
+    doc.line(m, y + 7, m + 190, y + 7);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    let servicosY = y + 12;
+    doc.text(`Locação Tributável de Bens Móveis - LC 214/2025 (Período: ${parseDateStringAsLocal(order.data_inicio).toLocaleDateString()} a ${parseDateStringAsLocal(order.data_fim).toLocaleDateString()})`, m + 2, servicosY);
+    order.ItemReservas.forEach((item) => {
+      servicosY += 5;
+      doc.text(`- ${item.Unidade.Equipamento.nome} (Patrimônio #${item.Unidade.id})`, m + 2, servicosY);
+    });
+
+    y += 50;
+    // TRIBUTAÇÃO IBS E CBS
+    doc.rect(m, y, 190, 30);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("CÁLCULO DOS TRIBUTOS (NOVO REGIME)", m + 2, y + 5);
+    doc.line(m, y + 7, m + 190, y + 7);
+
+    doc.setFontSize(8);
+    doc.text(`VALOR TOTAL DA OPERAÇÃO: R$ ${valorTotalAjustado.toFixed(2)}`, m + 2, y + 12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Base de Cálculo: R$ ${valorTotalAjustado.toFixed(2)}`, m + 2, y + 18);
+
+    doc.text(`Alíquota IBS (Estadual/Municipal): 1,50%`, m + 60, y + 18);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Valor IBS: R$ ${impostoIBS.toFixed(2)}`, m + 130, y + 18);
+
+    doc.setFont("helvetica", "normal");
+    doc.text(`Alíquota CBS (Federal): 3,50%`, m + 60, y + 24);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Valor CBS: R$ ${impostoCBS.toFixed(2)}`, m + 130, y + 24);
+
+    y += 35;
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text("Documento Fiscal emitido em conformidade com a Reforma Tributária (Lei Complementar 214/2025).", m, y);
+    doc.text("Este documento substitui a antiga NFS-e e incide sobre a operação de locação de bens móveis.", m, y + 4);
+
+    doc.save(`DFE_Locacao_${order.id}_PosReforma.pdf`);
+  };
+
+  //  GERADOR DO XML DFE (Padrão Reforma Tributária)
+
+  const handleDownloadXmlDFE = () => {
+    if (!order) return;
+    const nomeCliente = order.Usuario?.nome || "Cliente";
+    const dataEmissao = new Date().toISOString();
+    const impostoIBS = (valorTotalAjustado * 0.015).toFixed(2);
+    const impostoCBS = (valorTotalAjustado * 0.035).toFixed(2);
+    const chaveAcesso = Array.from({ length: 44 }, () => Math.floor(Math.random() * 10)).join('');
+
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<DFE xmlns="http://www.receita.fazenda.gov.br/dfe">
+  <InfDFE Id="DFE${chaveAcesso}">
+    <Identificacao>
+      <NaturezaOperacao>Locacao Tributavel de Bens Moveis</NaturezaOperacao>
+      <FundamentoLegal>Lei Complementar 214/2025</FundamentoLegal>
+      <Numero>2026${String(order.id).padStart(4, "0")}</Numero>
+      <DataEmissao>${dataEmissao}</DataEmissao>
+    </Identificacao>
+    <Emitente>
+      <Cnpj>00000000000100</Cnpj>
+      <RazaoSocial>LOCATOOLS LOCACAO DE EQUIPAMENTOS LTDA</RazaoSocial>
+      <Endereco>
+        <Logradouro>Rua dos Ipes, 123</Logradouro>
+        <Municipio>Pindamonhangaba</Municipio>
+        <UF>SP</UF>
+      </Endereco>
+    </Emitente>
+    <Destinatario>
+      <CpfCnpj>00000000000</CpfCnpj>
+      <RazaoSocial>${nomeCliente}</RazaoSocial>
+      <Email>${order.Usuario?.email || "nao_informado@email.com"}</Email>
+    </Destinatario>
+    <DetalhesOperacao>
+      <ValorTotal>${valorTotalAjustado.toFixed(2)}</ValorTotal>
+      <Descricao>Locacao de bens moveis - Pedido #${order.id}</Descricao>
+      <Itens>
+        ${order.ItemReservas.map(i => `<Item><Descricao>${i.Unidade.Equipamento.nome}</Descricao><Patrimonio>${i.Unidade.id}</Patrimonio></Item>`).join('')}
+      </Itens>
+    </DetalhesOperacao>
+    <Tributacao>
+      <BaseCalculo>${valorTotalAjustado.toFixed(2)}</BaseCalculo>
+      <IBS>
+        <Aliquota>0.0150</Aliquota>
+        <Valor>${impostoIBS}</Valor>
+      </IBS>
+      <CBS>
+        <Aliquota>0.0350</Aliquota>
+        <Valor>${impostoCBS}</Valor>
+      </CBS>
+      <TotalTributos>${(Number(impostoIBS) + Number(impostoCBS)).toFixed(2)}</TotalTributos>
+    </Tributacao>
+  </InfDFE>
+</DFE>`;
+
+    const blob = new Blob([xmlContent], { type: "application/xml" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `DFE_XML_${order.id}_PosReforma.xml`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   };
 
   const handleDownloadContract = async () => {
@@ -444,9 +509,9 @@ const ReservationDetailsPage: React.FC = () => {
         {},
         config,
       );
-      
+
       setOrder((prev) => prev ? { ...prev, solicitou_devolucao: true } : prev);
-      
+
       // Fecha o modal de confirmação
       setShowConfirmReturnModal(false);
     } catch (error) {
@@ -586,14 +651,7 @@ const ReservationDetailsPage: React.FC = () => {
   const vistoriaDeDevolucao = order?.Vistorias.find(
     (v) => v.tipo_vistoria === "devolucao",
   );
-  const subtotal = order
-    ? Number(order.valor_total) - Number(order.custo_frete)
-    : 0;
-  const valorTotalAjustado = order
-    ? Number(order.valor_total) +
-      Number(order.taxa_avaria || 0) +
-      Number(order.taxa_remarcacao || 0)
-    : 0;
+
   const canReschedule = order
     ? ["aprovada", "aguardando_assinatura"].includes(order.status)
     : false;
@@ -614,10 +672,13 @@ const ReservationDetailsPage: React.FC = () => {
         : 0),
     0,
   );
+
   const totalDividaAtiva = totalPrejuizoOriginal - totalRecuperado;
+
   const saldoAluguel = order
     ? Number(order.valor_total) - Number(order.valor_sinal)
     : 0;
+
   const totalPendenteGeral =
     totalDividaAtiva + (order?.status === "PREJUIZO" ? saldoAluguel : 0);
 
@@ -705,24 +766,40 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+          {(isAdmin || isFuncionario) && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#fff3cd", padding: "8px 12px", borderRadius: "8px", border: "1px solid #ffeeba" }}>
+              <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#856404" }}>⚖️ Regime Fiscal:</span>
+              <select
+                value={regimeFiscal}
+                onChange={(e) => setRegimeFiscal(e.target.value as any)}
+                style={{ padding: "4px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "0.85rem", outline: "none" }}
+              >
+                <option value="pre_reforma">Pré-Reforma (Súmula 31 STF)</option>
+                <option value="pos_reforma">Reforma Tributária (IBS/CBS)</option>
+              </select>
+            </div>
+          )}
+
+          {/* BOTÕES DE EMISSÃO */}
           {order.status !== "pendente" && order.status !== "cancelada" && (
-            <button
-              onClick={handleDownloadFatura}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#2c3e50",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-              }}
-            >
-              🖨️ Fatura (PDF)
-            </button>
+            <div style={{ display: "flex", gap: "8px", padding: "5px", backgroundColor: "#f1f3f5", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+
+              <button onClick={handleDownloadFatura} style={btnDocStyle} title="Fatura Comercial de Locação">
+                🖨️ Fatura
+              </button>
+
+              {regimeFiscal === "pos_reforma" && (
+                <>
+                  <div style={{ width: "1px", backgroundColor: "#ced4da", margin: "0 2px" }}></div>
+                  <button onClick={handleDownloadDFE} style={btnDocStyleGov} title="Baixar Documento Fiscal Eletrônico">
+                    🏛️ DFE (PDF)
+                  </button>
+                  <button onClick={handleDownloadXmlDFE} style={btnDocStyleGov} title="Baixar Arquivo XML">
+                    📄 XML
+                  </button>
+                </>
+              )}
+            </div>
           )}
 
           {/* MAQUIAGEM VISUAL DA TAG DE STATUS */}
@@ -986,8 +1063,8 @@ const ReservationDetailsPage: React.FC = () => {
                 backgroundColor: order.coleta_confirmada
                   ? "#17a2b8"
                   : order.solicitou_devolucao
-                    ? "#28a745" 
-                    : "#007bff", 
+                    ? "#28a745"
+                    : "#007bff",
                 color: "white",
                 border: "none",
                 borderRadius: "6px",
@@ -1024,7 +1101,7 @@ const ReservationDetailsPage: React.FC = () => {
               <span style={{ fontSize: "2rem" }}>🚚</span>
               <h2 style={{ margin: 0, fontSize: "1.5rem" }}>Confirmar Coleta</h2>
             </div>
-            
+
             <p style={{ color: "#444", fontSize: "1.05rem", lineHeight: "1.5", marginBottom: "10px" }}>
               Você já terminou de utilizar os equipamentos desta reserva?
             </p>
@@ -1312,8 +1389,8 @@ const ReservationDetailsPage: React.FC = () => {
             O termo de devolução foi assinado pelo cliente em{" "}
             {order.data_assinatura_devolucao
               ? new Date(order.data_assinatura_devolucao).toLocaleDateString(
-                  "pt-BR",
-                )
+                "pt-BR",
+              )
               : "data não registrada"}
             .
           </p>
@@ -1993,5 +2070,8 @@ const btnSecondaryStyle: React.CSSProperties = {
   cursor: "pointer",
   fontWeight: "bold",
 };
+
+const btnDocStyle: React.CSSProperties = { padding: "6px 12px", border: "1px solid #ccc", backgroundColor: "white", color: "#333", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "5px" };
+const btnDocStyleGov: React.CSSProperties = { ...btnDocStyle, backgroundColor: "#e9ecef", borderColor: "#ced4da", color: "#495057" };
 
 export default ReservationDetailsPage;
