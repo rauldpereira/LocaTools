@@ -4,6 +4,8 @@ import { CartProvider } from './context/CartContext';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+
+// Importações das páginas
 import Home from './pages/Home';
 import AuthPage from './pages/AuthPage';
 import Profile from './components/Profile';
@@ -20,7 +22,14 @@ import FinalizePaymentPage from './pages/FinalizePaymentPage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import GerenciamentoCalendario from './components/Admin/GerenciamentoCalendario';
 import AdminFreightConfig from './pages/AdminFreightConfig';
-const stripePromise = loadStripe('pk_test_51RxzLsHUnTeu3by4toldZZMEswVFiFnrXc0eSI9PyNzEGnICbSvasFqoC0cmMgqkD3Ie6tQIEhKlhDvitfTbcwTT00qAldkZVx');
+
+// 🚀 IMPORTANDO AS DUAS PÁGINAS NOVAS 🚀
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+
+// 🚀 PUXANDO A CHAVE DA VARIÁVEL DE AMBIENTE (Create React App) 🚀
+const stripeKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'sua_chave_fallback_aqui';
+const stripePromise = loadStripe(stripeKey);
 
 function App() {
   return (
@@ -32,6 +41,8 @@ function App() {
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
                 <Route path="auth" element={<AuthPage />} />
+                <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="reset-password" element={<ResetPasswordPage />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="admin" element={<AdminDashboard />} />
                 <Route path="equipment/:id" element={<EquipmentDetailsPage />} />

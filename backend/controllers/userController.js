@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Usuario } = require('../models');
+const nodemailer = require('nodemailer');
 
 
 const registerUser = async (req, res) => {
@@ -348,10 +349,86 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await Usuario.findOne({ where: { email } });
+    if (!user) {
+      return res.status(200).json({ message: 'Se o e-mail existir, um link de recuperação foi enviado.' });
+    }
+
+    // Cria um token válido por 15 minutos!
+    const resetToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+
+    // Configura o Nodemailer
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    // O link que o usuário vai clicar
+    const resetUrl = `http://localhost:5173/reset-password?token=${resetToken}`;
+
+    const mailOptions = {
+      from: `"LocaTools Suporte" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: '🔒 Redefinição de Senha - LocaTools',
+      html: `
+        <h2>Olá, ${user.nome}!</h2>
+        <p>Recebemos um pedido para redefinir a sua senha.</p>
+        <p>Clique no botão abaixo para criar uma nova senha. <b>Este link é válido por apenas 15 minutos.</b></p>
+        <a href="${resetUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Redefinir Minha Senha</a>
+        <p>Se você não solicitou isso, apenas ignore este e-mail.</p>
+      `
+    };
+
+    transporter.sendMail(mailOptions).catch(error => {
+        console.error('Falha silenciosa ao disparar o e-mail de recuperação:', error);
+    });
+
+    return res.status(200).json({ message: 'Se o e-mail existir, um link de recuperação foi enviado.' });
+  } catch (error) {
+    console.error('Erro no forgotPassword:', error);
+    res.status(500).json({ error: 'Erro ao tentar enviar o e-mail.' });
+  }
+};
+
+const resetPasswordFromLink = async (req, res) => {
+  const { token, novaSenha } = req.body;
+
+  try {
+    // Tenta abrir o token. Se passou de 15 min ou for falso, cai no catch na hora!
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    const user = await Usuario.findByPk(decoded.id);
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
+
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(novaSenha)) {
+        return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres, contendo letras e números.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const senha_hash = await bcrypt.hash(novaSenha, salt);
+
+    await user.update({ senha_hash });
+
+    res.status(200).json({ message: 'Sua senha foi redefinida com sucesso! Você já pode fazer login.' });
+  } catch (error) {
+    res.status(400).json({ error: 'O link é inválido ou expirou. Solicite a recuperação novamente.' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getProfile,
+  forgotPassword,
+  resetPasswordFromLink,
   updateProfile,
   changePassword,
   getTeam,

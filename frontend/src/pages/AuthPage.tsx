@@ -58,7 +58,26 @@ const AuthPage: React.FC = () => {
         {/* Área do Formulário */}
         <div style={formContainerStyle}>
           {mode === 'login' ? (
-            <Login />
+            <>
+              <Login />
+              
+              {/* BOTÃO DE ESQUECEU A SENHA */}
+              <div style={{ textAlign: 'center', marginTop: '15px' }}>
+                <Link 
+                  to="/forgot-password" 
+                  style={{ 
+                    fontSize: '0.9rem', 
+                    color: '#007bff', 
+                    fontWeight: 'bold', 
+                    textDecoration: 'none' 
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                  onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                >
+                  🔒 Esqueceu sua senha? Clique aqui
+                </Link>
+              </div>
+            </>
           ) : (
             <Register />
           )}

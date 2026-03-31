@@ -9,7 +9,9 @@ const {
   updatePermissions,
   createFuncionario,
   updateFuncionarioDados, 
-  deleteUser
+  deleteUser,
+  forgotPassword, 
+  resetPasswordFromLink
 } = require('../controllers/userController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
@@ -17,6 +19,9 @@ const router = express.Router();
 
 router.post('/register', registerUser);
 router.post('/login', loginUser);
+
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPasswordFromLink);
 
 router.get('/profile', protect, getProfile);
 router.put('/profile', protect, updateProfile);
