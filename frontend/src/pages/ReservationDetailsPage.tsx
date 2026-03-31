@@ -813,6 +813,117 @@ const ReservationDetailsPage: React.FC = () => {
       <h1 style={{ marginTop: 0, color: "#2c3e50" }}>Pedido #{order.id}</h1>
       <HorarioFuncionamento />
 
+      {/* LINHA DO TEMPO (TIMELINE) */}
+      {order.status !== "cancelada" && (
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          margin: "30px 0 40px 0",
+          padding: "0 10px",
+          position: "relative"
+        }}>
+          {/* Linha de fundo */}
+          <div style={{
+            position: "absolute",
+            top: "15px",
+            left: "40px",
+            right: "40px",
+            height: "2px",
+            backgroundColor: "#e0e0e0",
+            zIndex: 0
+          }} />
+
+          {[
+            { label: "Reserva", icon: "📝" },
+            { label: "Confirmado", icon: "📅" },
+            { label: "Entrega/Retirada", icon: "🚚" },
+            { label: "Em Uso", icon: "🏗️" },
+            { label: "Devolução", icon: "🔄" },
+            { label: "Finalizado", icon: "✅" }
+          ].map((step, index, array) => {
+            let currentIndex = 0;
+            if (order.status === "aprovada") currentIndex = 1;
+            if (order.status === "saiu_para_entrega" || order.status === "aguardando_assinatura") currentIndex = 2;
+            if (order.status === "em_andamento" || order.status === "PREJUIZO") currentIndex = 3;
+            if (order.solicitou_devolucao || order.status === "aguardando_assinatura_devolucao" || order.status === "aguardando_pagamento_final") currentIndex = 4;
+            if (order.status === "finalizada") currentIndex = 5;
+
+            // Lógica de atraso
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const dInicio = parseDateStringAsLocal(order.data_inicio);
+            const dFim = parseDateStringAsLocal(order.data_fim);
+            
+            let isLate = false;
+            // Atraso na Entrega (Index 2): Hoje > Início e ainda não saiu
+            if (index === 2 && today > dInicio && currentIndex < 2) isLate = true;
+            // Atraso na Devolução (Index 4): Hoje > Fim e ainda está "Em Uso"
+            if (index === 4 && today > dFim && currentIndex < 4) isLate = true;
+
+            const isCompleted = index < currentIndex;
+            const isActive = index === currentIndex;
+            
+            let color = isCompleted || isActive ? "#007bff" : "#adb5bd";
+            if (isLate) color = "#dc3545"; 
+
+            return (
+              <div key={step.label} style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                flex: 1,
+                zIndex: 1,
+                position: "relative"
+              }}>
+                {/* Círculo do Step */}
+                <div style={{
+                  width: "30px",
+                  height: "30px",
+                  borderRadius: "50%",
+                  backgroundColor: isLate ? "#dc3545" : (isCompleted ? "#007bff" : "white"),
+                  border: `2px solid ${color}`,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  fontSize: "0.8rem",
+                  color: (isCompleted || isLate) ? "white" : color,
+                  marginBottom: "8px",
+                  transition: "all 0.3s ease",
+                  boxShadow: isActive ? "0 0 0 4px rgba(0,123,255,0.2)" : (isLate ? "0 0 0 4px rgba(220,53,69,0.2)" : "none")
+                }}>
+                  {isLate ? "!" : (isCompleted ? "✓" : step.icon)}
+                </div>
+                
+                {/* Nome do Step */}
+                <span style={{
+                  fontSize: "0.7rem",
+                  fontWeight: (isActive || isLate) ? "bold" : "500",
+                  color: color,
+                  textAlign: "center",
+                  lineHeight: "1.1"
+                }}>
+                  {isLate ? `⚠️ ATRASO NA DEVOLUÇÃO` : step.label}
+                </span>
+
+                {/* Linha de progresso ativa */}
+                {index < array.length - 1 && index < currentIndex && (
+                  <div style={{
+                    position: "absolute",
+                    top: "15px",
+                    left: "calc(50% + 15px)",
+                    width: "calc(100% - 30px)",
+                    height: "2px",
+                    backgroundColor: "#007bff",
+                    zIndex: -1
+                  }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {order.status === "pendente" && (
         <div
           style={{
