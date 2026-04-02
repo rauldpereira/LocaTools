@@ -1709,10 +1709,27 @@ const ReservationDetailsPage: React.FC = () => {
               ? "Entrega na Obra"
               : "Retirada na Loja"}
           </p>
-          {order.tipo_entrega === "entrega" && (
+          {order.tipo_entrega === "entrega" ? (
             <p>
-              <strong>Endereço:</strong> {order.endereco_entrega}
+              <strong>Endereço de Entrega:</strong> {order.endereco_entrega}
             </p>
+          ) : (
+            lojaConfig && (
+              <div style={{ 
+                marginTop: "10px", 
+                padding: "12px", 
+                backgroundColor: "#e7f3ff", 
+                borderRadius: "6px",
+                borderLeft: "4px solid #007bff" 
+              }}>
+                <p style={{ margin: 0, color: "#0056b3", fontWeight: "bold", fontSize: "0.9rem" }}>
+                  📍 ENDEREÇO PARA RETIRADA:
+                </p>
+                <p style={{ margin: "5px 0 0 0", color: "#333", fontSize: "0.95rem" }}>
+                  {lojaConfig.endereco_origem || "Endereço não configurado."}
+                </p>
+              </div>
+            )
           )}
           <div style={{ marginTop: "20px" }}>
             <p>

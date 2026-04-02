@@ -102,6 +102,43 @@ const verificarDisponibilidade = async (item, options, excludeOrderId = null) =>
     return unidadesDoEquipamento.filter(u => !idsUnicosBloqueados.includes(u.id));
 };
 
+const checkUserDebts = async (id_usuario, transaction = null) => {
+    // Verifica se alguma OS está com status prejuizo
+    const pendenciaOS = await OrdemDeServico.findOne({
+        where: {
+            id_usuario,
+            status: {
+                [Op.in]: ['PREJUIZO', 'aguardando_pagamento_final']
+            }
+        },
+        transaction
+    });
+
+    if (pendenciaOS) {
+        throw new Error(`Você possui um pedido: #${pendenciaOS.id} com pagamento pendente. Regularize para poder alugar novamente.`);
+    }
+
+    // Verifica se há registros de Prejuízo (B.O.) não resolvidos, mesmo que a OS ainda esteja 'em_andamento'
+    const pendenciaPrejuizo = await Prejuizo.findOne({
+        where: { resolvido: false },
+        include: [{
+            model: ItemReserva,
+            as: 'itemReserva',
+            required: true,
+            include: [{
+                model: OrdemDeServico,
+                where: { id_usuario },
+                required: true
+            }]
+        }],
+        transaction
+    });
+
+    if (pendenciaPrejuizo) {
+        throw new Error(`O cliente possui um registro de PREJUÍZO/B.O. em aberto (Tipo: ${pendenciaPrejuizo.tipo}) no pedido #${pendenciaPrejuizo.itemReserva.id_ordem_servico}. Regularize para alugar novamente.`);
+    }
+};
+
 const createOrder = async (req, res) => {
     const { itens, tipo_entrega, endereco_entrega, valor_frete } = req.body;
     const id_usuario = req.user.id;
@@ -111,6 +148,8 @@ const createOrder = async (req, res) => {
     }
 
     try {
+        await checkUserDebts(id_usuario);
+
         const ordensCriadas = await sequelize.transaction(async (t) => {
             
             // Agrupa os itens por data_inicio
@@ -1340,6 +1379,8 @@ const criarReservaBalcao = async (req, res) => {
           senha: Math.random().toString(36).slice(-10), 
           tipo_usuario: 'cliente',
         }, { transaction });
+      } else {
+        await checkUserDebts(usuario.id, transaction);
       }
     
       const dataInicio = new Date(data_inicio);
