@@ -74,6 +74,19 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
         setDataFim(null);
         return;
     }
+
+    // Valida se a data de início é anterior a hoje
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startCheck = new Date(start);
+    startCheck.setHours(0, 0, 0, 0);
+
+    if (startCheck < today) {
+      alert("⚠️ A data de início não pode ser anterior a hoje!");
+      return;
+    }
+
     // Formata o ISO String considerando o timezone
     const sTime = new Date(start.getTime() - (start.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);
     const eTime = new Date(end.getTime() - (end.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);

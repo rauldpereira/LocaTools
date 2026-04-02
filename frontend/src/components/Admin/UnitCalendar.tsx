@@ -147,6 +147,9 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
         }
     };
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     return (
         <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             
@@ -155,6 +158,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                 selectRange={true}
                 onChange={handleDateChange}
                 value={isPicker ? pickerSelection : undefined} 
+                minDate={today}
             />
             
             <div style={{ fontSize: '0.8rem', marginTop: '5px', display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '15px' }}>

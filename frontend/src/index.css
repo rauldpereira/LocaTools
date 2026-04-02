@@ -78,6 +78,13 @@ body {
   filter: brightness(1.2);
 }
 
+/* Dias desabilitados (Passado) */
+.react-calendar__tile:disabled {
+  background-color: #f0f0f0 !important;
+  color: #ccc !important;
+  cursor: not-allowed !important;
+}
+
 /* REMOVE fundo cinza de foco */
 .react-calendar__tile:enabled:focus {
   background-color: transparent !important;
