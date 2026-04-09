@@ -159,10 +159,12 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         if (view !== 'month') return null;
         const dayString = toISODate(date);
 
+        // Dias de outros meses
         if (date.getMonth() !== currentMonthView.getMonth()) {
             return 'day-neighboring-month';
         }
 
+        // Seleção do usuário (Azul)
         if (selectedRange && selectedRange.length === 2) {
             const [start, end] = selectedRange;
             if (date >= start && date <= end) {
@@ -173,26 +175,31 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         const diaStatusAdmin = statusDias.get(dayString);
         const availabilityEstoque = availabilityData[dayString];
 
-        if (!diaStatusAdmin) {
-            return null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Dias no passado -> Vermelho
+        if (date < today) {
+            return 'day-red';
         }
 
-        if (diaStatusAdmin.status === 'FECHADO') {
-            if (diaStatusAdmin.fonte === 'padrao') {
-                return 'day-fechado-padrao';
-            }
+        // Dias sem configuração ou FECHADOS -> Vermelho
+        if (!diaStatusAdmin || diaStatusAdmin.status === 'FECHADO') {
+            return 'day-red';
+        }
 
-            if (diaStatusAdmin.fonte === 'excecao') {
-                return 'day-red';
-            }
+        // Sem estoque -> Vermelho
+        if (availabilityEstoque === 0) {
+            return 'day-red';
         }
 
         if (availabilityEstoque === undefined) return null;
-        if (availabilityEstoque === 0) return 'day-red';
 
+        // Disponibilidade parcial -> Amarelo
         const percentage = (availabilityEstoque / equipment.total_quantidade) * 100;
         if (percentage <= 50) return 'day-yellow';
 
+        // Disponível -> Verde
         return 'day-green';
     };
 

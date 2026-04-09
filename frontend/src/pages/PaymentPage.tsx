@@ -270,6 +270,32 @@ const PaymentPage: React.FC = () => {
     const { token } = useAuth();
     const navigate = useNavigate();
 
+    // --- FIDELIDADE ---
+    const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number } | null>(null);
+    const [completedOrders, setCompletedOrders] = useState(0);
+
+    useEffect(() => {
+        const fetchLoyaltyData = async () => {
+            if (!token) return;
+            try {
+                const config = { headers: { Authorization: `Bearer ${token}` } };
+                const { data: storeConfig } = await axios.get('http://localhost:3001/api/config');
+                if (storeConfig) {
+                    setLoyaltyConfig({
+                        num: storeConfig.fidelidade_num_pedidos,
+                        pct: parseFloat(storeConfig.fidelidade_desconto_pct)
+                    });
+                }
+                const { data: myOrders } = await axios.get('http://localhost:3001/api/reservations/my', config);
+                const count = myOrders.filter((o: any) => o.status !== 'cancelada').length;
+                setCompletedOrders(count);
+            } catch (error) {
+                console.error('Erro fidelidade:', error);
+            }
+        };
+        fetchLoyaltyData();
+    }, [token]);
+
     const rawIds = queryIds || orderId || '';
     const idList = rawIds.split(',').filter(Boolean).map(Number);
 
@@ -336,10 +362,23 @@ const PaymentPage: React.FC = () => {
         valorApresentado = orders.reduce((acc, curr) => acc + Number(curr.valor_sinal), 0);
     }
 
-    // Custos do fluxo normal (Sinal)
+    // Custos do fluxo normal 
     const totalGeral = orders.reduce((acc, curr) => acc + Number(curr.valor_total), 0);
     const totalFrete = orders.reduce((acc, curr) => acc + Number(curr.custo_frete), 0);
-    const totalSubtotal = totalGeral - totalFrete;
+    
+    // O totalSubtotal aqui é o que já está com desconto no banco
+    const totalComDesconto = totalGeral - totalFrete;
+
+    // Se ele for elegível, descobre qual era o valor ORIGINAL para mostrar o desconto
+    const isLoyaltyEligible = loyaltyConfig && (completedOrders) % loyaltyConfig.num === 0;
+    
+    let subtotalOriginal = totalComDesconto;
+    let valorDesconto = 0;
+
+    if (isLoyaltyEligible && loyaltyConfig) {
+        subtotalOriginal = totalComDesconto / (1 - (loyaltyConfig.pct / 100));
+        valorDesconto = subtotalOriginal - totalComDesconto;
+    }
 
     return (
         <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
@@ -369,16 +408,24 @@ const PaymentPage: React.FC = () => {
                 /* FLUXO NORMAL CLIENTE NOVO PAGANDO SINAL */
                     <>
                         <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
-                            <span style={{fontWeight: 500}}>Itens:</span>
-                            <span style={{fontWeight: 500}}>R$ {totalSubtotal.toFixed(2)}</span>
+                            <span style={{fontWeight: 500}}>Itens (Subtotal):</span>
+                            <span style={{fontWeight: 500}}>R$ {subtotalOriginal.toFixed(2)}</span>
                         </div>
+
+                        {isLoyaltyEligible && (
+                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px', color: '#28a745', fontWeight: 'bold'}}>
+                                <span>Desconto Fidelidade ({loyaltyConfig?.pct}%):</span>
+                                <span>- R$ {valorDesconto.toFixed(2)}</span>
+                            </div>
+                        )}
+
                         <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
                             <span style={{fontWeight: 500}}>{textoLogistica}:</span>
                             <span style={{fontWeight: 500}}>{totalFrete > 0 ? `R$ ${totalFrete.toFixed(2)}` : 'Grátis'}</span>
                         </div>
                         <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
                         <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 'bold', color: '#000'}}>
-                            <span>Total dos Contratos:</span>
+                            <span>Total Geral:</span>
                             <span>R$ {totalGeral.toFixed(2)}</span>
                         </div>
                     </>

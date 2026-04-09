@@ -17,6 +17,7 @@ const reportsRoutes = require('./routes/reportsRoutes');
 const calendarioRoutes = require('./routes/calendarioRoutes');
 const prejuizoRoutes = require('./routes/prejuizoRoutes');
 const freteRoutes = require('./routes/freteRoutes');
+const configRoutes = require('./routes/configRoutes');
 const iniciarCronJobs = require('./services/canceladorPedidos');
 const notificacaoRoutes = require('./routes/notificacaoRoutes');
 const { iniciarRoboDeLembretes } = require('./services/lembretesCron');
@@ -77,6 +78,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api', calendarioRoutes);
 app.use('/api/prejuizos', prejuizoRoutes);
 app.use('/api/frete', freteRoutes);
+app.use('/api/config', configRoutes);
 app.use('/api/notificacoes', notificacaoRoutes);
 
 app.get('/', (req, res) => {

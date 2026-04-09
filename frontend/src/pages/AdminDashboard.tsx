@@ -8,6 +8,7 @@ import AdminHorariosPage from "../components/HorarioFuncionamento";
 import AdminReportsPage from "../pages/AdminReportsPage";
 import MaintenanceDashboard from "../components/MaintenanceDashboard";
 import AdminFreightConfig from "../pages/AdminFreightConfig";
+import AdminStoreConfig from "../pages/AdminStoreConfig";
 import AdminCalendarPage from "../components/Admin/GerenciamentoCalendario";
 import AdminTeamPage from "../components/Admin/AdminTeamPage";
 import EquipamentosEmLocacao from "../components/Admin/EquipamentosEmLocacao";
@@ -22,6 +23,7 @@ const Icons = {
   horarios: "⏰",
   calendario: "📆",
   relatorios: "📈",
+  config: "⚙️",
 };
 
 const AdminDashboard: React.FC = () => {
@@ -246,6 +248,12 @@ const AdminDashboard: React.FC = () => {
         ) : null;
       case "relatorios":
         return hasPermission("ver_financeiro") ? <AdminReportsPage /> : null;
+      case "config":
+        return hasPermission("configuracoes") ? (
+          <div style={contentContainerStyle}>
+            <AdminStoreConfig />
+          </div>
+        ) : null;
       default:
         return (
           <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -331,6 +339,12 @@ const AdminDashboard: React.FC = () => {
                 icon={Icons.calendario}
                 isActive={activeTab === "calendario"}
                 onClick={() => setActiveTab("calendario")}
+              />
+              <MenuItem
+                label="Configurações"
+                icon={Icons.config}
+                isActive={activeTab === "config"}
+                onClick={() => setActiveTab("config")}
               />
             </>
           )}

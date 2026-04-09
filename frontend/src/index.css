@@ -12,6 +12,7 @@
   --cor-dia-reservado-texto: #ffffff;
   --cor-fundo-botao: #f0f0f0;
   --cor-texto-botao: #213547;
+  --cor-dia-indisponivel: #ff0000;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,6 +26,7 @@
     --cor-dia-reservado-texto: #ffffff;
     --cor-fundo-botao: #444444;
     --cor-texto-botao: rgba(255, 255, 255, 0.87);
+    --cor-dia-indisponivel: #cc0000;
   }
 }
 
@@ -79,7 +81,7 @@ body {
 }
 
 /* Dias desabilitados (Passado) */
-.react-calendar__tile:disabled {
+.react-calendar__tile:disabled:not(.day-red):not(.day-yellow):not(.day-green) {
   background-color: #f0f0f0 !important;
   color: #ccc !important;
   cursor: not-allowed !important;
@@ -119,7 +121,7 @@ body {
 }
 
 .day-red {
-  background-color: #ff0015 !important;
+  background-color: var(--cor-dia-indisponivel) !important;
   color: #fff !important;
   text-decoration: line-through;
   pointer-events: none;

@@ -37,6 +37,38 @@ const CartPage: React.FC = () => {
         estado: ''
     });
 
+    // --- ESTADOS DE FIDELIDADE ---
+    const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number } | null>(null);
+    const [completedOrders, setCompletedOrders] = useState(0);
+
+    // BUSCA CONFIGURAÇÕES DE FIDELIDADE E HISTÓRICO
+    useEffect(() => {
+        const fetchLoyaltyData = async () => {
+            if (!token) return;
+            try {
+                const config = { headers: { Authorization: `Bearer ${token}` } };
+                
+                // Busca config da loja
+                const { data: storeConfig } = await axios.get('http://localhost:3001/api/config');
+                if (storeConfig) {
+                    setLoyaltyConfig({
+                        num: storeConfig.fidelidade_num_pedidos,
+                        pct: parseFloat(storeConfig.fidelidade_desconto_pct)
+                    });
+                }
+
+                // Busca pedidos do usuário para contar os válidos
+                const { data: myOrders } = await axios.get('http://localhost:3001/api/reservations/my', config);
+                // Conta todos os que NÃO estão cancelados
+                const count = myOrders.filter((o: any) => o.status !== 'cancelada').length;
+                setCompletedOrders(count);
+            } catch (error) {
+                console.error('Erro ao buscar dados de fidelidade:', error);
+            }
+        };
+        fetchLoyaltyData();
+    }, [token]);
+
     // Conta quantas datas diferentes existem no carrinho
     const datasDeEntrega = cartItems.map(item => item.data_inicio.split('T')[0]);
     const viagensNecessarias = new Set(datasDeEntrega).size || 1;
@@ -151,7 +183,13 @@ const CartPage: React.FC = () => {
         }, 0);
     };
 
-    const valorTotalComFrete = calculateSubtotal() + freightCost;
+    const subtotal = calculateSubtotal();
+    
+    // Se (Pedidos Existentes + este atual) atingir a meta.
+    const isLoyaltyEligible = loyaltyConfig && (completedOrders + 1) % loyaltyConfig.num === 0;
+    
+    const discountAmount = isLoyaltyEligible ? subtotal * (loyaltyConfig.pct / 100) : 0;
+    const valorTotalComFrete = (subtotal - discountAmount) + freightCost;
 
     const handleCheckout = async () => {
         if (!token) {
@@ -370,7 +408,26 @@ const CartPage: React.FC = () => {
                         </div>
 
                         <div className="cart-summary">
-                            <p>Subtotal dos Itens: R$ {calculateSubtotal().toFixed(2)}</p>
+                            <p>Subtotal dos Itens: R$ {subtotal.toFixed(2)}</p>
+
+                            {isLoyaltyEligible && (
+                                <div style={{ 
+                                    backgroundColor: '#d4edda', 
+                                    color: '#155724', 
+                                    padding: '10px', 
+                                    borderRadius: '8px', 
+                                    marginBottom: '10px',
+                                    border: '1px solid #c3e6cb'
+                                }}>
+                                    <p style={{ margin: 0, fontWeight: 'bold' }}>🎁 Fidelidade Ativada!</p>
+                                    <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                                        Você completou {completedOrders} pedidos e ganhou {loyaltyConfig?.pct}% de desconto.
+                                    </p>
+                                    <p style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>
+                                        Desconto: - R$ {discountAmount.toFixed(2)}
+                                    </p>
+                                </div>
+                            )}
 
                             {deliveryType === 'entrega' && (
                                 <p style={{ color: freightCost > 0 ? '#333' : 'red' }}>

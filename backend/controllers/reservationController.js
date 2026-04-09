@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo, FreteConfig } = require('../models');
+const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo, FreteConfig, ConfigLoja } = require('../models');
 const { notificarUsuario, notificarOperacao } = require('../utils/notificacaoHelper');
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
@@ -150,6 +150,27 @@ const createOrder = async (req, res) => {
     try {
         await checkUserDebts(id_usuario);
 
+        // --- LÓGICA DE FIDELIDADE 
+        const configLoja = await ConfigLoja.findOne();
+        let pctDesconto = 0;
+        let aplicouFidelidade = false;
+
+        if (configLoja && configLoja.fidelidade_num_pedidos > 0) {
+            // Conta todos os pedidos que NÃO foram cancelados
+            const totalPedidosValidos = await OrdemDeServico.count({
+                where: { 
+                    id_usuario, 
+                    status: { [Op.ne]: 'cancelada' } 
+                }
+            });
+
+            // Se (pedidos já feitos + 1) for múltiplo da meta, ele ganha desconto NESTE pedido
+            if ((totalPedidosValidos + 1) % configLoja.fidelidade_num_pedidos === 0) {
+                pctDesconto = parseFloat(configLoja.fidelidade_desconto_pct) / 100;
+                aplicouFidelidade = true;
+            }
+        }
+
         const ordensCriadas = await sequelize.transaction(async (t) => {
             
             // Agrupa os itens por data_inicio
@@ -219,7 +240,13 @@ const createOrder = async (req, res) => {
                 }
 
                 // Cria a OS exclusiva pra esse dia de saída!
-                const valor_total = subtotal_grupo + fretePorViagem;
+                let valor_total = subtotal_grupo + fretePorViagem;
+                
+                // Aplica o desconto se elegível
+                if (aplicouFidelidade) {
+                    valor_total = valor_total * (1 - pctDesconto);
+                }
+
                 const valor_sinal = valor_total * 0.5;
 
                 const ordemDeServico = await OrdemDeServico.create({
@@ -227,11 +254,11 @@ const createOrder = async (req, res) => {
                     status: 'pendente',
                     data_inicio: dataSaida + "T12:00:00",
                     data_fim: data_fim_grupo + "T12:00:00",
-                    valor_total,
+                    valor_total: parseFloat(valor_total.toFixed(2)),
                     tipo_entrega,
                     endereco_entrega: tipo_entrega === 'entrega' ? endereco_entrega : null,
                     custo_frete: fretePorViagem,
-                    valor_sinal
+                    valor_sinal: parseFloat(valor_sinal.toFixed(2))
                 }, { transaction: t });
 
                 // Salva os Itens na OS desse dia

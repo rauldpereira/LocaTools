@@ -35,6 +35,35 @@ const MyReservationsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("updated_desc");
 
+  // --- FIDELIDADE ---
+  const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number } | null>(null);
+
+  useEffect(() => {
+    const fetchLoyaltyConfig = async () => {
+      try {
+        const { data } = await axios.get("http://localhost:3001/api/config");
+        if (data) {
+          setLoyaltyConfig({
+            num: data.fidelidade_num_pedidos,
+            pct: parseFloat(data.fidelidade_desconto_pct)
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao buscar config de fidelidade:", error);
+      }
+    };
+    fetchLoyaltyConfig();
+  }, []);
+
+  const validOrders = orders.filter(o => o.status !== 'cancelada');
+  const totalValidos = validOrders.length;
+  
+  // Quantos pedidos ele já fez no ciclo atual
+  const progressoNoCiclo = loyaltyConfig ? totalValidos % loyaltyConfig.num : 0;
+  const faltamParaDesconto = loyaltyConfig ? loyaltyConfig.num - progressoNoCiclo : 0;
+  const pctBarra = loyaltyConfig ? (progressoNoCiclo / loyaltyConfig.num) * 100 : 0;
+
+
   const cancellableStatuses = ["aprovada", "aguardando_assinatura"];
 
   const fetchOrders = async () => {
@@ -221,6 +250,58 @@ const MyReservationsPage: React.FC = () => {
         >
           {message}
         </p>
+      )}
+
+      {/* CARD DE FIDELIDADE */}
+      {loyaltyConfig && orders.length > 0 && (
+        <div style={{
+          backgroundColor: "#fff",
+          padding: "20px",
+          borderRadius: "12px",
+          boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
+          border: "1px solid #e0e0e0",
+          marginBottom: "25px",
+          backgroundImage: "linear-gradient(to right, #ffffff, #f8f9fa)"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+            <h3 style={{ margin: 0, color: "#2c3e50", display: "flex", alignItems: "center", gap: "8px" }}>
+              Programa de Fidelidade
+            </h3>
+            <span style={{ fontSize: "0.9rem", color: "#666", fontWeight: "bold" }}>
+              {progressoNoCiclo} / {loyaltyConfig.num} pedidos
+            </span>
+          </div>
+          
+          <div style={{ 
+            width: "100%", 
+            height: "12px", 
+            backgroundColor: "#eee", 
+            borderRadius: "10px", 
+            overflow: "hidden",
+            marginBottom: "15px",
+            border: "1px solid #ddd"
+          }}>
+            <div style={{ 
+              width: `${pctBarra}%`, 
+              height: "100%", 
+              backgroundColor: pctBarra === 100 ? "#28a745" : "#007bff",
+              transition: "width 0.5s ease-in-out"
+            }} />
+          </div>
+
+          <p style={{ margin: 0, color: "#555", fontSize: "0.95rem" }}>
+            {faltamParaDesconto > 0 ? (
+              <>
+                Faltam apenas <strong>{faltamParaDesconto}</strong> {faltamParaDesconto === 1 ? 'pedido' : 'pedidos'} para você ganhar 
+                <span style={{ color: "#28a745", fontWeight: "bold" }}> {loyaltyConfig.pct}% de desconto</span> no seu próximo aluguel!
+              </>
+            ) : (
+              <span style={{ color: "#28a745", fontWeight: "bold" }}>
+                🎉 Parabéns! Seu próximo pedido terá {loyaltyConfig.pct}% de desconto automático!
+              </span>
+            )}
+          </p>
+        </div>
       )}
 
       {orders.length === 0 ? (
