@@ -9,6 +9,7 @@ const AdminStoreConfig: React.FC = () => {
   const [config, setConfig] = useState({
     fidelidade_num_pedidos: 10,
     fidelidade_desconto_pct: 10.00,
+    horario_limite_hoje: '12:00',
   });
 
   const backendUrl = "http://localhost:3001/api/config";
@@ -21,6 +22,7 @@ const AdminStoreConfig: React.FC = () => {
           setConfig({
             fidelidade_num_pedidos: data.fidelidade_num_pedidos,
             fidelidade_desconto_pct: parseFloat(data.fidelidade_desconto_pct),
+            horario_limite_hoje: data.horario_limite_hoje || '12:00',
           });
         }
       } catch (error) {
@@ -56,7 +58,7 @@ const AdminStoreConfig: React.FC = () => {
 
       <div style={cardStyle}>
         <h3 style={{ marginTop: 0, color: "#007bff", display: "flex", alignItems: "center", gap: "10px" }}>
-          🎁 Programa de Fidelidade
+          Programa de Fidelidade
         </h3>
         <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
           Defina as regras para o desconto automático baseado no histórico de compras do cliente.
@@ -87,6 +89,30 @@ const AdminStoreConfig: React.FC = () => {
               max="100"
             />
             <small style={helpTextStyle}>Valor do desconto aplicado sobre o subtotal da locação.</small>
+          </div>
+        </div>
+      </div>
+
+      <div style={cardStyle}>
+        <h3 style={{ marginTop: 0, color: "#dc3545", display: "flex", alignItems: "center", gap: "10px" }}>
+          Trava de Locação (Mesmo Dia)
+        </h3>
+        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
+          Defina até que horas um cliente pode solicitar uma locação para começar no próprio dia de hoje.
+        </p>
+
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: "250px" }}>
+            <label style={labelStyle}>Horário Limite</label>
+            <input
+              type="time"
+              value={config.horario_limite_hoje}
+              onChange={(e) => setConfig({ ...config, horario_limite_hoje: e.target.value })}
+              style={inputStyle}
+            />
+            <small style={helpTextStyle}>
+              Exemplo: Se definido como 12:00, às 12:01 ninguém poderá alugar algo para hoje.
+            </small>
           </div>
         </div>
       </div>

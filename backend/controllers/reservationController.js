@@ -155,7 +155,28 @@ const createOrder = async (req, res) => {
         let pctDesconto = 0;
         let aplicouFidelidade = false;
 
-        if (configLoja && configLoja.fidelidade_num_pedidos > 0) {
+        if (configLoja) {
+            // TRAVA DE HORÁRIO
+            if (configLoja.horario_limite_hoje) {
+                const hojeStr = new Date().toISOString().split('T')[0];
+                const temPedidoParaHoje = itens.some(item => item.data_inicio.split('T')[0] === hojeStr);
+
+                if (temPedidoParaHoje) {
+                    const agora = new Date();
+                    const [horaLimite, minutoLimite] = configLoja.horario_limite_hoje.split(':').map(Number);
+                    
+                    const limite = new Date();
+                    limite.setHours(horaLimite, minutoLimite, 0, 0);
+
+                    if (agora > limite) {
+                        return res.status(403).json({ 
+                            error: `Infelizmente o horário limite para locações de hoje (${configLoja.horario_limite_hoje}) já passou. Tente agendar para amanhã.` 
+                        });
+                    }
+                }
+            }
+
+            if (configLoja.fidelidade_num_pedidos > 0) {
             // Conta todos os pedidos que NÃO foram cancelados
             const totalPedidosValidos = await OrdemDeServico.count({
                 where: { 
@@ -169,6 +190,7 @@ const createOrder = async (req, res) => {
                 pctDesconto = parseFloat(configLoja.fidelidade_desconto_pct) / 100;
                 aplicouFidelidade = true;
             }
+          }
         }
 
         const ordensCriadas = await sequelize.transaction(async (t) => {
@@ -1375,7 +1397,7 @@ const confirmPickup = async (req, res) => {
 
 // Criar reserva rápida pelo balcão
 const criarReservaBalcao = async (req, res) => {
-    const { unidade_id, data_inicio, data_fim, cliente, pagamento } = req.body;
+    const { unidade_id, data_inicio, data_fim, cliente, pagamento, tipo_entrega, custo_frete, endereco_entrega } = req.body;
     const transaction = await OrdemDeServico.sequelize.transaction();
 
     try {
@@ -1384,13 +1406,13 @@ const criarReservaBalcao = async (req, res) => {
       const isCnpj = apenasNumeros.length > 11;
 
       // RESOLVER O CLIENTE Busca CPF OU CNPJ
-      let usuario = await Usuario.findOne({ 
-        where: { 
+      let usuario = await Usuario.findOne({
+        where: {
           [Op.or]: [
             { cpf: cliente.cpf_cnpj },
             { cnpj: cliente.cpf_cnpj }
           ]
-        } 
+        }
       });
 
       if (!usuario) {
@@ -1400,19 +1422,19 @@ const criarReservaBalcao = async (req, res) => {
           telefone: cliente.telefone,
           cpf: isCnpj ? null : cliente.cpf_cnpj,
           cnpj: isCnpj ? cliente.cpf_cnpj : null,
-          tipo_pessoa: isCnpj ? 'pj' : 'pf', 
-          razao_social: isCnpj ? cliente.nome : null, 
+          tipo_pessoa: isCnpj ? 'pj' : 'pf',
+          razao_social: isCnpj ? cliente.nome : null,
           email: cliente.email,
-          senha: Math.random().toString(36).slice(-10), 
+          senha: Math.random().toString(36).slice(-10),
           tipo_usuario: 'cliente',
         }, { transaction });
       } else {
         await checkUserDebts(usuario.id, transaction);
       }
-    
-      const dataInicio = new Date(data_inicio);
-      const dataFim = new Date(data_fim);
-      const diffTime = Math.abs(dataFim - dataInicio);
+
+      const dInicio = new Date(data_inicio);
+      const dFim = new Date(data_fim);
+      const diffTime = Math.abs(dFim - dInicio);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; 
 
       const unidade = await Unidade.findByPk(unidade_id, {
@@ -1424,7 +1446,8 @@ const criarReservaBalcao = async (req, res) => {
 
       if (!unidade) throw new Error("Máquina não encontrada.");
 
-      const valorTotal = diffDays * Number(unidade.Equipamento.preco_diaria);
+      const valorEquipamento = diffDays * Number(unidade.Equipamento.preco_diaria);
+      const valorTotal = valorEquipamento + (Number(custo_frete) || 0);
 
       // CRIAR A ORDEM DE SERVIÇO
       const novaOS = await OrdemDeServico.create({
@@ -1434,10 +1457,10 @@ const criarReservaBalcao = async (req, res) => {
         data_fim,
         valor_total: valorTotal,
         valor_sinal: pagamento.valor_sinal || 0,
-        tipo_entrega: 'retirada',
-        custo_frete: 0
+        tipo_entrega: tipo_entrega || 'retirada',
+        custo_frete: Number(custo_frete) || 0,
+        endereco_entrega: endereco_entrega || null
       }, { transaction });
-
       // VINCULAR A MÁQUINA ESPECÍFICA AO PEDIDO
       await ItemReserva.create({
         pedido_id: novaOS.id,

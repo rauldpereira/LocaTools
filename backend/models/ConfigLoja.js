@@ -16,6 +16,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 10.00
+    },
+    horario_limite_hoje: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: '12:00'
     }
   }, {
     sequelize,

@@ -43,6 +43,113 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
   const [metodoPagamento, setMetodoPagamento] = useState("pix");
   const [valorTotal, setValorTotal] = useState(0);
 
+  // --- TRAVA DE HORÁRIO ---
+  const [horarioLimite, setHorarioLimite] = useState("12:00");
+  const [hojeBloqueadoPelaTrava, setHojeBloqueadoPelaTrava] = useState(false);
+  const [desbloquearHojeManualmente, setDesbloquearHojeManualmente] = useState(false);
+
+  useEffect(() => {
+    const fetchStoreConfig = async () => {
+      try {
+        const { data } = await axios.get("http://localhost:3001/api/config");
+        if (data && data.horario_limite_hoje) {
+          setHorarioLimite(data.horario_limite_hoje);
+          
+          const [horaLimite, minutoLimite] = data.horario_limite_hoje.split(":").map(Number);
+          const agora = new Date();
+          const limite = new Date();
+          limite.setHours(horaLimite, minutoLimite, 0, 0);
+
+          if (agora > limite) {
+            setHojeBloqueadoPelaTrava(true);
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao carregar trava de horário:", err);
+      }
+    };
+    fetchStoreConfig();
+  }, []);
+
+  // --- CONTROLE DE ENTREGA / FRETE ---
+  const [tipoEntrega, setTipoEntrega] = useState<"retirada" | "entrega">("retirada");
+  const [address, setAddress] = useState({
+    cep: "",
+    rua: "",
+    numero: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+    complemento: ""
+  });
+  const [baseFreight, setBaseFreight] = useState(0);
+  const [calculandoFrete, setCalculandoFrete] = useState(false);
+  const [erroFrete, setErroFrete] = useState<string | null>(null);
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setAddress(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCepBlur = async () => {
+    const cepLimpo = address.cep.replace(/\D/g, "");
+    if (cepLimpo.length !== 8) return;
+
+    try {
+      const { data } = await axios.get(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      if (!data.erro) {
+        setAddress(prev => ({
+          ...prev,
+          rua: data.logradouro,
+          bairro: data.bairro,
+          cidade: data.localidade,
+          estado: data.uf
+        }));
+        // Envio automático pro campo de número
+        document.getElementById("input-numero")?.focus();
+      }
+    } catch (error) {
+      console.error("Erro ViaCEP", error);
+    }
+  };
+
+  // Reset do frete se o CEP mudar
+  useEffect(() => {
+    setBaseFreight(0);
+    setErroFrete(null);
+  }, [address.cep]);
+
+  const calculateFreightCost = async () => {
+    if (!address.rua || !address.numero || !address.cep) {
+      setErroFrete("Preencha Rua, Número e CEP.");
+      return;
+    }
+
+    setCalculandoFrete(true);
+    setErroFrete(null);
+
+    try {
+      const fullAddress = `${address.rua}, ${address.numero} - ${address.bairro}, ${address.cidade}/${address.estado}, ${address.cep}`;
+      const response = await axios.post("http://localhost:3001/api/frete/calcular", {
+        endereco_destino: fullAddress
+      });
+      setBaseFreight(Number(response.data.valor_total_frete));
+    } catch (err: any) {
+      console.error("Erro Frete:", err);
+      setErroFrete(err.response?.data?.error || "Erro ao calcular frete.");
+      setBaseFreight(0);
+    } finally {
+      setCalculandoFrete(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tipoEntrega === "retirada") {
+      setBaseFreight(0);
+      setErroFrete(null);
+    }
+  }, [tipoEntrega]);
+
   // MÁSCARAS DE INPUT 
   const applyCpfMask = (value: string) => {
     return value.replace(/\D/g, "").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})/, "$1-$2").replace(/(-\d{2})\d+?$/, "$1");
@@ -75,6 +182,15 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
         return;
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
+    const selectedStartStr = new Date(start.getTime() - (start.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);
+
+    // Validação da Trava de Horário
+    if (selectedStartStr === todayStr && hojeBloqueadoPelaTrava && !desbloquearHojeManualmente) {
+      alert(`Hoje está bloqueado para novas locações (Limite: ${horarioLimite}h). Marque "Ignorar trava" se deseja forçar.`);
+      return;
+    }
+
     // Valida se a data de início é anterior a hoje
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -83,7 +199,7 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
     startCheck.setHours(0, 0, 0, 0);
 
     if (startCheck < today) {
-      alert("⚠️ A data de início não pode ser anterior a hoje!");
+      alert("A data de início não pode ser anterior a hoje!");
       return;
     }
 
@@ -103,14 +219,19 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
       if (fim >= inicio) {
         const diffTime = Math.abs(fim.getTime() - inicio.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
-        setValorTotal(diffDays * Number(precoDiaria));
+        const total = (diffDays * Number(precoDiaria)) + baseFreight;
+        setValorTotal(total);
+        // Define o sinal como 50% do total por padrão
+        setValorSinal((total * 0.5).toFixed(2));
       } else {
         setValorTotal(0);
+        setValorSinal("");
       }
     } else {
         setValorTotal(0);
+        setValorSinal("");
     }
-  }, [dataInicio, dataFim, precoDiaria]);
+  }, [dataInicio, dataFim, precoDiaria, baseFreight]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,15 +244,28 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
       return alert("Você precisa desenhar o período de locação no calendário acima!");
     }
 
+    if (tipoEntrega === "entrega" && baseFreight === 0) {
+      return alert("Por favor, calcule o frete antes de finalizar.");
+    }
+
     setLoading(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
+      
+      const fullAddress = tipoEntrega === "entrega" 
+        ? `${address.rua}, ${address.numero}${address.complemento ? " - " + address.complemento : ""} - ${address.bairro}, ${address.cidade}/${address.estado} - CEP: ${address.cep}`
+        : null;
+
       const payload = {
         unidade_id: unidadeId,
         data_inicio: dataInicio,
         data_fim: dataFim,
         cliente: { nome, cpf_cnpj: cleanDoc, telefone, email },
         pagamento: { valor_sinal: Number(valorSinal), metodo_sinal: metodoPagamento },
+        tipo_entrega: tipoEntrega,
+        custo_frete: baseFreight,
+        endereco_entrega: fullAddress,
+        ignoreLockout: true
       };
 
       const { data } = await axios.post("http://localhost:3001/api/reservations/balcao", payload, config);
@@ -151,15 +285,60 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
     <div style={overlayStyle}>
       <div style={modalStyle}>
         <div style={headerStyle}>
-          <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
-            🤝 Aluguel Rápido (Balcão)
-          </h2>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+              Aluguel Rápido: {equipamentoNome}
+            </h2>
+            <span style={{ fontSize: "1rem", color: "#28a745", fontWeight: "bold", marginTop: "5px" }}>
+              Valor da Diária: R$ {Number(precoDiaria).toFixed(2)}
+            </span>
+          </div>
           <button onClick={onClose} style={closeBtnStyle}>&times;</button>
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* CALENDÁRIO */}
+          <div style={{ backgroundColor: "#343a40", padding: "15px", borderRadius: "8px", marginBottom: "25px", color: "white" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+              <h4 style={{ margin: 0, color: "#f8f9fa" }}>
+                Escolha o Período no Mapa
+              </h4>
+
+              {hojeBloqueadoPelaTrava && (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#dc3545", padding: "5px 10px", borderRadius: "5px", fontSize: "0.85rem" }}>
+                  <span>Trava {horarioLimite}h:</span>
+                  <label style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                    <input type="checkbox" checked={desbloquearHojeManualmente} onChange={e => setDesbloquearHojeManualmente(e.target.checked)} />
+                    Ignorar e liberar hoje
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {hojeBloqueadoPelaTrava && !desbloquearHojeManualmente && (
+              <p style={{ backgroundColor: "rgba(255,255,255,0.1)", padding: "8px", borderRadius: "4px", fontSize: "0.85rem", color: "#ffc107", textAlign: "center", marginBottom: "10px" }}>
+                Nota: O horário limite para locações de hoje ({horarioLimite}) já passou. O dia de hoje está travado.
+              </p>
+            )}
+            
+            <div style={{ padding: "10px", backgroundColor: "#fff", borderRadius: "8px" }}>
+              <UnitCalendar
+                unitId={unidadeId}
+                token={token}
+                reservations={reservations}
+                onUpdate={() => {}} 
+                isPicker={true} 
+                onSelectRange={handleSelectDateRange} 
+              />
+            </div>
+            
+            <p style={{ margin: "10px 0 0 0", fontSize: "0.85rem", color: "#adb5bd", textAlign: "center" }}>
+              * Clique para selecionar os dias do aluguel.
+            </p>
+          </div>
+
           {/* CLIENTE */}
-          <h4 style={sectionTitleStyle}>👤 Dados do Cliente</h4>
+          <h4 style={sectionTitleStyle}> Dados do Cliente</h4>
           <div style={{ display: "flex", gap: "20px", marginBottom: "15px" }}>
             <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", fontWeight: "bold", color: "#444" }}>
               <input type="radio" name="tipoPessoa" checked={tipoPessoa === "pf"} onChange={() => setTipoPessoa("pf")} /> Pessoa Física (CPF)
@@ -190,34 +369,82 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
             </div>
           </div>
 
-          {/* CALENDÁRIO INTERATIVO */}
-          <div style={{ backgroundColor: "#343a40", padding: "15px", borderRadius: "8px", margin: "25px 0", color: "white" }}>
-            <h4 style={{ margin: "0 0 15px 0", color: "#f8f9fa", textAlign: "center" }}>
-              📅 Desenhe o Período no Mapa
-            </h4>
-            
-            <div style={{ padding: "10px", backgroundColor: "#fff", borderRadius: "8px" }}>
-              <UnitCalendar
-                unitId={unidadeId}
-                token={token}
-                reservations={reservations}
-                onUpdate={() => {}} 
-                isPicker={true} 
-                onSelectRange={handleSelectDateRange} 
-              />
-            </div>
-            
-            <p style={{ margin: "10px 0 0 0", fontSize: "0.85rem", color: "#adb5bd", textAlign: "center" }}>
-              * Clique e arraste para selecionar os dias do aluguel.
-            </p>
+          {/* ENTREGA / RETIRADA */}
+          <h4 style={sectionTitleStyle}> Logística</h4>
+          <div style={{ display: "flex", gap: "20px", marginBottom: "15px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", fontWeight: "bold", color: "#444" }}>
+              <input type="radio" name="tipoEntrega" checked={tipoEntrega === "retirada"} onChange={() => setTipoEntrega("retirada")} /> Retirada na Loja
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer", fontWeight: "bold", color: "#444" }}>
+              <input type="radio" name="tipoEntrega" checked={tipoEntrega === "entrega"} onChange={() => setTipoEntrega("entrega")} /> Entrega no Local
+            </label>
           </div>
 
+          {tipoEntrega === "entrega" && (
+            <div style={{ backgroundColor: "#f1f3f5", padding: "15px", borderRadius: "8px", marginBottom: "20px" }}>
+              <div style={rowStyle}>
+                <div style={{ ...inputGroupStyle, flex: "0 0 150px" }}>
+                  <label style={labelStyle}>CEP *</label>
+                  <input type="text" name="cep" value={address.cep} onChange={handleAddressChange} onBlur={handleCepBlur} style={inputStyle} placeholder="00000-000" />
+                </div>
+                <div style={inputGroupStyle}>
+                  <label style={labelStyle}>Rua *</label>
+                  <input type="text" name="rua" value={address.rua} onChange={handleAddressChange} style={inputStyle} />
+                </div>
+                <div style={{ ...inputGroupStyle, flex: "0 0 100px" }}>
+                  <label style={labelStyle}>Nº *</label>
+                  <input type="text" name="numero" value={address.numero} onChange={handleAddressChange} style={inputStyle} />
+                </div>
+              </div>
+              <div style={rowStyle}>
+                <div style={inputGroupStyle}>
+                  <label style={labelStyle}>Bairro *</label>
+                  <input type="text" name="bairro" value={address.bairro} onChange={handleAddressChange} style={inputStyle} />
+                </div>
+                <div style={inputGroupStyle}>
+                  <label style={labelStyle}>Cidade *</label>
+                  <input type="text" name="cidade" value={address.cidade} onChange={handleAddressChange} style={inputStyle} />
+                </div>
+                <div style={{ ...inputGroupStyle, flex: "0 0 80px" }}>
+                  <label style={labelStyle}>UF *</label>
+                  <input type="text" name="estado" value={address.estado} onChange={handleAddressChange} style={inputStyle} />
+                </div>
+              </div>
+              <div style={rowStyle}>
+                <div style={inputGroupStyle}>
+                  <label style={labelStyle}>Complemento / Ponto de Ref.</label>
+                  <input type="text" name="complemento" value={address.complemento} onChange={handleAddressChange} style={inputStyle} />
+                </div>
+                <div style={{ display: "flex", alignItems: "flex-end" }}>
+                  <button 
+                    type="button" 
+                    onClick={calculateFreightCost} 
+                    disabled={calculandoFrete}
+                    style={{ ...btnSubmitStyle, backgroundColor: "#6c757d", width: "200px" }}
+                  >
+                    {calculandoFrete ? "Calculando..." : "Calcular Frete"}
+                  </button>
+                </div>
+              </div>
+              {erroFrete && <p style={{ color: "red", fontSize: "0.85rem", marginTop: "10px" }}>{erroFrete}</p>}
+              {baseFreight > 0 && (
+                <p style={{ color: "#28a745", fontWeight: "bold", marginTop: "10px" }}>
+                  ✅ Frete calculado: R$ {baseFreight.toFixed(2)}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* RESUMO E FINANCEIRO */}
-          <h4 style={sectionTitleStyle}>💰 Resumo da Locação</h4>
+          <h4 style={sectionTitleStyle}>Resumo da Locação</h4>
           <div style={{ padding: "15px", backgroundColor: "#f8f9fa", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                   <span style={{color: "#555"}}>Equipamento:</span>
                   <strong style={{color: "#333"}}>{equipamentoNome} (# {unidadeId})</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <span style={{color: "#555"}}>Logística:</span>
+                  <strong style={{color: "#333"}}>{tipoEntrega === "retirada" ? "Retirada na Loja" : "Entrega no Local"}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                   <span style={{color: "#555"}}>Saída Prevista:</span>
@@ -227,8 +454,14 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
                   <span style={{color: "#555"}}>Devolução Prevista:</span>
                   <strong style={{color: "#333"}}>{dataFim ? new Date(dataFim + 'T12:00:00').toLocaleDateString() : 'Selecione no calendário ⬆️'}</strong>
               </div>
+              {baseFreight > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <span style={{color: "#555"}}>Custo de Frete:</span>
+                  <strong style={{color: "#333"}}>R$ {baseFreight.toFixed(2)}</strong>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: "12px", borderTop: "1px dashed #ccc", paddingTop: "12px" }}>
-                  <span style={{fontSize: "1.1rem", color: "#555"}}>Total Diárias ({valorTotal > 0 ? (valorTotal / Number(precoDiaria)) : 0}x):</span>
+                  <span style={{fontSize: "1.1rem", color: "#555"}}>Total Geral:</span>
                   <strong style={{fontSize: "1.4rem", color: "#28a745"}}>R$ {valorTotal.toFixed(2)}</strong>
               </div>
           </div>
@@ -243,7 +476,7 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
               <select value={metodoPagamento} onChange={e => setMetodoPagamento(e.target.value)} style={inputStyle}>
                 <option value="pix">PIX</option>
                 <option value="cartao_credito">Cartão de Crédito</option>
-                <option value="cartao_debito">Cartão de Débito</option>
+                <option value="cartao_debito">Cartão de Debitô</option>
                 <option value="dinheiro">Dinheiro Espécie</option>
               </select>
             </div>
@@ -251,7 +484,7 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
             <button type="button" onClick={onClose} style={btnCancelStyle}>Cancelar</button>
-            <button type="submit" disabled={loading || !dataInicio} style={{...btnSubmitStyle, opacity: (!dataInicio || loading) ? 0.6 : 1, cursor: (!dataInicio || loading) ? 'not-allowed' : 'pointer'}}>
+            <button type="submit" disabled={loading || !dataInicio || (tipoEntrega === 'entrega' && baseFreight === 0)} style={{...btnSubmitStyle, opacity: (!dataInicio || loading || (tipoEntrega === 'entrega' && baseFreight === 0)) ? 0.6 : 1, cursor: (!dataInicio || loading || (tipoEntrega === 'entrega' && baseFreight === 0)) ? 'not-allowed' : 'pointer'}}>
               {loading ? "Gerando..." : "Confirmar e Liberar Máquina"}
             </button>
           </div>
