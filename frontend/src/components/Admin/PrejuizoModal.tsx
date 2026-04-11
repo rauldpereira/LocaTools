@@ -35,7 +35,7 @@ const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            await axios.post('http://localhost:3001/api/prejuizos', {
+            await axios.post(`${import.meta.env.VITE_API_URL}/api/prejuizos`, {
                 item_reserva_id: item.id,
                 tipo,
                 valor_prejuizo: parseFloat(valor),

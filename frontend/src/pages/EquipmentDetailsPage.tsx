@@ -40,7 +40,7 @@ const EquipmentDetailsPage: React.FC = () => {
     }
     const fetchEquipment = async () => {
       try {
-        const response = await axios.get<any>(`http://localhost:3001/api/equipment/${id}`);
+        const response = await axios.get<any>(`${import.meta.env.VITE_API_URL}/api/equipment/${id}`);
         const data = response.data;
 
         setEquipment({
@@ -56,14 +56,14 @@ const EquipmentDetailsPage: React.FC = () => {
             
             if (Array.isArray(parsed) && parsed.length > 0) {
               // Adiciona o domínio do backend em cada URL
-              const fullUrls = parsed.map((url: string) => `http://localhost:3001${url}`);
+              const fullUrls = parsed.map((url: string) => `${import.meta.env.VITE_API_URL}${url}`);
               setGallery(fullUrls);
               setMainImage(fullUrls[0]); // Define a primeira como capa
             }
           } catch (e) {
             const singleUrl = data.url_imagem.startsWith('http') 
               ? data.url_imagem 
-              : `http://localhost:3001${data.url_imagem}`;
+              : `${import.meta.env.VITE_API_URL}${data.url_imagem}`;
             
             setGallery([singleUrl]);
             setMainImage(singleUrl);

@@ -87,7 +87,7 @@ const FinalizePaymentPage: React.FC = () => {
     const [multaAtraso, setMultaAtraso] = useState(0);
     const [diasAtraso, setDiasAtraso] = useState(0);
 
-    const backendUrl = 'http://localhost:3001';
+    const backendUrl = import.meta.env.VITE_API_URL;
 
     const fetchOrderDetails = async () => {
         if (!token || !orderId) return;

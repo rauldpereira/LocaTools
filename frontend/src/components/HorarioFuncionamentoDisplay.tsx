@@ -60,7 +60,7 @@ const HorarioFuncionamentoDisplay: React.FC = () => {
   const [linhas, setLinhas] = useState<{dias: string, horas: string}[]>([]);
 
   useEffect(() => {
-    axios.get('http://localhost:3001/api/horarios')
+    axios.get(`${import.meta.env.VITE_API_URL}/api/horarios`)
       .then(res => {
         if (res.data.length > 0) {
           setLinhas(groupHorarios(res.data));

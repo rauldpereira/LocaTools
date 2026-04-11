@@ -34,7 +34,7 @@ const EquipmentList: React.FC = () => {
     
     const fetchEquipments = async () => {
         try {
-            const response = await axios.get('http://localhost:3001/api/equipment');
+            const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/equipment`);
             setEquipments(response.data);
         } catch (error) {
             console.error('Erro ao buscar equipamentos:', error);
@@ -50,7 +50,7 @@ const EquipmentList: React.FC = () => {
     const handleDelete = async (id: number) => {
         if (!confirm('Tem certeza que deseja excluir este equipamento?')) return;
         try {
-            await axios.delete(`http://localhost:3001/api/equipment/${id}`, {
+            await axios.delete(`${import.meta.env.VITE_API_URL}/api/equipment/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert('Equipamento excluído!');
@@ -66,11 +66,11 @@ const EquipmentList: React.FC = () => {
         try {
             const parsed = JSON.parse(urlImagem);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                return `http://localhost:3001${parsed[0]}`;
+                return `${import.meta.env.VITE_API_URL}${parsed[0]}`;
             }
         } catch (e) {
             if (urlImagem.startsWith('http')) return urlImagem;
-            return `http://localhost:3001${urlImagem}`;
+            return `${import.meta.env.VITE_API_URL}${urlImagem}`;
         }
 
         return 'https://via.placeholder.com/150';

@@ -61,7 +61,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
         setError('');
 
         const { data: meses } = await axios.get<IMesPublicado[]>(
-          'http://localhost:3001/api/calendario/meses-publicados'
+          `${import.meta.env.VITE_API_URL}/api/calendario/meses-publicados`
         );
 
         if (meses.length === 0) {
@@ -105,7 +105,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
 
       try {
         const { data } = await axios.get<IDiaStatus[]>(
-          'http://localhost:3001/api/calendario/status-mensal',
+          `${import.meta.env.VITE_API_URL}/api/calendario/status-mensal`,
           { params: { ano, mes } }
         );
         const diasMap = new Map(data.map(dia => [dia.data, dia]));
@@ -127,7 +127,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
 
     const fetchDailyAvailability = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:3001/api/equipment/${order.ItemReservas[0].Unidade.Equipamento.id}/daily-availability`, {
+        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/equipment/${order.ItemReservas[0].Unidade.Equipamento.id}/daily-availability`, {
           params: {
             startDate: toISODate(minDate),
             endDate: toISODate(maxDate),
@@ -153,7 +153,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
     const check = async () => {
       try {
         const config = { headers: { Authorization: `Bearer ${token}` } };
-        const { data } = await axios.post(`http://localhost:3001/api/reservations/${order.id}/check-reschedule`, {
+        const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/reservations/${order.id}/check-reschedule`, {
           startDate: newStartDate,
           endDate: newEndDate
         }, config);
@@ -258,7 +258,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
     setIsSubmitting(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.put(`http://localhost:3001/api/reservations/${order.id}/reschedule`, { newStartDate, newEndDate }, config);
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/reservations/${order.id}/reschedule`, { newStartDate, newEndDate }, config);
       onSuccess();
     } catch (err: any) {
       setError(err.response?.data?.error || "Não foi possível processar a remarcação.");

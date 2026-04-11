@@ -11,9 +11,10 @@ const AdminStoreConfig: React.FC = () => {
     fidelidade_desconto_pct: 10.00,
     fidelidade_ativo: true,
     horario_limite_hoje: '12:00',
+    cnpj: '00.000.000/0001-00',
   });
 
-  const backendUrl = "http://localhost:3001/api/config";
+  const backendUrl = `${import.meta.env.VITE_API_URL}/api/config`;
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -25,6 +26,7 @@ const AdminStoreConfig: React.FC = () => {
             fidelidade_desconto_pct: parseFloat(data.fidelidade_desconto_pct),
             fidelidade_ativo: data.fidelidade_ativo ?? true,
             horario_limite_hoje: data.horario_limite_hoje || '12:00',
+            cnpj: data.cnpj || '00.000.000/0001-00',
           });
         }
       } catch (error) {
@@ -48,6 +50,16 @@ const AdminStoreConfig: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const formatCNPJ = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    return digits
+      .replace(/^(\d{2})(\d)/, "$1.$2")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d)/, ".$1/$2")
+      .replace(/(\d{4})(\d)/, "$1-$2")
+      .slice(0, 18);
   };
 
   if (loading) return <div>Carregando configurações...</div>;
@@ -130,6 +142,29 @@ const AdminStoreConfig: React.FC = () => {
             <small style={helpTextStyle}>
               Exemplo: Se definido como 12:00, às 12:01 ninguém poderá alugar algo para hoje.
             </small>
+          </div>
+        </div>
+      </div>
+
+      <div style={cardStyle}>
+        <h3 style={{ marginTop: 0, color: "#17a2b8", display: "flex", alignItems: "center", gap: "10px" }}>
+          Informações Legais
+        </h3>
+        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
+          Dados que aparecerão nos contratos e termos de devolução.
+        </p>
+
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: "250px" }}>
+            <label style={labelStyle}>CNPJ da Loja</label>
+            <input
+              type="text"
+              value={config.cnpj}
+              onChange={(e) => setConfig({ ...config, cnpj: formatCNPJ(e.target.value) })}
+              style={inputStyle}
+              placeholder="00.000.000/0001-00"
+            />
+            <small style={helpTextStyle}>Este CNPJ será impresso automaticamente nos documentos em PDF.</small>
           </div>
         </div>
       </div>

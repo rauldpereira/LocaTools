@@ -574,8 +574,11 @@ const generateContract = async (req, res) => {
         doc.fontSize(14).text(`Contrato Nº: ${order.id}`, { align: 'center' });
         doc.moveDown(2);
 
+        const configLoja = await ConfigLoja.findOne();
+        const cnpjLoja = configLoja?.cnpj || '00.000.000/0001-00';
+
         doc.fontSize(12).font('Helvetica-Bold').text('1. AS PARTES');
-        doc.font('Helvetica').text(`LOCADORA: LOCATOOLS LTDA, CNPJ 00.000.000/0001-00`);
+        doc.font('Helvetica').text(`LOCADORA: LOCATOOLS LTDA, CNPJ ${cnpjLoja}`);
         doc.text(`LOCATÁRIO(A): ${order.Usuario.nome}, Email: ${order.Usuario.email}`);
         doc.moveDown();
 
@@ -1252,8 +1255,15 @@ const generateReturnContract = async (req, res) => {
         doc.fontSize(14).text(`Contrato Nº: ${order.id}`, { align: 'center' });
         doc.moveDown(2);
 
+        const configLoja = await ConfigLoja.findOne();
+        const cnpjLoja = configLoja?.cnpj || '00.000.000/0001-00';
+
         // Dados do Cliente
-        doc.fontSize(12).font('Helvetica-Bold').text('1. DADOS DO LOCATÁRIO');
+        doc.fontSize(12).font('Helvetica-Bold').text('1. DADOS DA LOCADORA');
+        doc.font('Helvetica').text(`LOCATOOLS LTDA, CNPJ ${cnpjLoja}`);
+        doc.moveDown();
+
+        doc.fontSize(12).font('Helvetica-Bold').text('2. DADOS DO LOCATÁRIO');
         doc.font('Helvetica').text(`Nome: ${order.Usuario.nome}`);
         doc.text(`Documento: ${order.Usuario.cpf || order.Usuario.cnpj || 'Não informado'}`);
         doc.moveDown();

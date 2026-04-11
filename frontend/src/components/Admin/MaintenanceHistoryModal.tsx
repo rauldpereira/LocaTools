@@ -41,7 +41,7 @@ const MaintenanceHistoryModal: React.FC<MaintenanceHistoryModalProps> = ({ isOpe
             setLoading(true);
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const { data } = await axios.get(`http://localhost:3001/api/units/${unitId}/history`, config);
+                const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/units/${unitId}/history`, config);
                 setHistory(data);
             } catch (error) {
                 console.error("Erro ao buscar histórico:", error);

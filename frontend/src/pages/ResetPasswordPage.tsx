@@ -15,7 +15,7 @@ const ResetPasswordPage = () => {
     if (novaSenha !== confirmSenha) return alert("As senhas não coincidem!");
 
     try {
-      await axios.post('http://localhost:3001/api/reset-password', { token, novaSenha });
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/reset-password`, { token, novaSenha });
       alert("Senha alterada com sucesso! Faça login.");
       navigate('/auth'); // Manda o cara pro Login
     } catch (err: any) {

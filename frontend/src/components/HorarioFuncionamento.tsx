@@ -30,7 +30,7 @@ const AdminHorariosPage: React.FC = () => {
 
   const fetchHorarios = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/horarios');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/horarios`);
       const dataBanco = response.data;
 
       const estruturaCompleta = DIAS_ORDENADOS.map(dia => {
@@ -60,7 +60,7 @@ const AdminHorariosPage: React.FC = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
-      await axios.post('http://localhost:3001/api/horarios', { horarios }, config);
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/horarios`, { horarios }, config);
       
       alert('Horários atualizados com sucesso!');
     } catch (error) {

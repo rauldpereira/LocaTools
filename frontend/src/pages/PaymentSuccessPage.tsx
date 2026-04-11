@@ -41,7 +41,7 @@ const PaymentSuccessPage: React.FC = () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 const fetchedOrders = await Promise.all(
-                    idList.map(id => axios.get(`http://localhost:3001/api/reservations/${id}`, config).then(res => res.data))
+                    idList.map(id => axios.get(`${import.meta.env.VITE_API_URL}/api/reservations/${id}`, config).then(res => res.data))
                 );
                 setOrders(fetchedOrders);
             } catch (error) {

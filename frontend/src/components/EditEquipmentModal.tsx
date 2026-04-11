@@ -50,11 +50,11 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             // Busca Categorias para o Select
-            const resCat = await axios.get('http://localhost:3001/api/categories', config);
+            const resCat = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`, config);
             setCategories(resCat.data);
 
             // Busca Dados do Equipamento
-            const resEquip = await axios.get(`http://localhost:3001/api/equipment/${equipmentId}`);
+            const resEquip = await axios.get(`${import.meta.env.VITE_API_URL}/api/equipment/${equipmentId}`);
             const data = resEquip.data;
 
             setFormData({
@@ -75,7 +75,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
                         id: `old-${index}`,
                         type: 'url',
                         content: url,
-                        preview: `http://localhost:3001${url}`
+                        preview: `${import.meta.env.VITE_API_URL}${url}`
                     }));
                 } catch {
                     const url = data.url_imagem;
@@ -83,14 +83,14 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
                         id: 'old-0',
                         type: 'url',
                         content: url,
-                        preview: url.startsWith('http') ? url : `http://localhost:3001${url}`
+                        preview: url.startsWith('http') ? url : `${import.meta.env.VITE_API_URL}${url}`
                     }];
                 }
             }
             setImageList(loadedImages);
 
             // Busca Avarias
-            const resAvaria = await axios.get(`http://localhost:3001/api/tipos-avaria/${equipmentId}`, config);
+            const resAvaria = await axios.get(`${import.meta.env.VITE_API_URL}/api/tipos-avaria/${equipmentId}`, config);
             setTiposAvaria(resAvaria.data.map((a: any) => ({ ...a, preco: String(a.preco) })));
 
         } catch (error) {
@@ -155,7 +155,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
 
             formDataEnvio.append('existing_images', JSON.stringify(existingUrls));
 
-            await axios.put(`http://localhost:3001/api/equipment/${equipmentId}`, formDataEnvio, config);
+            await axios.put(`${import.meta.env.VITE_API_URL}/api/equipment/${equipmentId}`, formDataEnvio, config);
             
             alert('Equipamento salvo com sucesso!');
             onSuccess();
@@ -179,7 +179,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = { ...avariaToUpdate, preco: parseFloat(avariaToUpdate.preco) };
-            await axios.put(`http://localhost:3001/api/tipos-avaria/${avariaToUpdate.id}`, payload, config);
+            await axios.put(`${import.meta.env.VITE_API_URL}/api/tipos-avaria/${avariaToUpdate.id}`, payload, config);
             alert('Avaria atualizada!');
         } catch (error) { alert('Erro ao atualizar avaria.'); }
     };
@@ -188,7 +188,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = { ...newAvaria, preco: parseFloat(newAvaria.preco), id_equipamento: equipmentId };
-            await axios.post('http://localhost:3001/api/tipos-avaria', payload, config);
+            await axios.post(`${import.meta.env.VITE_API_URL}/api/tipos-avaria`, payload, config);
             setNewAvaria({ descricao: '', preco: '' });
             fetchData();
         } catch (error) { alert('Erro ao adicionar avaria.'); }
@@ -198,7 +198,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
         if (!confirm('Apagar esta avaria?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`http://localhost:3001/api/tipos-avaria/${id}`, config);
+            await axios.delete(`${import.meta.env.VITE_API_URL}/api/tipos-avaria/${id}`, config);
             fetchData();
         } catch (error) { alert('Erro ao apagar avaria.'); }
     };

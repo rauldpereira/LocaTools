@@ -22,7 +22,7 @@ const ForcePasswordChangeModal: React.FC = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
-      const response = await axios.put('http://localhost:3001/api/profile/password', {
+      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/profile/password`, {
         new_senha: newSenha
       }, config);
 

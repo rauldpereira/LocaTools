@@ -29,7 +29,7 @@ const Profile: React.FC = () => {
         setError('Token de autenticação não encontrado.');
         return;
       }
-      await axios.put('http://localhost:3001/api/profile', { nome, email }, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/profile`, { nome, email }, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -66,7 +66,7 @@ const Profile: React.FC = () => {
           setError('Token de autenticação não encontrado.');
           return;
         }
-        await axios.put('http://localhost:3001/api/profile/password', {
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/profile/password`, {
             old_senha: oldPassword,
             new_senha: newPassword,
         }, {

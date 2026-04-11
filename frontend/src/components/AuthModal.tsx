@@ -25,7 +25,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setError('');
 
     try {
-      const { data } = await axios.post('http://localhost:3001/api/login', { email, senha });
+      const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/login`, { email, senha });
       
       login(data.token); 
       

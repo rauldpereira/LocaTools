@@ -147,7 +147,7 @@ const CheckoutForm = ({ usuario, orderIdsList }: { usuario: UsuarioDaOrdem, orde
         if (stripeToken) {
             try {
                 const config = { headers: { Authorization: `Bearer ${authToken}` } };
-                await axios.post('http://localhost:3001/api/payments/process', {
+                await axios.post(`${import.meta.env.VITE_API_URL}/api/payments/process`, {
                     orderIds: orderIdsList, 
                     token: stripeToken.id,
                     cpfCnpj: docLimpo 
@@ -279,7 +279,7 @@ const PaymentPage: React.FC = () => {
             if (!token) return;
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const { data: storeConfig } = await axios.get('http://localhost:3001/api/config');
+                const { data: storeConfig } = await axios.get(`${import.meta.env.VITE_API_URL}/api/config`);
                 if (storeConfig) {
                     setLoyaltyConfig({
                         num: storeConfig.fidelidade_num_pedidos,
@@ -287,7 +287,7 @@ const PaymentPage: React.FC = () => {
                         ativo: !!storeConfig.fidelidade_ativo
                     });
                 }
-                const { data: myOrders } = await axios.get('http://localhost:3001/api/reservations/my', config);
+                const { data: myOrders } = await axios.get(`${import.meta.env.VITE_API_URL}/api/reservations/my`, config);
                 const count = myOrders.filter((o: any) => o.status !== 'cancelada').length;
                 setCompletedOrders(count);
             } catch (error) {
@@ -307,7 +307,7 @@ const PaymentPage: React.FC = () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 const fetchedOrders = await Promise.all(
-                    idList.map(id => axios.get(`http://localhost:3001/api/reservations/${id}`, config).then(res => res.data))
+                    idList.map(id => axios.get(`${import.meta.env.VITE_API_URL}/api/reservations/${id}`, config).then(res => res.data))
                 );
                 setOrders(fetchedOrders);
             } catch (error) {

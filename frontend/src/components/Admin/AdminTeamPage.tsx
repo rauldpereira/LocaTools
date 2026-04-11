@@ -46,7 +46,7 @@ const AdminTeamPage: React.FC = () => {
 
   const carregarEquipe = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/team', getConfig());
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/team`, getConfig());
       setEquipe(response.data);
     } catch (error) {
       console.error('Erro ao carregar equipe:', error);
@@ -114,7 +114,7 @@ const AdminTeamPage: React.FC = () => {
   const salvarPermissoes = async () => {
     if (!usuarioEditando) return;
     try {
-      await axios.put(`http://localhost:3001/api/team/${usuarioEditando.id}/permissions`, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/team/${usuarioEditando.id}/permissions`, {
         permissoes: permissoesAtuais
       }, getConfig());
       alert('Permissões salvas com sucesso!');
@@ -136,7 +136,7 @@ const AdminTeamPage: React.FC = () => {
 
     try {
       const payload = { ...novoUser, cpf: cpfLimpo };
-      await axios.post('http://localhost:3001/api/team', payload, getConfig());
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/team`, payload, getConfig());
       alert('Colaborador criado com sucesso!');
       setModalCriarAberto(false);
       setNovoUser({ nome: '', email: '', cpf: '', senha: '', tipo_usuario: 'funcionario' });
@@ -168,7 +168,7 @@ const AdminTeamPage: React.FC = () => {
     }
 
     try {
-      await axios.put(`http://localhost:3001/api/team/${dadosEdicao.id}/dados`, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/team/${dadosEdicao.id}/dados`, {
         nome: dadosEdicao.nome,
         email: dadosEdicao.email,
         cpf: cpfLimpo,
@@ -187,7 +187,7 @@ const AdminTeamPage: React.FC = () => {
   const excluirUsuario = async (id: number, nome: string) => {
     if (window.confirm(`⚠️ ATENÇÃO!\nTem certeza que deseja EXCLUIR DEFINITIVAMENTE o usuário "${nome}"?\n\nEsta ação não pode ser desfeita.`)) {
       try {
-        await axios.delete(`http://localhost:3001/api/team/${id}`, getConfig());
+        await axios.delete(`${import.meta.env.VITE_API_URL}/api/team/${id}`, getConfig());
         alert('Usuário excluído com sucesso!');
         carregarEquipe();
       } catch (error: any) {

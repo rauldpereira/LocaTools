@@ -114,7 +114,7 @@ const ReservationDetailsPage: React.FC = () => {
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [contractLoading, setContractLoading] = useState(false);
-  const backendUrl = "http://localhost:3001";
+  const backendUrl = import.meta.env.VITE_API_URL;
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [lojaConfig, setLojaConfig] = useState<any>(null);
 
@@ -453,7 +453,7 @@ const ReservationDetailsPage: React.FC = () => {
         responseType: "blob" as "json", // Blob porque é arquivo PDF
       };
       const response = await axios.get(
-        `http://localhost:3001/api/reservations/return-contract/${orderId}`,
+        `${import.meta.env.VITE_API_URL}/api/reservations/return-contract/${orderId}`,
         config,
       );
 

@@ -49,7 +49,7 @@ const CartPage: React.FC = () => {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 
                 // Busca config da loja
-                const { data: storeConfig } = await axios.get('http://localhost:3001/api/config');
+                const { data: storeConfig } = await axios.get(`${import.meta.env.VITE_API_URL}/api/config`);
                 if (storeConfig) {
                     setLoyaltyConfig({
                         num: storeConfig.fidelidade_num_pedidos,
@@ -59,7 +59,7 @@ const CartPage: React.FC = () => {
                 }
 
                 // Busca pedidos do usuário para contar os válidos
-                const { data: myOrders } = await axios.get('http://localhost:3001/api/reservations/my', config);
+                const { data: myOrders } = await axios.get(`${import.meta.env.VITE_API_URL}/api/reservations/my`, config);
                 // Conta todos os que NÃO estão cancelados
                 const count = myOrders.filter((o: any) => o.status !== 'cancelada').length;
                 setCompletedOrders(count);
@@ -88,7 +88,7 @@ const CartPage: React.FC = () => {
             try {
                 const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
                 
-                const response = await axios.get('http://localhost:3001/api/frete/config', config);
+                const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/frete/config`, config);
                 
                 if (response.data && response.data.endereco_origem) {
                     setLojaAddress("Nosso endereço: " + response.data.endereco_origem);
@@ -152,7 +152,7 @@ const CartPage: React.FC = () => {
         try {
             const fullAddress = `${address.rua}, ${address.numero} - ${address.bairro}, ${address.cidade}/${address.estado}, ${address.cep}`;
 
-            const response = await axios.post('http://localhost:3001/api/frete/calcular', {
+            const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/frete/calcular`, {
                 endereco_destino: fullAddress
             });
 
@@ -232,7 +232,7 @@ const CartPage: React.FC = () => {
                     'Content-Type': 'application/json',
                 },
             };
-            const { data: newOrder } = await axios.post('http://localhost:3001/api/reservations', reservationData, config);
+            const { data: newOrder } = await axios.post(`${import.meta.env.VITE_API_URL}/api/reservations`, reservationData, config);
             clearCart();
             // Passa os IDs separados por vírgula na URL (ex: /payment-multi?ids=101,102)
             navigate(`/payment-multi?ids=${newOrder.ids.join(',')}`);

@@ -26,6 +26,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
         defaultValue: '12:00'
+    },
+    cnpj: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: '00.000.000/0001-00'
     }
   }, {
     sequelize,

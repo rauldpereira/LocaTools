@@ -40,7 +40,7 @@ const NotificationBell: React.FC = () => {
 
     const carregarNotificacoes = async () => {
       try {
-        const { data } = await axios.get('http://localhost:3001/api/notificacoes', {
+        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/notificacoes`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setNotificacoes(data);
@@ -51,7 +51,7 @@ const NotificationBell: React.FC = () => {
 
     carregarNotificacoes();
 
-    socketRef.current = io('http://localhost:3001', {
+    socketRef.current = io(import.meta.env.VITE_API_URL, {
       query: { userId: user.id }
     });
 
@@ -74,7 +74,7 @@ const NotificationBell: React.FC = () => {
 
   const marcarComoLida = async (id: number, link?: string) => {
     try {
-      await axios.put(`http://localhost:3001/api/notificacoes/${id}/read`, {}, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/notificacoes/${id}/read`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -93,7 +93,7 @@ const NotificationBell: React.FC = () => {
 
   const marcarTodasComoLidas = async () => {
     try {
-      await axios.put(`http://localhost:3001/api/notificacoes/read-all`, {}, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/notificacoes/read-all`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotificacoes((prev) => prev.map((n) => ({ ...n, lida: true })));
@@ -106,7 +106,7 @@ const NotificationBell: React.FC = () => {
   const deletarNotificacao = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
     try {
-      await axios.delete(`http://localhost:3001/api/notificacoes/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/notificacoes/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotificacoes((prev) => prev.filter((n) => n.id !== id));

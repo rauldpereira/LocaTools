@@ -65,7 +65,7 @@ const UnitItem: React.FC<{
         status: status,
         avarias_atuais: avariasAtuaisIDs
       };
-      await axios.put(`http://localhost:3001/api/units/${unit.id}/details`, payload, config);
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/units/${unit.id}/details`, payload, config);
       alert(`Unidade #${unit.id} atualizada!`);
       onUpdate();
     } catch (error) {
@@ -168,10 +168,10 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
-      const equipRes = await axios.get(`http://localhost:3001/api/equipment/${equipmentId}`, config);
+      const equipRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/equipment/${equipmentId}`, config);
       setEquipment(equipRes.data);
 
-      const unitsRes = await axios.get(`http://localhost:3001/api/equipment/${equipmentId}/units`, config);
+      const unitsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/equipment/${equipmentId}/units`, config);
       setUnits(unitsRes.data);
       
     } catch (error) {
@@ -189,7 +189,7 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
     if (!window.confirm(`Tem certeza que deseja excluir a unidade ID #${unitId}?`)) return;
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.delete(`http://localhost:3001/api/units/${unitId}`, config);
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/units/${unitId}`, config);
       alert('Unidade excluída com sucesso!');
       fetchModalData();
     } catch (error) {

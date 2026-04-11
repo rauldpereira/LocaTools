@@ -39,7 +39,7 @@ const ReturnContractModal: React.FC<ReturnContractModalProps> = ({
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.post(
-        `http://localhost:3001/api/reservations/${order.id}/return-signature`,
+        `${import.meta.env.VITE_API_URL}/api/reservations/${order.id}/return-signature`,
         { assinatura: signatureBase64 },
         config
       );

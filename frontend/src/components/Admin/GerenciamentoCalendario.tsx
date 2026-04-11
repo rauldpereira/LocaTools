@@ -56,14 +56,14 @@ const GerenciamentoCalendario: React.FC = () => {
       const ano = activeStartDate.getFullYear();
 
       try {
-        const { data: dataDias } = await axios.get<IDiaStatus[]>('http://localhost:3001/api/calendario/status-mensal', {
+        const { data: dataDias } = await axios.get<IDiaStatus[]>(`${import.meta.env.VITE_API_URL}/api/calendario/status-mensal`, {
           params: { ano, mes }
         });
         const diasMap = new Map(dataDias.map(dia => [dia.data, dia]));
         setStatusDias(diasMap);
 
         const { data: mesesPublicados } = await axios.get<IMesPublicado[]>(
-          'http://localhost:3001/api/calendario/meses-publicados'
+          `${import.meta.env.VITE_API_URL}/api/calendario/meses-publicados`
         );
         
         const publicado = mesesPublicados.some(
@@ -89,7 +89,7 @@ const GerenciamentoCalendario: React.FC = () => {
 
     setIsLoading(true); 
     try {
-      await axios.post('http://localhost:3001/api/calendario/publicar-mes', {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/calendario/publicar-mes`, {
         ano: ano,
         mes: mes,
         publicado: novoStatus
@@ -135,7 +135,7 @@ const GerenciamentoCalendario: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { data } = await axios.post('http://localhost:3001/api/calendario/importar-feriados', { ano });
+      const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/calendario/importar-feriados`, { ano });
       alert(data.message || "Feriados importados!");
       
       forcarRecarga();

@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// Ajuste a URL base se o seu backend não rodar na 3001
-const API_URL = 'http://localhost:3001/api';
+const API_URL = `${import.meta.env.VITE_API_URL}/api`;
 
 export interface FreightConfig {
   id?: number;

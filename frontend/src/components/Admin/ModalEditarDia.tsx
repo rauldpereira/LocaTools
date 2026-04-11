@@ -39,7 +39,7 @@ const ModalEditarDia: React.FC<ModalEditarDiaProps> = ({ diaInfo, onClose, onSav
         setIsSubmitting(true);
         setError(null);
         try {
-            await axios.post('http://localhost:3001/api/calendario/excecao', {
+            await axios.post(`${import.meta.env.VITE_API_URL}/api/calendario/excecao`, {
                 data: diaInfo.data,
                 tipo: tipo,
                 funcionamento: funcionamento,
@@ -59,7 +59,7 @@ const ModalEditarDia: React.FC<ModalEditarDiaProps> = ({ diaInfo, onClose, onSav
         setIsSubmitting(true);
         setError(null);
         try {
-            await axios.delete('http://localhost:3001/api/calendario/excecao', {
+            await axios.delete(`${import.meta.env.VITE_API_URL}/api/calendario/excecao`, {
                 data: { data: diaInfo.data }
             });
             onSave();

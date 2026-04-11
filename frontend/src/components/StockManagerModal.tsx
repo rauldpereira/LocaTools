@@ -211,7 +211,7 @@ const UnitItem: React.FC<{
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       if ((status === 'manutencao' || status === 'inativo') && unit.status !== status) {
-        const confRes = await axios.get(`http://localhost:3001/api/units/${unit.id}/conflicts`, config);
+        const confRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/units/${unit.id}/conflicts`, config);
         
         if (confRes.data.conflicts && confRes.data.conflicts.length > 0) {
           setConflicts(confRes.data.conflicts);
@@ -233,7 +233,7 @@ const UnitItem: React.FC<{
       .map(Number);
 
     try {
-        await axios.put(`http://localhost:3001/api/units/${unit.id}`, {
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/units/${unit.id}`, {
           status: status,
           avarias_atuais: avariasIDs,
           codigo_serial: serial
@@ -251,7 +251,7 @@ const UnitItem: React.FC<{
     setIsTransplanting(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.post(`http://localhost:3001/api/units/reallocate`, { reallocations }, config);
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/units/reallocate`, { reallocations }, config);
       await saveUnitData(config);
       setShowTransplantModal(false);
     } catch (error: any) {
@@ -461,10 +461,10 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
     if (!equipmentId || !isOpen) return;
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const equipRes = await axios.get(`http://localhost:3001/api/equipment/${equipmentId}`, config);
+      const equipRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/equipment/${equipmentId}`, config);
       setEquipment(equipRes.data);
 
-      const unitsRes = await axios.get(`http://localhost:3001/api/equipment/${equipmentId}/units`, config);
+      const unitsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/equipment/${equipmentId}/units`, config);
       setUnits(unitsRes.data);
     } catch (err) {
       console.error(err);
@@ -478,7 +478,7 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
   const handleAddUnit = async () => {
     if (!newSerial.trim()) return alert('Digite o S/N!');
     try {
-      await axios.post('http://localhost:3001/api/units', {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/units`, {
         id_equipamento: equipmentId,
         codigo_serial: newSerial
       }, { headers: { Authorization: `Bearer ${token}` } });
@@ -494,7 +494,7 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
     
     try {
       setErrorMessage(null);
-      await axios.delete(`http://localhost:3001/api/units/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/units/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       fetchData();
     } catch (e: any) {
       setErrorMessage(e.response?.data?.error || 'Erro ao excluir a unidade.');

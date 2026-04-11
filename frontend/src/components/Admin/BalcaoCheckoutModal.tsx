@@ -51,7 +51,7 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
   useEffect(() => {
     const fetchStoreConfig = async () => {
       try {
-        const { data } = await axios.get("http://localhost:3001/api/config");
+        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/config`);
         if (data && data.horario_limite_hoje) {
           setHorarioLimite(data.horario_limite_hoje);
           
@@ -130,7 +130,7 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
 
     try {
       const fullAddress = `${address.rua}, ${address.numero} - ${address.bairro}, ${address.cidade}/${address.estado}, ${address.cep}`;
-      const response = await axios.post("http://localhost:3001/api/frete/calcular", {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/frete/calcular`, {
         endereco_destino: fullAddress
       });
       setBaseFreight(Number(response.data.valor_total_frete));
@@ -268,7 +268,7 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
         ignoreLockout: true
       };
 
-      const { data } = await axios.post("http://localhost:3001/api/reservations/balcao", payload, config);
+      const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/reservations/balcao`, payload, config);
       alert("✅ Locação de Balcão registrada com sucesso!");
       onSuccess();
       navigate(`/my-reservations/${data.orderId}`); 

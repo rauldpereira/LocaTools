@@ -32,7 +32,7 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchEquipment = async () => {
       try {
-        const response = await axios.get<any[]>('http://localhost:3001/api/equipment');
+        const response = await axios.get<any[]>(`${import.meta.env.VITE_API_URL}/api/equipment`);
         const formattedEquipment: Equipment[] = response.data.map(item => ({
           ...item,
           preco_diaria: parseFloat(item.preco_diaria)
@@ -74,11 +74,11 @@ const Home: React.FC = () => {
       const parsed = JSON.parse(urlImagem);
       if (Array.isArray(parsed) && parsed.length > 0) {
         // Retorna a primeira foto + URL do backend
-        return `http://localhost:3001${parsed[0]}`;
+        return `${import.meta.env.VITE_API_URL}${parsed[0]}`;
       }
     } catch (e) {
       if (urlImagem.startsWith('http')) return urlImagem;
-      return `http://localhost:3001${urlImagem}`;
+      return `${import.meta.env.VITE_API_URL}${urlImagem}`;
     }
 
     return 'https://via.placeholder.com/150';

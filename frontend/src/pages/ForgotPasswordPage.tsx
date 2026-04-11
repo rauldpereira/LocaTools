@@ -8,7 +8,7 @@ const ForgotPasswordPage = () => {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3001/api/forgot-password', { email });
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/forgot-password`, { email });
       setMsg("✅ Se o e-mail estiver cadastrado, enviamos um link de recuperação para ele!");
     } catch (err) {
       setMsg("❌ Ocorreu um erro ao enviar. Tente novamente.");

@@ -41,7 +41,7 @@ const MyReservationsPage: React.FC = () => {
   useEffect(() => {
     const fetchLoyaltyConfig = async () => {
       try {
-        const { data } = await axios.get("http://localhost:3001/api/config");
+        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/config`);
         if (data) {
           setLoyaltyConfig({
             num: data.fidelidade_num_pedidos,
@@ -76,7 +76,7 @@ const MyReservationsPage: React.FC = () => {
       setLoading(true);
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const { data } = await axios.get(
-        "http://localhost:3001/api/reservations/my",
+        `${import.meta.env.VITE_API_URL}/api/reservations/my`,
         config,
       );
       setOrders(data);
@@ -106,7 +106,7 @@ const MyReservationsPage: React.FC = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const { data } = await axios.put(
-        `http://localhost:3001/api/reservations/${orderId}/cancel`,
+        `${import.meta.env.VITE_API_URL}/api/reservations/${orderId}/cancel`,
         {},
         config,
       );

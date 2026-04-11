@@ -15,7 +15,7 @@ const AddCategoryForm: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/categories');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
       setCategories(response.data);
     } catch (error) {
       console.error('Erro ao buscar categorias', error);
@@ -32,7 +32,7 @@ const AddCategoryForm: React.FC = () => {
     setLoading(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.post('http://localhost:3001/api/categories', {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/categories`, {
         nome: name 
       }, config);
       alert('Categoria criada!');
@@ -49,7 +49,7 @@ const AddCategoryForm: React.FC = () => {
     if (!confirm('Excluir esta categoria?')) return;
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.delete(`http://localhost:3001/api/categories/${id}`, config);
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/categories/${id}`, config);
       fetchCategories();
     } catch (error) {
       alert('Erro ao excluir. Verifique se há equipamentos vinculados.');

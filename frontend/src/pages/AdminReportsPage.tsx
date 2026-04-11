@@ -142,7 +142,7 @@ const AdminReportsPage: React.FC = () => {
         params: { startDate, endDate },
       };
       const { data } = await axios.get(
-        "http://localhost:3001/api/reports/financial",
+        `${import.meta.env.VITE_API_URL}/api/reports/financial`,
         config,
       );
       setFinancialData(data);
@@ -159,7 +159,7 @@ const AdminReportsPage: React.FC = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const { data } = await axios.get(
-        "http://localhost:3001/api/reports/operational",
+        `${import.meta.env.VITE_API_URL}/api/reports/operational`,
         config,
       );
       setOperationalData(data);

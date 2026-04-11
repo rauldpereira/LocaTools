@@ -96,7 +96,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
             if (existingBlock.status === 'manutencao') {
                 if (window.confirm('Desbloquear esta data de manutenção?')) {
                     try {
-                        await axios.delete(`http://localhost:3001/api/units/maintenance/${existingBlock.id}`, {
+                        await axios.delete(`${import.meta.env.VITE_API_URL}/api/units/maintenance/${existingBlock.id}`, {
                             headers: { Authorization: `Bearer ${token}` }
                         });
                         alert('🔓 Desbloqueado com sucesso!');
@@ -122,7 +122,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
         const endStr = end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0');
 
         try {
-            await axios.post(`http://localhost:3001/api/units/${unitId}/maintenance`, {
+            await axios.post(`${import.meta.env.VITE_API_URL}/api/units/${unitId}/maintenance`, {
                 data_inicio: startStr,
                 data_fim: endStr,
                 motivo: maintenanceReason || 'Manutenção Preventiva',

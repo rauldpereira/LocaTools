@@ -47,7 +47,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                 setErrorMessage(null);
 
                 const { data: meses } = await axios.get<IMesPublicado[]>(
-                    'http://localhost:3001/api/calendario/meses-publicados'
+                    `${import.meta.env.VITE_API_URL}/api/calendario/meses-publicados`
                 );
 
                 if (meses.length === 0) {
@@ -93,7 +93,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
             try {
                 const { data } = await axios.get<IDiaStatus[]>(
-                    'http://localhost:3001/api/calendario/status-mensal',
+                    `${import.meta.env.VITE_API_URL}/api/calendario/status-mensal`,
                     { params: { ano, mes } }
                 );
                 const diasMap = new Map(data.map(dia => [dia.data, dia]));
@@ -112,7 +112,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
         const fetchDailyAvailability = async () => {
             try {
-                const { data } = await axios.get(`http://localhost:3001/api/equipment/${equipment.id}/daily-availability`, {
+                const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/equipment/${equipment.id}/daily-availability`, {
                     params: {
                         startDate: toISODate(minDate),
                         endDate: toISODate(maxDate)

@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (storedToken) {
                 try {
                     axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-                    const response = await axios.get('http://localhost:3001/api/profile');
+                    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/profile`);
                     setUser(response.data);
                     setToken(storedToken);
                     setIsLoggedIn(true);
@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setToken(newToken);
 
         try {
-            const response = await axios.get('http://localhost:3001/api/profile');
+            const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/profile`);
             setUser(response.data);
             setIsLoggedIn(true);
         } catch (error) {

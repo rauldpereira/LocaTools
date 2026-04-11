@@ -12,9 +12,22 @@ interface ContractModalProps {
 const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess }) => {
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [signing, setSigning] = useState(false);
-  const backendUrl = "http://localhost:3001";
+  const [storeConfig, setStoreConfig] = useState<any>(null);
+  const backendUrl = import.meta.env.VITE_API_URL;
   
   const { token } = useAuth();
+
+  React.useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const { data } = await axios.get(`${backendUrl}/api/config`);
+        setStoreConfig(data);
+      } catch (error) {
+        console.error("Erro ao buscar config da loja:", error);
+      }
+    };
+    fetchConfig();
+  }, [backendUrl]);
 
   const handleSignContract = async () => {
     if (!token) {
@@ -72,7 +85,7 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
           <h3 style={{ textAlign: "center", marginBottom: "20px" }}>Nº do Contrato/Pedido: {order.id}</h3>
           
           <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px" }}>1. AS PARTES</h4>
-          <p><strong>LOCADORA:</strong> LOCATOOLS LOCAÇÃO DE EQUIPAMENTOS LTDA, CNPJ 00.000.000/0001-00.</p>
+          <p><strong>LOCADORA:</strong> LOCATOOLS LOCAÇÃO DE EQUIPAMENTOS LTDA, CNPJ {storeConfig?.cnpj || "00.000.000/0001-00"}.</p>
           <p><strong>LOCATÁRIO(A):</strong> {order.Usuario?.nome}, Email: {order.Usuario?.email}.</p>
 
           <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>2. OBJETO DO CONTRATO</h4>

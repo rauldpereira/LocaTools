@@ -26,7 +26,7 @@ const MaintenanceDashboard: React.FC = () => {
     const fetchMaintenance = async () => {
       try {
         const config = { headers: { Authorization: `Bearer ${token}` } };
-        const { data } = await axios.get('http://localhost:3001/api/units/maintenances/dashboard', config);
+        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/units/maintenances/dashboard`, config);
         setItems(data);
       } catch (error) {
         console.error("Erro ao carregar manutenções", error);
@@ -83,7 +83,7 @@ const MaintenanceDashboard: React.FC = () => {
                  return (
                   <tr key={item.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                     <td style={{ padding: '10px', display:'flex', alignItems:'center', gap:'10px' }}>
-                        {imgUrl && <img src={`http://localhost:3001${imgUrl}`} alt="" style={{width:40, height:40, objectFit:'cover', borderRadius:4}} />}
+                        {imgUrl && <img src={`${import.meta.env.VITE_API_URL}${imgUrl}`} alt="" style={{width:40, height:40, objectFit:'cover', borderRadius:4}} />}
                         <strong style={{color:"#000"}}>{item.Unidade.Equipamento.nome}</strong>
                     </td>
                     <td style={{ padding: '10px', fontWeight:'bold', color:'#555' }}>

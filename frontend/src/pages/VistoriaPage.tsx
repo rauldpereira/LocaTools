@@ -74,7 +74,7 @@ const VistoriaPage: React.FC = () => {
   const params = new URLSearchParams(location.search);
   const tipoVistoria =
     params.get("tipo") === "devolucao" ? "devolucao" : "entrega";
-  const backendUrl = "http://localhost:3001";
+  const backendUrl = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -83,7 +83,7 @@ const VistoriaPage: React.FC = () => {
       try {
         const config = { headers: { Authorization: `Bearer ${token}` } };
         const { data } = await axios.get(
-          `http://localhost:3001/api/reservations/${orderId}`,
+          `${import.meta.env.VITE_API_URL}/api/reservations/${orderId}`,
           config,
         );
         setOrder(data);
@@ -211,7 +211,7 @@ const VistoriaPage: React.FC = () => {
         }
 
         await axios.post(
-          "http://localhost:3001/api/prejuizos",
+          `${import.meta.env.VITE_API_URL}/api/prejuizos`,
           {
             item_reserva_id: item.id,
             tipo: details.tipoPrejuizo,
@@ -282,7 +282,7 @@ const VistoriaPage: React.FC = () => {
         });
 
         await axios.post(
-          "http://localhost:3001/api/vistorias",
+          `${import.meta.env.VITE_API_URL}/api/vistorias`,
           formData,
           config,
         );

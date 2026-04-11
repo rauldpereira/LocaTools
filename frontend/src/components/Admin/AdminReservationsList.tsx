@@ -46,7 +46,7 @@ const AdminReservationsList: React.FC = () => {
       setLoading(true);
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const { data } = await axios.get(
-        "http://localhost:3001/api/reservations/all",
+        `${import.meta.env.VITE_API_URL}/api/reservations/all`,
         config,
       );
       setOrders(data);
@@ -170,7 +170,7 @@ const AdminReservationsList: React.FC = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.put(
-        `http://localhost:3001/api/reservations/${orderId}/skip-inspection`,
+        `${import.meta.env.VITE_API_URL}/api/reservations/${orderId}/skip-inspection`,
         {},
         config,
       );
@@ -193,7 +193,7 @@ const AdminReservationsList: React.FC = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.put(
-        `http://localhost:3001/api/reservations/${orderId}/dispatch`,
+        `${import.meta.env.VITE_API_URL}/api/reservations/${orderId}/dispatch`,
         {},
         config,
       );
@@ -216,7 +216,7 @@ const AdminReservationsList: React.FC = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.put(
-        `http://localhost:3001/api/reservations/${orderId}/confirm-pickup`,
+        `${import.meta.env.VITE_API_URL}/api/reservations/${orderId}/confirm-pickup`,
         {},
         config,
       );

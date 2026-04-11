@@ -22,7 +22,7 @@ const EquipmentForm: React.FC = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/categories');
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
         setCategories(response.data);
       } catch (error) {
         console.error('Erro categorias:', error);
@@ -66,7 +66,7 @@ const EquipmentForm: React.FC = () => {
         }
       };
 
-      await axios.post('http://localhost:3001/api/equipment', formData, config);
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/equipment`, formData, config);
 
       alert('Equipamento cadastrado com sucesso!');
 

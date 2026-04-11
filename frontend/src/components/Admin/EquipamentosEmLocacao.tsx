@@ -14,7 +14,7 @@ const EquipamentosEmLocacao: React.FC = () => {
       try {
         setLoading(true);
         // Busca as reservas
-        const { data } = await axios.get("http://localhost:3001/api/reservations/all", {
+        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/reservations/all`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 

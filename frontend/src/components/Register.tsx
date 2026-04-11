@@ -152,7 +152,7 @@ const Register: React.FC = () => {
     }
 
     try {
-      await axios.post("http://localhost:3001/api/register", {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/register`, {
         tipo_pessoa: tipoPessoa,
         nome,
         email,
@@ -167,7 +167,7 @@ const Register: React.FC = () => {
       setMensagem("Credenciais criadas com sucesso! Redirecionando...");
 
       try {
-        const { data } = await axios.post('http://localhost:3001/api/login', { email, senha });
+        const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/login`, { email, senha });
         
         // Usa a função login do contexto
         login(data.token); 
