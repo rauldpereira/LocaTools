@@ -271,7 +271,7 @@ const PaymentPage: React.FC = () => {
     const navigate = useNavigate();
 
     // --- FIDELIDADE ---
-    const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number } | null>(null);
+    const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number, ativo: boolean } | null>(null);
     const [completedOrders, setCompletedOrders] = useState(0);
 
     useEffect(() => {
@@ -283,7 +283,8 @@ const PaymentPage: React.FC = () => {
                 if (storeConfig) {
                     setLoyaltyConfig({
                         num: storeConfig.fidelidade_num_pedidos,
-                        pct: parseFloat(storeConfig.fidelidade_desconto_pct)
+                        pct: parseFloat(storeConfig.fidelidade_desconto_pct),
+                        ativo: !!storeConfig.fidelidade_ativo
                     });
                 }
                 const { data: myOrders } = await axios.get('http://localhost:3001/api/reservations/my', config);
@@ -370,7 +371,7 @@ const PaymentPage: React.FC = () => {
     const totalComDesconto = totalGeral - totalFrete;
 
     // Se ele for elegível, descobre qual era o valor ORIGINAL para mostrar o desconto
-    const isLoyaltyEligible = loyaltyConfig && (completedOrders) % loyaltyConfig.num === 0;
+    const isLoyaltyEligible = loyaltyConfig && loyaltyConfig.ativo && (completedOrders) % loyaltyConfig.num === 0;
     
     let subtotalOriginal = totalComDesconto;
     let valorDesconto = 0;

@@ -36,7 +36,7 @@ const MyReservationsPage: React.FC = () => {
   const [sortBy, setSortBy] = useState("updated_desc");
 
   // --- FIDELIDADE ---
-  const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number } | null>(null);
+  const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number, ativo: boolean } | null>(null);
 
   useEffect(() => {
     const fetchLoyaltyConfig = async () => {
@@ -45,7 +45,8 @@ const MyReservationsPage: React.FC = () => {
         if (data) {
           setLoyaltyConfig({
             num: data.fidelidade_num_pedidos,
-            pct: parseFloat(data.fidelidade_desconto_pct)
+            pct: parseFloat(data.fidelidade_desconto_pct),
+            ativo: !!data.fidelidade_ativo
           });
         }
       } catch (error) {
@@ -253,7 +254,7 @@ const MyReservationsPage: React.FC = () => {
       )}
 
       {/* CARD DE FIDELIDADE */}
-      {loyaltyConfig && orders.length > 0 && (
+      {loyaltyConfig && loyaltyConfig.ativo && orders.length > 0 && (
         <div style={{
           backgroundColor: "#fff",
           padding: "20px",

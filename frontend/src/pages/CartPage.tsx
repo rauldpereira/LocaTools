@@ -38,7 +38,7 @@ const CartPage: React.FC = () => {
     });
 
     // --- ESTADOS DE FIDELIDADE ---
-    const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number } | null>(null);
+    const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number, ativo: boolean } | null>(null);
     const [completedOrders, setCompletedOrders] = useState(0);
 
     // BUSCA CONFIGURAÇÕES DE FIDELIDADE E HISTÓRICO
@@ -53,7 +53,8 @@ const CartPage: React.FC = () => {
                 if (storeConfig) {
                     setLoyaltyConfig({
                         num: storeConfig.fidelidade_num_pedidos,
-                        pct: parseFloat(storeConfig.fidelidade_desconto_pct)
+                        pct: parseFloat(storeConfig.fidelidade_desconto_pct),
+                        ativo: !!storeConfig.fidelidade_ativo
                     });
                 }
 
@@ -186,7 +187,7 @@ const CartPage: React.FC = () => {
     const subtotal = calculateSubtotal();
     
     // Se (Pedidos Existentes + este atual) atingir a meta.
-    const isLoyaltyEligible = loyaltyConfig && (completedOrders + 1) % loyaltyConfig.num === 0;
+    const isLoyaltyEligible = loyaltyConfig && loyaltyConfig.ativo && (completedOrders + 1) % loyaltyConfig.num === 0;
     
     const discountAmount = isLoyaltyEligible ? subtotal * (loyaltyConfig.pct / 100) : 0;
     const valorTotalComFrete = (subtotal - discountAmount) + freightCost;

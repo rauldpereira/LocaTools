@@ -17,6 +17,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 10.00
     },
+    fidelidade_ativo: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+    },
     horario_limite_hoje: {
         type: DataTypes.STRING,
         allowNull: true,

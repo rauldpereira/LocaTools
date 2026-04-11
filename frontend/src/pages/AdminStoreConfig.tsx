@@ -9,6 +9,7 @@ const AdminStoreConfig: React.FC = () => {
   const [config, setConfig] = useState({
     fidelidade_num_pedidos: 10,
     fidelidade_desconto_pct: 10.00,
+    fidelidade_ativo: true,
     horario_limite_hoje: '12:00',
   });
 
@@ -22,6 +23,7 @@ const AdminStoreConfig: React.FC = () => {
           setConfig({
             fidelidade_num_pedidos: data.fidelidade_num_pedidos,
             fidelidade_desconto_pct: parseFloat(data.fidelidade_desconto_pct),
+            fidelidade_ativo: data.fidelidade_ativo ?? true,
             horario_limite_hoje: data.horario_limite_hoje || '12:00',
           });
         }
@@ -64,7 +66,22 @@ const AdminStoreConfig: React.FC = () => {
           Defina as regras para o desconto automático baseado no histórico de compras do cliente.
         </p>
 
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", marginBottom: "20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <input
+              type="checkbox"
+              id="fidelidade_ativo"
+              checked={config.fidelidade_ativo}
+              onChange={(e) => setConfig({ ...config, fidelidade_ativo: e.target.checked })}
+              style={{ width: "20px", height: "20px", cursor: "pointer" }}
+            />
+            <label htmlFor="fidelidade_ativo" style={{ fontWeight: "bold", cursor: "pointer", color: "#333" }}>
+              Ativar Programa de Fidelidade
+            </label>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", opacity: config.fidelidade_ativo ? 1 : 0.5, pointerEvents: config.fidelidade_ativo ? "auto" : "none" }}>
           <div style={{ flex: 1, minWidth: "250px" }}>
             <label style={labelStyle}>Número de Pedidos Finalizados</label>
             <input

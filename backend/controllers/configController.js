@@ -8,6 +8,7 @@ const getConfig = async (req, res) => {
             config = await ConfigLoja.create({
                 fidelidade_num_pedidos: 10,
                 fidelidade_desconto_pct: 10.00,
+                fidelidade_ativo: true,
                 horario_limite_hoje: '12:00'
             });
         }
@@ -20,7 +21,7 @@ const getConfig = async (req, res) => {
 };
 
 const updateConfig = async (req, res) => {
-    const { fidelidade_num_pedidos, fidelidade_desconto_pct, horario_limite_hoje } = req.body;
+    const { fidelidade_num_pedidos, fidelidade_desconto_pct, fidelidade_ativo, horario_limite_hoje } = req.body;
     
     try {
         let config = await ConfigLoja.findOne();
@@ -29,12 +30,14 @@ const updateConfig = async (req, res) => {
             config = await ConfigLoja.create({
                 fidelidade_num_pedidos,
                 fidelidade_desconto_pct,
+                fidelidade_ativo,
                 horario_limite_hoje
             });
         } else {
             await config.update({
                 fidelidade_num_pedidos,
                 fidelidade_desconto_pct,
+                fidelidade_ativo,
                 horario_limite_hoje
             });
         }

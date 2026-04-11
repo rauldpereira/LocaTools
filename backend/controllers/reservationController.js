@@ -176,21 +176,21 @@ const createOrder = async (req, res) => {
                 }
             }
 
-            if (configLoja.fidelidade_num_pedidos > 0) {
-            // Conta todos os pedidos que NÃO foram cancelados
-            const totalPedidosValidos = await OrdemDeServico.count({
-                where: { 
-                    id_usuario, 
-                    status: { [Op.ne]: 'cancelada' } 
-                }
-            });
+            if (configLoja.fidelidade_ativo && configLoja.fidelidade_num_pedidos > 0) {
+                // Conta todos os pedidos que não foram cancelados
+                const totalPedidosValidos = await OrdemDeServico.count({
+                    where: { 
+                        id_usuario, 
+                        status: { [Op.ne]: 'cancelada' } 
+                    }
+                });
 
-            // Se (pedidos já feitos + 1) for múltiplo da meta, ele ganha desconto NESTE pedido
-            if ((totalPedidosValidos + 1) % configLoja.fidelidade_num_pedidos === 0) {
-                pctDesconto = parseFloat(configLoja.fidelidade_desconto_pct) / 100;
-                aplicouFidelidade = true;
+                // Se (pedidos já feitos + 1) for múltiplo da meta, ele ganha desconto neste pedido
+                if ((totalPedidosValidos + 1) % configLoja.fidelidade_num_pedidos === 0) {
+                    pctDesconto = parseFloat(configLoja.fidelidade_desconto_pct) / 100;
+                    aplicouFidelidade = true;
+                }
             }
-          }
         }
 
         const ordensCriadas = await sequelize.transaction(async (t) => {
