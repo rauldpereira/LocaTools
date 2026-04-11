@@ -7,7 +7,6 @@ import AdminReservationsList from "../components/Admin/AdminReservationsList";
 import AdminHorariosPage from "../components/HorarioFuncionamento";
 import AdminReportsPage from "../pages/AdminReportsPage";
 import MaintenanceDashboard from "../components/MaintenanceDashboard";
-import AdminFreightConfig from "../pages/AdminFreightConfig";
 import AdminStoreConfig from "../pages/AdminStoreConfig";
 import AdminCalendarPage from "../components/Admin/GerenciamentoCalendario";
 import AdminTeamPage from "../components/Admin/AdminTeamPage";
@@ -39,7 +38,7 @@ const AdminDashboard: React.FC = () => {
     )
       setActiveTab("reservas");
     else if (hasPermission("gerenciar_estoque")) setActiveTab("equipamentos");
-    else if (hasPermission("configuracoes")) setActiveTab("frete");
+    else if (hasPermission("configuracoes")) setActiveTab("config");
     else if (hasPermission("ver_financeiro")) setActiveTab("relatorios"); 
   }, [user]);
 
@@ -72,12 +71,6 @@ const AdminDashboard: React.FC = () => {
           <div style={contentContainerStyle}>
             <h2 style={headerStyle}>Gerenciamento de Reservas e Vistorias</h2>
             <AdminReservationsList />
-          </div>
-        ) : null;
-      case "frete":
-        return hasPermission("configuracoes") ? (
-          <div style={contentContainerStyle}>
-            <AdminFreightConfig />
           </div>
         ) : null;
       case "equipamentos":
@@ -288,15 +281,6 @@ const AdminDashboard: React.FC = () => {
               icon={Icons.reservas}
               isActive={activeTab === "reservas"}
               onClick={() => setActiveTab("reservas")}
-            />
-          )}
-
-          {hasPermission("configuracoes") && (
-            <MenuItem
-              label="Config. Frete"
-              icon={Icons.frete}
-              isActive={activeTab === "frete"}
-              onClick={() => setActiveTab("frete")}
             />
           )}
 

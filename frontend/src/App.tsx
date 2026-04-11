@@ -21,13 +21,9 @@ import VistoriaPage from './pages/VistoriaPage';
 import FinalizePaymentPage from './pages/FinalizePaymentPage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import GerenciamentoCalendario from './components/Admin/GerenciamentoCalendario';
-import AdminFreightConfig from './pages/AdminFreightConfig';
-
-// 🚀 IMPORTANDO AS DUAS PÁGINAS NOVAS 🚀
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
-// 🚀 PUXANDO A CHAVE DA VARIÁVEL DE AMBIENTE (Create React App) 🚀
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'sua_chave_fallback_aqui';
 const stripePromise = loadStripe(stripeKey);
 
@@ -56,7 +52,6 @@ function App() {
                 <Route path="admin/finalize-payment/:orderId" element={<FinalizePaymentPage />} />
                 <Route path="admin/reports" element={<AdminReportsPage />} />
                 <Route path="admin/calendario" element={<GerenciamentoCalendario />} />
-                <Route path="config-frete" element={<AdminFreightConfig />} />
               </Route>
             </Routes>
           </Router>
