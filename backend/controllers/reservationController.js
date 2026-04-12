@@ -867,26 +867,41 @@ const checkRescheduleAvailability = async (req, res) => {
         const order = await OrdemDeServico.findByPk(orderId, { include: [{ model: ItemReserva, as: 'ItemReservas' }] });
         if (!order) return res.status(404).json({ error: 'Ordem não encontrada.' });
 
-        let allItemsAvailable = true;
+        // Agrupa os itens do pedido por Equipamento para validar a quantidade total necessária
+        const itensNecessarios = {};
         for (const item of order.ItemReservas) {
-            const unidade = await Unidade.findByPk(item.id_unidade, { include: [{ model: Equipamento, as: 'Equipamento' }] });
-            if (!unidade) { allItemsAvailable = false; break; }
+            const unidade = await Unidade.findByPk(item.id_unidade);
+            if (!unidade) continue;
+            
+            if (!itensNecessarios[unidade.id_equipamento]) {
+                itensNecessarios[unidade.id_equipamento] = {
+                    id_equipamento: unidade.id_equipamento,
+                    quantidade: 0
+                };
+            }
+            itensNecessarios[unidade.id_equipamento].quantidade++;
+        }
 
+        let allItemsAvailable = true;
+
+        // Para cada tipo de equipamento no pedido, vemos se há unidades LIVRES suficientes
+        for (const idEq in itensNecessarios) {
+            const info = itensNecessarios[idEq];
             const itemRequest = {
-                id_equipamento: unidade.Equipamento.id,
-                quantidade: 1,
+                id_equipamento: info.id_equipamento,
                 data_inicio: startDate,
                 data_fim: endDate,
             };
 
+            // verificarDisponibilidade já ignora o próprio pedido atual!
             const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, {}, orderId);
-            const isThisUnitStillAvailable = unidadesDisponiveis.some(u => u.id === item.id_unidade);
 
-            if (!isThisUnitStillAvailable) {
+            if (unidadesDisponiveis.length < info.quantidade) {
                 allItemsAvailable = false;
                 break;
             }
         }
+
         res.status(200).json({ available: allItemsAvailable });
     } catch (error) {
         console.error("Erro ao checar remarcação:", error);
@@ -913,44 +928,101 @@ const rescheduleOrder = async (req, res) => {
                 throw new Error('Este pedido não pode mais ser remarcado.');
             }
 
-            const dataInicioOriginal = parseDateStringAsLocal(order.data_inicio);
-            const hoje = new Date();
-            const diffTime = dataInicioOriginal.getTime() - hoje.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const configLoja = await ConfigLoja.findOne({ transaction: t });
+            const taxaFixaReagendamento = configLoja ? Number(configLoja.taxa_reagendamento) : 0;
 
-            const taxa_remarcacao = (diffDays <= 2)
-                ? (Number(order.valor_total) * 0.05)
-                : (order.taxa_remarcacao || 0);
+            const dataInicioOriginalStr = order.data_inicio;
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+
+            const [ano, mes, dia] = dataInicioOriginalStr.split('-').map(Number);
+            const dataInicioOriginal = new Date(ano, mes - 1, dia);
+
+            const isPastOrToday = dataInicioOriginal.getTime() <= hoje.getTime();
+
+            let dataInicioParaSalvar = newStartDate;
+            if (isPastOrToday) {
+                dataInicioParaSalvar = dataInicioOriginalStr;
+            }
+
+            // Apenas incrementa com a taxa fixa da loja por reagendamento
+            let novaTaxaRemarcacao = Number(order.taxa_remarcacao || 0) + taxaFixaReagendamento;
 
             const oneDay = 1000 * 60 * 60 * 24;
-            const originalDuration = (parseDateStringAsLocal(order.data_fim) - parseDateStringAsLocal(order.data_inicio)) / oneDay;
-            const newDuration = (new Date(newEndDate) - new Date(newStartDate)) / oneDay;
+            const originalDuration = (parseDateStringAsLocal(order.data_fim) - dataInicioOriginal) / oneDay;
+            const newDuration = (new Date(newEndDate) - new Date(dataInicioParaSalvar)) / oneDay;
 
-            if (originalDuration !== newDuration) {
+            if (!isPastOrToday && originalDuration !== newDuration) {
                 throw new Error('A duração da remarcação deve ser a mesma da reserva original.');
             }
 
+            if (newDuration < 0) {
+                throw new Error('A data de término não pode ser anterior à data de início.');
+            }
+
+            // Validar disponibilidade e realizar REMANEJAMENTO se necessário
             for (const item of order.ItemReservas) {
-                const unidade = await Unidade.findByPk(item.id_unidade, { include: [{ model: Equipamento, as: 'Equipamento' }], transaction: t });
-                const itemRequest = { id_equipamento: unidade.Equipamento.id, quantidade: 1, data_inicio: newStartDate, data_fim: newEndDate };
+                const unidadeAtual = await Unidade.findByPk(item.id_unidade, { include: [{ model: Equipamento, as: 'Equipamento' }], transaction: t });
+                
+                const itemRequest = { 
+                    id_equipamento: unidadeAtual.Equipamento.id, 
+                    data_inicio: dataInicioParaSalvar, 
+                    data_fim: newEndDate 
+                };
 
-                const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, { transaction: t }, orderId);
+                // Verifica se há estoque total disponível
+                const unidadesLivresProModelo = await verificarDisponibilidade(itemRequest, { transaction: t }, orderId);
 
-                if (!unidadesDisponiveis.some(u => u.id === item.id_unidade)) {
-                    throw new Error(`Conflito: A unidade #${item.id_unidade} não está disponível.`);
+                if (unidadesLivresProModelo.length === 0) {
+                    throw new Error(`Estoque esgotado para ${unidadeAtual.Equipamento.nome} no período selecionado.`);
                 }
+
+                // Verifica se a unidade específica que o cliente já tem sofrerá conflito com OUTROS pedidos
+                const conflitosOutros = await ItemReserva.findAll({
+                    where: {
+                        id_unidade: item.id_unidade,
+                        id_ordem_servico: { [Op.ne]: order.id },
+                        data_inicio: { [Op.lte]: newEndDate },
+                        data_fim: { [Op.gte]: dataInicioParaSalvar }
+                    },
+                    include: [{ model: OrdemDeServico, where: { status: ['aprovada', 'aguardando_assinatura', 'pendente', 'em_andamento'] } }],
+                    transaction: t
+                });
+
+                // Se houver conflito, tentamos enviar os outros pedidos para outras unidades livres
+                if (conflitosOutros.length > 0) {
+                    console.log(`[REMANEJAMENTO] A unidade #${item.id_unidade} tem conflitos. Tentando remanejar outros clientes...`);
+                    
+                    for (const conflito of conflitosOutros) {
+                        // Para cada cliente B que está no caminho, buscamos uma nova casa (unidade) para ele
+                        const novaUnidadeParaB = unidadesLivresProModelo.find(u => u.id !== item.id_unidade);
+                        
+                        if (novaUnidadeParaB) {
+                            await conflito.update({ id_unidade: novaUnidadeParaB.id }, { transaction: t });
+                            console.log(`[REMANEJAMENTO] Pedido #${conflito.id_ordem_servico} movido da unidade #${item.id_unidade} para #${novaUnidadeParaB.id}`);
+                            
+                            // Remove essa unidade da lista de "livres" pois agora o Cliente B a ocupou
+                            const index = unidadesLivresProModelo.indexOf(novaUnidadeParaB);
+                            unidadesLivresProModelo.splice(index, 1);
+                        } else {
+                            // Se não sobrou nenhuma unidade nem para o remanejamento, então realmente não dá
+                            throw new Error(`Não há máquinas livres suficientes para remanejar as reservas existentes.`);
+                        }
+                    }
+                }
+
+                // Agora atualiza as datas do Cliente A mantendo a mesma unidade
+                await item.update({ 
+                    data_inicio: dataInicioParaSalvar, 
+                    data_fim: newEndDate 
+                }, { transaction: t });
             }
 
             await order.update({
-                data_inicio: newStartDate,
+                data_inicio: dataInicioParaSalvar,
                 data_fim: newEndDate,
-                taxa_remarcacao: taxa_remarcacao
+                taxa_remarcacao: novaTaxaRemarcacao
             }, { transaction: t });
-
-            await ItemReserva.update(
-                { data_inicio: newStartDate, data_fim: newEndDate },
-                { where: { id_ordem_servico: order.id }, transaction: t }
-            );
         });
 
         res.status(200).json({ message: 'Reserva remarcada com sucesso!' });

@@ -9,7 +9,8 @@ const getConfig = async (req, res) => {
                 fidelidade_desconto_pct: 10.00,
                 fidelidade_ativo: true,
                 horario_limite_hoje: '12:00',
-                cnpj: '00.000.000/0001-00'
+                cnpj: '00.000.000/0001-00',
+                taxa_reagendamento: 0.00
             });
         }
 
@@ -40,6 +41,7 @@ const updateConfig = async (req, res) => {
         fidelidade_ativo, 
         horario_limite_hoje, 
         cnpj,
+        taxa_reagendamento,
         frete
     } = req.body;
     
@@ -51,7 +53,8 @@ const updateConfig = async (req, res) => {
                 fidelidade_desconto_pct,
                 fidelidade_ativo,
                 horario_limite_hoje,
-                cnpj
+                cnpj,
+                taxa_reagendamento
             });
         } else {
             await configLoja.update({
@@ -59,7 +62,8 @@ const updateConfig = async (req, res) => {
                 fidelidade_desconto_pct,
                 fidelidade_ativo,
                 horario_limite_hoje,
-                cnpj
+                cnpj,
+                taxa_reagendamento
             });
         }
 

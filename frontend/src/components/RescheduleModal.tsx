@@ -35,6 +35,10 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
   const originalDurationMs = originalEndDate.getTime() - originalStartDate.getTime();
   const originalDurationDays = Math.round(originalDurationMs / oneDay);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isPastOrToday = originalStartDate.getTime() <= today.getTime();
+
   const [newStartDate, setNewStartDate] = useState(order.data_inicio.split('T')[0]);
   const [newEndDate, setNewEndDate] = useState(order.data_fim.split('T')[0]);
   const [availability, setAvailability] = useState<{ available: boolean | null, checking: boolean }>({ available: null, checking: false });
@@ -74,9 +78,6 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
         const ultimoMes = meses[meses.length - 1];
 
         const adminMinDate = new Date(primeiroMes.ano, primeiroMes.mes - 1, 1);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
         const effectiveMinDate = adminMinDate.getTime() < today.getTime() ? today : adminMinDate;
         const dataMax = new Date(ultimoMes.ano, ultimoMes.mes, 0);
 
@@ -175,71 +176,67 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
     const newStart = parseDateStringAsLocal(newStartDate);
     const newEnd = parseDateStringAsLocal(newEndDate);
 
+    // Prioridade: Seleção atual do usuário (Azul)
     if (date >= newStart && date <= newEnd) {
-      return 'day-blue';
+      return 'day-selected-reschedule';
     }
 
     if (date.getMonth() !== currentMonthView.getMonth()) {
       return 'day-neighboring-month';
     }
 
+    // Dias Fechados/Feriados (Vermelho ou Cinza)
     const diaStatusAdmin = statusDias.get(dayString);
-    const availabilityEstoque = availabilityData[dayString];
-
-    if (!diaStatusAdmin) {
-      return null;
+    if (diaStatusAdmin && diaStatusAdmin.status === 'FECHADO') {
+      return (diaStatusAdmin.fonte === 'padrao') ? 'day-fechado-padrao' : 'day-red';
     }
-    if (diaStatusAdmin.status === 'FECHADO') {
-      return (diaStatusAdmin.fonte === 'padrao')
-        ? 'day-fechado-padrao'
-        : 'day-red';
+
+    // Estoque ZERO (Vermelho - Indisponível)
+    const availabilityEstoque = availabilityData[dayString];
+    if (availabilityEstoque === 0) {
+        return 'day-red';
+    }
+
+    // Lógica visual: Se o dia faz parte da reserva ORIGINAL, tratamos como Verde
+    if (date >= originalStartDate && date <= originalEndDate) {
+        return 'day-green';
     }
 
     if (availabilityEstoque === undefined) return null;
-    if (availabilityEstoque === 0) return 'day-red'; 
 
-    const totalUnits = order.ItemReservas[0].Unidade.Equipamento.total_quantidade;
-    if (totalUnits === 0) return 'day-red';
+    // Disponível (Verde) - Se houver qualquer quantidade acima de zero
+    if (availabilityEstoque > 0) {
+        return 'day-green';
+    }
 
-    const percentage = (availabilityEstoque / totalUnits) * 100;
-    if (percentage <= 50) return 'day-yellow';
-
-    return 'day-green';
+    return null;
   };
 
 
   const tileDisabled = ({ date, view }: { date: Date, view: string }): boolean => {
     if (view !== 'month') return false;
 
-    if (loadingCalendar || isLoadingMonth) {
-      return true;
-    }
+    if (loadingCalendar || isLoadingMonth) return true;
 
-    if (date.getMonth() !== currentMonthView.getMonth()) {
-      return true;
-    }
+    // Se o pedido já começou, não pode selecionar datas ANTES do início original
+    if (isPastOrToday && date < originalStartDate) return true;
 
-    if (date >= originalStartDate && date <= originalEndDate) {
-      return false;
-    }
+    if (date.getMonth() !== currentMonthView.getMonth()) return true;
+
+    // Se é a reserva atual dele, SEMPRE deixa clicar (mesmo que o estoque diga 0, pois ele é um dos que ocupa)
+    if (date >= originalStartDate && date <= originalEndDate) return false;
 
     const dayString = toISODate(date);
     const diaStatusAdmin = statusDias.get(dayString);
     const availabilityEstoque = availabilityData[dayString];
 
-    if (!diaStatusAdmin || diaStatusAdmin.status === 'FECHADO') {
-      return true;
-    }
+    if (!diaStatusAdmin || diaStatusAdmin.status === 'FECHADO') return true;
 
-    if (availabilityEstoque === undefined || availabilityEstoque === 0) {
-      return true;
-    }
+    if (availabilityEstoque === undefined || availabilityEstoque === 0) return true;
 
     if (maxDate) {
       const endOfSelection = new Date(date.getTime() + originalDurationMs);
-      if (endOfSelection > maxDate) {
-        return true;
-      }
+      if (endOfSelection > maxDate) return true;
     }
 
     return false;
@@ -247,10 +244,16 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
 
 
   const handleDateChange = (value: any) => {
-    const newStart = value as Date;
-    const newEnd = new Date(newStart.getTime() + originalDurationMs);
-    setNewStartDate(toISODate(newStart));
-    setNewEndDate(toISODate(newEnd));
+    const clickedDate = value as Date;
+    
+    if (isPastOrToday) {
+      if (clickedDate < originalStartDate) return;
+      setNewEndDate(toISODate(clickedDate));
+    } else {
+      const newEnd = new Date(clickedDate.getTime() + originalDurationMs);
+      setNewStartDate(toISODate(clickedDate));
+      setNewEndDate(toISODate(newEnd));
+    }
   };
 
   const handleSubmit = async () => {
@@ -273,62 +276,121 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
     <div style={modalOverlayStyle} onClick={onClose}>
       <div style={modalContentStyle} onClick={handleContentClick}>
         <button onClick={onClose} style={closeButtonStyle}>&times;</button>
-        <h2>Remarcar Pedido #{order.id}</h2>
-        <p>Datas atuais: {parseDateStringAsLocal(order.data_inicio).toLocaleDateString()} a {parseDateStringAsLocal(order.data_fim).toLocaleDateString()}</p>
-        <p style={{ fontWeight: 'bold' }}>Duração: {originalDurationDays + 1} dias (esta duração será mantida).</p>
+        
+        <div style={{ marginBottom: '20px' }}>
+            <h2 style={{ margin: '0 0 5px 0', fontSize: '1.5rem', color: '#2c3e50' }}>Remarcar Pedido #{order.id}</h2>
+            <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>
+                Período Atual: <strong>{originalStartDate.toLocaleDateString()}</strong> a <strong>{originalEndDate.toLocaleDateString()}</strong>
+            </p>
+        </div>
 
-        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-          <p style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>Disponibilidade</p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div className="day-green" style={{ width: 15, height: 15, marginRight: 5 }}></div> Alta
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div className="day-yellow" style={{ width: 15, height: 15, marginRight: 5 }}></div> Baixa
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div className="day-red" style={{ width: 15, height: 15, marginRight: 5 }}></div> Indisponível
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div className="day-blue" style={{ width: 15, height: 15, marginRight: 5 }}></div> Seu aluguel
+        {isPastOrToday && (
+          <div style={warningBoxStyle}>
+            ⚠️ <strong>Pedido em andamento:</strong> A data de início está fixada. Escolha no calendário apenas a nova data de <strong>término</strong>.
+          </div>
+        )}
+
+        <div style={legendContainerStyle}>
+          <div style={legendItemStyle}><div className="day-green" style={legendCircleStyle}></div> Disponível</div>
+          <div style={legendItemStyle}><div className="day-red" style={legendCircleStyle}></div> Indisponível</div>
+          <div style={legendItemStyle}><div style={{ ...legendCircleStyle, backgroundColor: '#3498db' }}></div> Sua Seleção</div>
+        </div>
+
+        <div style={calendarWrapperStyle}>
+            {(loadingCalendar || isLoadingMonth) ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
+                    <div className="spinner"></div>
+                    <p>Carregando disponibilidade...</p>
+                </div>
+            ) : error && !availabilityData ? (
+                <p style={{ color: '#e74c3c', textAlign: 'center', padding: '20px' }}>{error}</p>
+            ) : (
+                <Calendar
+                    onChange={handleDateChange}
+                    value={parseDateStringAsLocal(newStartDate)}
+                    selectRange={false}
+                    minDate={minDate}
+                    maxDate={maxDate}
+                    activeStartDate={currentMonthView}
+                    onActiveStartDateChange={({ activeStartDate }) => setCurrentMonthView(activeStartDate || new Date())}
+                    tileClassName={getTileClassName}
+                    tileDisabled={tileDisabled}
+                    minDetail="month"
+                    maxDetail="month"
+                />
+            )}
+        </div>
+
+        <div style={infoBoxStyle}>
+          <div style={{ marginBottom: '10px' }}>
+            <span style={{ color: '#7f8c8d', fontSize: '0.85rem', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Novo Período Selecionado</span>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#2c3e50' }}>
+                {parseDateStringAsLocal(newStartDate).toLocaleDateString()} — {parseDateStringAsLocal(newEndDate).toLocaleDateString()}
             </div>
           </div>
+          
+          {availability.checking ? (
+            <div style={{ color: '#3498db', fontSize: '0.9rem' }}>Verificando estoque...</div>
+          ) : availability.available === true ? (
+            <div style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                ✅ Período disponível para alteração
+            </div>
+          ) : availability.available === false ? (
+            <div style={{ color: '#e74c3c', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                ❌ Indisponível: Não há equipamentos livres nestas datas.
+            </div>
+          ) : null}
         </div>
 
-        {(loadingCalendar || isLoadingMonth) ? <p>Carregando calendário...</p> :
-          error ? <p style={{ color: 'red' }}>{error}</p> : (
-            <Calendar
-              onChange={handleDateChange}
-              value={parseDateStringAsLocal(newStartDate)}
-              selectRange={false}
-
-              minDate={minDate}
-              maxDate={maxDate}
-              activeStartDate={currentMonthView}
-              onActiveStartDateChange={({ activeStartDate }) =>
-                setCurrentMonthView(activeStartDate || new Date())
-              }
-
-              tileClassName={getTileClassName}
-              tileDisabled={tileDisabled}
-
-              minDetail="month"
-              maxDetail="month"
-            />
-          )}
-
-        <div style={{ margin: '1rem 0', minHeight: '24px' }}>
-          <p>Novo Período: <strong>{parseDateStringAsLocal(newStartDate).toLocaleDateString()}</strong> a <strong>{parseDateStringAsLocal(newEndDate).toLocaleDateString()}</strong></p>
-          {availability.checking && <p>Verificando disponibilidade...</p>}
-          {availability.available === true && <p style={{ color: 'green', fontWeight: 'bold' }}>Datas disponíveis!</p>}
-          {availability.available === false && <p style={{ color: 'red', fontWeight: 'bold' }}>Datas indisponíveis.</p>}
-          {error && <p style={{ color: 'red' }}>{error}</p>}
+        <div style={footerActionStyle}>
+            <button 
+                onClick={onClose} 
+                style={btnCancelStyle}
+            >
+                Cancelar
+            </button>
+            <button 
+                onClick={handleSubmit} 
+                disabled={!availability.available || availability.checking || isSubmitting}
+                style={{
+                    ...btnConfirmStyle,
+                    opacity: (!availability.available || availability.checking || isSubmitting) ? 0.6 : 1,
+                    cursor: (!availability.available || availability.checking || isSubmitting) ? 'not-allowed' : 'pointer'
+                }}
+            >
+                {isSubmitting ? 'Processando...' : 'Confirmar Alteração'}
+            </button>
         </div>
-
-        <button onClick={handleSubmit} disabled={!availability.available || availability.checking || isSubmitting}>
-          {isSubmitting ? 'Processando...' : 'Confirmar Remarcação'}
-        </button>
       </div>
+
+      <style>{`
+        .day-selected-reschedule {
+            background: #3498db !important;
+            color: white !important;
+            border-radius: 4px;
+        }
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .react-calendar {
+            width: 100% !important;
+            border: none !important;
+            font-family: inherit !important;
+        }
+        @media (max-width: 480px) {
+            h2 { fontSize: 1.2rem !important; }
+        }
+      `}</style>
     </div>
   );
 };
@@ -336,28 +398,119 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
 
 const modalOverlayStyle: React.CSSProperties = {
   position: 'fixed', zIndex: 1000, top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex',
-  justifyContent: 'center', alignItems: 'center'
+  backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex',
+  justifyContent: 'center', alignItems: 'center',
+  padding: '15px'
 };
+
 const modalContentStyle: React.CSSProperties = {
-  backgroundColor: 'var(--cor-fundo-modal)',
-  color: 'var(--cor-texto-principal)',
-  padding: '2rem',
-  borderRadius: '8px',
-  border: '1px solid var(--cor-borda)',
-  width: '90%',
-  maxWidth: '500px',
-  position: 'relative'
+  backgroundColor: '#fff',
+  padding: '30px',
+  borderRadius: '16px',
+  width: '100%',
+  maxWidth: '550px',
+  position: 'relative',
+  maxHeight: '90vh',
+  overflowY: 'auto',
+  boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
 };
+
+const warningBoxStyle: React.CSSProperties = {
+    backgroundColor: '#fff3cd',
+    color: '#856404',
+    padding: '12px 15px',
+    borderRadius: '8px',
+    marginBottom: '20px',
+    fontSize: '0.85rem',
+    border: '1px solid #ffeeba',
+    lineHeight: '1.4'
+};
+
+const legendContainerStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginBottom: '20px',
+    padding: '10px',
+    backgroundColor: '#f8f9fa',
+    borderRadius: '8px'
+};
+
+const legendItemStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    fontSize: '0.75rem',
+    color: '#666',
+    fontWeight: '600'
+};
+
+const legendCircleStyle: React.CSSProperties = {
+    width: 12,
+    height: 12,
+    borderRadius: '50%',
+    marginRight: '5px'
+};
+
+const calendarWrapperStyle: React.CSSProperties = {
+    marginBottom: '25px',
+    padding: '10px',
+    border: '1px solid #eee',
+    borderRadius: '12px'
+};
+
+const infoBoxStyle: React.CSSProperties = {
+    backgroundColor: '#f1f4f9',
+    padding: '20px',
+    borderRadius: '12px',
+    marginBottom: '25px'
+};
+
+const footerActionStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: '15px',
+    marginTop: '10px'
+};
+
+const btnBaseStyle: React.CSSProperties = {
+    flex: 1,
+    padding: '14px',
+    borderRadius: '10px',
+    fontWeight: 'bold',
+    fontSize: '1rem',
+    border: 'none',
+    transition: 'all 0.2s ease'
+};
+
+const btnCancelStyle: React.CSSProperties = {
+    ...btnBaseStyle,
+    backgroundColor: '#eee',
+    color: '#666',
+    cursor: 'pointer'
+};
+
+const btnConfirmStyle: React.CSSProperties = {
+    ...btnBaseStyle,
+    backgroundColor: '#3498db',
+    color: 'white',
+    boxShadow: '0 4px 10px rgba(52,152,219,0.3)'
+};
+
 const closeButtonStyle: React.CSSProperties = {
   position: 'absolute',
-  top: '15px',
-  right: '15px',
+  top: '20px',
+  right: '20px',
   cursor: 'pointer',
-  background: 'none',
+  background: '#f8f9fa',
   border: 'none',
-  fontSize: '1.5rem',
-  color: 'var(--cor-texto-principal)'
+  fontSize: '1.2rem',
+  width: '32px',
+  height: '32px',
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#999'
 };
 
 

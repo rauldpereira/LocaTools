@@ -459,8 +459,10 @@ const getDailyAvailability = async (req, res) => {
       if (reserva.status === "manutencao") {
         deveContar = true;
       } else if (reserva.OrdemDeServico) {
-        if (excludeOrderId && reserva.OrdemDeServico.id == excludeOrderId)
+        // Se for o pedido que estamos tentando remarcar, IGNORA (não conta como ocupado)
+        if (excludeOrderId && reserva.OrdemDeServico.id == excludeOrderId) {
           return;
+        }
 
         const statusAtivos = [
           "pendente",

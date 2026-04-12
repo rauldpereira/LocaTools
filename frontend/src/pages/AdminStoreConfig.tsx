@@ -14,6 +14,7 @@ const AdminStoreConfig: React.FC = () => {
     fidelidade_ativo: true,
     horario_limite_hoje: '12:00',
     cnpj: '00.000.000/0001-00',
+    taxa_reagendamento: 0.00,
     frete: {
         preco_km: 0,
         taxa_fixa: 0,
@@ -46,6 +47,7 @@ const AdminStoreConfig: React.FC = () => {
             fidelidade_ativo: data.fidelidade_ativo ?? true,
             horario_limite_hoje: data.horario_limite_hoje || '12:00',
             cnpj: data.cnpj || '00.000.000/0001-00',
+            taxa_reagendamento: Number(data.taxa_reagendamento || 0),
             frete: {
                 preco_km: Number(data.frete?.preco_km || 0),
                 taxa_fixa: Number(data.frete?.taxa_fixa || 0),
@@ -336,6 +338,33 @@ const AdminStoreConfig: React.FC = () => {
                     style={inputStyle}
                 />
             </div>
+        </div>
+      </div>
+
+      {/* TAXAS EXTRAS */}
+      <div style={cardStyle}>
+        <h3 style={{ marginTop: 0, color: "#6f42c1", display: "flex", alignItems: "center", gap: "10px" }}>
+          Taxas Extras
+        </h3>
+        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
+          Configure taxas adicionais cobradas por alterações ou serviços especiais.
+        </p>
+
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: "250px" }}>
+            <label style={labelStyle}>Taxa de Reagendamento (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={config.taxa_reagendamento}
+              onChange={(e) => setConfig({ ...config, taxa_reagendamento: parseFloat(e.target.value) || 0 })}
+              style={inputStyle}
+              min="0"
+            />
+            <small style={helpTextStyle}>
+              Valor fixo cobrado a cada vez que o cliente solicita a remarcação de um pedido.
+            </small>
+          </div>
         </div>
       </div>
 
