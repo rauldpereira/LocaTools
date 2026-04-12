@@ -19,104 +19,77 @@ const freightController = {
         }
 
         try {
-            // Pega Configuração do Admin posta sobre a loja, se nn tiver, cria com valores padrão 
             let config = await FreteConfig.findOne();
             if (!config) {
                 config = await FreteConfig.create({
                     preco_km: 3.00,
                     taxa_fixa: 20.00,
-                    endereco_origem: 'Pindamonhangaba, SP'
+                    endereco_origem: 'Av. Nossa Senhora do Bom Sucesso, 1000, Pindamonhangaba - SP'
                 });
             }
 
-            // Acha a Loja
-            const urlOrigem = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(config.endereco_origem)}&limit=1`;
-            const resOrigem = await axios.get(urlOrigem, { headers: HEADERS_OSM });
+            // --- LÓGICA DE ORIGEM---
+            let loja = { lat: config.lat_origem, lon: config.lon_origem };
 
-            if (!resOrigem.data || resOrigem.data.length === 0) {
-                return res.status(400).json({ error: 'Endereço da LOJA inválido ou não encontrado no mapa.' });
+            if (!loja.lat || !loja.lon) {
+                console.log(`[Frete] Buscando coordenadas da loja pela primeira vez: ${config.endereco_origem}`);
+                const urlOrigem = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(config.endereco_origem)}&limit=1`;
+                try {
+                    const resOrigem = await axios.get(urlOrigem, { headers: HEADERS_OSM });
+                    if (resOrigem.data && resOrigem.data.length > 0) {
+                        loja = { lat: resOrigem.data[0].lat, lon: resOrigem.data[0].lon };
+                        await config.update({ lat_origem: loja.lat, lon_origem: loja.lon });
+                    }
+                } catch (err) {
+                    console.error('[Frete] Erro ao buscar coordenadas da loja:', err.message);
+                }
             }
-            const loja = {
-                lat: resOrigem.data[0].lat,
-                lon: resOrigem.data[0].lon
-            };
 
-            await sleep(1000);
-    
+            if (!loja.lat || !loja.lon) {
+                return res.status(400).json({ error: 'Endereço da LOJA não pôde ser geolocalizado. Verifique as configurações.' });
+            }
+
+            // --- LÓGICA DE DESTINO ---
+            let resDestinoData = null;
             const cepRegex = /\d{5}-?\d{3}/;
             const cepMatch = endereco_destino.match(cepRegex);
-            let resDestinoData = null;
 
-            // Puxa a Latitude/Longitude direto pelo CEP!
+            // Tenta CEP direto
             if (cepMatch) {
                 const cepLimpo = cepMatch[0].replace('-', '');
                 try {
-                    console.log(`[Frete] Consultando CEP ${cepLimpo} na AwesomeAPI (Lat/Lon direta)...`);
-                    
-                    // A AwesomeAPI devolve as coordenadas
-                    const resCep = await axios.get(`https://cep.awesomeapi.com.br/json/${cepLimpo}`);
-                    
+                    const resCep = await axios.get(`https://cep.awesomeapi.com.br/json/${cepLimpo}`, { timeout: 3000 });
                     if (resCep.data && resCep.data.lat && resCep.data.lng) {
                         resDestinoData = [{
                             lat: resCep.data.lat,
                             lon: resCep.data.lng,
                             display_name: `${resCep.data.address}, ${resCep.data.district}, ${resCep.data.city} - ${resCep.data.state}, ${resCep.data.cep}`
                         }];
-                        console.log(`[Frete] ✅ Sucesso absoluto pelo CEP! (AwesomeAPI)`);
+                        console.log(`[Frete] ✅ Destino resolvido via AwesomeAPI (CEP)`);
                     }
                 } catch (err) {
-                    console.log("[Frete] Erro na AwesomeAPI, partindo pro plano B do mapa...", err.message);
+                    console.log("[Frete] AwesomeAPI offline ou CEP não encontrado, tentando mapa...");
                 }
             }
 
-            // Se não tinha CEP ou se a API falhou, usa a busca em texto do Nominatim
+            // Fallback para Nominatim (OSM) apenas se o CEP falhar
             if (!resDestinoData) {
-                let tentativas = [ endereco_destino ]; 
-                
-                // Remove o número da casa
-                const enderecoSemNumero = endereco_destino.replace(/,\s*\d+\s*(?=-)/, ' ');
-                if (enderecoSemNumero !== endereco_destino) {
-                    tentativas.push(enderecoSemNumero);
-                }
+                // Aguarda apenas se for usar o Nominatim, para respeitar o rate limit
+                await sleep(800); 
 
-                // Se o cara informou o CEP, pega o Bairro no ViaCEP pra jogar no mapa
-                if (cepMatch) {
-                    const cepLimpo = cepMatch[0].replace('-', '');
-                    try {
-                        const resViaCep = await axios.get(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-                        if (!resViaCep.data.erro) {
-                            const { bairro, localidade, uf } = resViaCep.data;
-                            if (bairro) tentativas.push(`${bairro}, ${localidade}, ${uf}`);
-                            tentativas.push(`${localidade}, ${uf}`);
-                        }
-                    } catch (err) {}
-                } else {
-                    const cidadeMatch = endereco_destino.match(/([a-zA-Z\sãáàâéêíóôõúç]+)\/([A-Z]{2})/i);
-                    if (cidadeMatch) tentativas.push(`${cidadeMatch[1].trim()}, ${cidadeMatch[2].trim()}`);
-                }
-
-                tentativas = [...new Set(tentativas)];
-
-                for (const tentativa of tentativas) {
-                    console.log(`[Frete] Buscando no mapa (Nominatim): "${tentativa}"`);
-                    const urlDestino = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(tentativa)}&limit=1&countrycodes=br`;
-                    
-                    try {
-                        const resDestino = await axios.get(urlDestino, { headers: HEADERS_OSM });
-                        if (resDestino.data && resDestino.data.length > 0) {
-                            resDestinoData = resDestino.data;
-                            console.log(`[Frete] Sucesso no mapa: "${tentativa}"`);
-                            break; 
-                        }
-                    } catch (err) {
-                        console.log(`[Frete] Erro no OSM para "${tentativa}":`, err.message);
+                const urlDestino = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco_destino)}&limit=1&countrycodes=br`;
+                try {
+                    const resDestino = await axios.get(urlDestino, { headers: HEADERS_OSM, timeout: 5000 });
+                    if (resDestino.data && resDestino.data.length > 0) {
+                        resDestinoData = resDestino.data;
                     }
-                    await sleep(1000); 
+                } catch (err) {
+                    console.log(`[Frete] Erro no OSM para "${endereco_destino}":`, err.message);
                 }
             }
 
             if (!resDestinoData) {
-                return res.status(400).json({ error: 'Endereço de ENTREGA não encontrado. Verifique se digitou corretamente.' });
+                return res.status(400).json({ error: 'Endereço de ENTREGA não encontrado. Tente digitar o endereço completo com CEP.' });
             }
 
             const cliente = { 
@@ -125,77 +98,63 @@ const freightController = {
                 nome_formatado: resDestinoData[0].display_name
             };
 
-            // Monta a URL da API de Rotas (Ida)
+            // --- CÁLCULO DE ROTA ---
             const start = `${loja.lon},${loja.lat}`;
             const end = `${cliente.lon},${cliente.lat}`;
-
             const urlRota = `https://api.openrouteservice.org/v2/directions/driving-car?start=${start}&end=${end}`;
 
             const resRota = await axios.get(urlRota, {
-                headers: {
-                    'Authorization': ORS_API_KEY,
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Authorization': ORS_API_KEY, 'Content-Type': 'application/json' },
+                timeout: 5000
             });
 
-            const dadosRota = resRota.data;
-
-            if (!dadosRota.features || dadosRota.features.length === 0) {
-                return res.status(400).json({ error: 'Não foi possível traçar uma rota de carro para este local.' });
+            if (!resRota.data.features || resRota.data.features.length === 0) {
+                return res.status(400).json({ error: 'Não foi possível traçar uma rota para este local.' });
             }
 
-            // Extrai dados (A API devolve em Metros e Segundos)
-            const propriedades = dadosRota.features[0].properties;
-            const distanciaMetros = propriedades.segments[0].distance;
-            const duracaoSegundos = propriedades.segments[0].duration;
+            const propriedades = resRota.data.features[0].properties;
+            const distanciaKm = propriedades.segments[0].distance / 1000;
+            const duracaoMinutos = Math.round(propriedades.segments[0].duration / 60);
 
-            const distanciaKm = distanciaMetros / 1000;
-            const duracaoMinutos = Math.round(duracaoSegundos / 60);
-
-            // Verifica Raio Máximo
             if (config.raio_maximo_km && distanciaKm > config.raio_maximo_km) {
                 return res.status(400).json({
                     error: `Endereço muito distante (${distanciaKm.toFixed(1)}km). O limite é ${config.raio_maximo_km}km.`
                 });
             }
 
-            // A CONTA: (Ida + Volta) * Preço + Taxa
             const custoKm = (distanciaKm * 2) * parseFloat(config.preco_km);
             const totalFrete = custoKm + parseFloat(config.taxa_fixa);
 
             res.json({
                 origem: config.endereco_origem,
                 destino: cliente.nome_formatado,
-
-                // Dados da Viagem
                 distancia_km: parseFloat(distanciaKm.toFixed(2)),
                 duracao_estimada: `${duracaoMinutos} min`,
-
-                // Valores
-                preco_km_admin: config.preco_km,
-                taxa_fixa_admin: config.taxa_fixa,
                 valor_total_frete: parseFloat(totalFrete.toFixed(2))
             });
 
         } catch (error) {
-            console.error('Erro API Rota:', error.response?.data || error.message);
-
-            if (error.response?.status === 401 || error.response?.status === 403) {
-                return res.status(500).json({ error: 'Erro de Autenticação na API de Mapas. Verifique a chave no .env' });
-            }
-
-            res.status(500).json({ error: 'Erro ao calcular rota de entrega.' });
+            console.error('Erro Cálculo Frete:', error.message);
+            res.status(500).json({ error: 'Erro ao calcular frete. Tente novamente em instantes.' });
         }
     },
 
     // --- FUNÇÕES DO ADMIN ---
-
     configurar: async (req, res) => {
         const { preco_km, taxa_fixa, endereco_origem, raio_maximo_km } = req.body;
         try {
             let config = await FreteConfig.findOne();
             if (config) {
-                await config.update({ preco_km, taxa_fixa, endereco_origem, raio_maximo_km });
+                // Se o endereço mudou, limpa o cache de lat/lon
+                const mudouEndereco = endereco_origem !== config.endereco_origem;
+                await config.update({ 
+                    preco_km, 
+                    taxa_fixa, 
+                    endereco_origem, 
+                    raio_maximo_km,
+                    lat_origem: mudouEndereco ? null : config.lat_origem,
+                    lon_origem: mudouEndereco ? null : config.lon_origem
+                });
             } else {
                 config = await FreteConfig.create({ preco_km, taxa_fixa, endereco_origem, raio_maximo_km });
             }

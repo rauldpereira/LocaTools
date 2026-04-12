@@ -422,7 +422,8 @@ const CartPage: React.FC = () => {
                                 }}>
                                     <p style={{ margin: 0, fontWeight: 'bold' }}>🎁 Fidelidade Ativada!</p>
                                     <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                                        Você completou {completedOrders} pedidos e ganhou {loyaltyConfig?.pct}% de desconto.
+                                        A cada {loyaltyConfig?.num} pedidos você ganha {loyaltyConfig?.pct}% de desconto. 
+                                        Como este é o seu {completedOrders + 1}º pedido, o benefício foi aplicado!
                                     </p>
                                     <p style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>
                                         Desconto: - R$ {discountAmount.toFixed(2)}

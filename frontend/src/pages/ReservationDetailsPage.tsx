@@ -148,10 +148,10 @@ const ReservationDetailsPage: React.FC = () => {
 
   const fetchLojaConfig = async () => {
     try {
-      const { data } = await axios.get(`${backendUrl}/api/frete/config`);
+      const { data } = await axios.get(`${backendUrl}/api/config`);
       setLojaConfig(data);
     } catch (error) {
-      console.error("Erro ao buscar dados do frete:", error);
+      console.error("Erro ao buscar configurações da loja:", error);
     }
   };
 
@@ -1162,6 +1162,7 @@ const ReservationDetailsPage: React.FC = () => {
             <p style={{ color: "#444", fontSize: "1.05rem", lineHeight: "1.5", marginBottom: "10px" }}>
               Você já terminou de utilizar os equipamentos desta reserva?
             </p>
+
             <p style={{ color: "#666", fontSize: "0.95rem", marginBottom: "25px" }}>
               Ao confirmar, nossa equipe de logística será notificada imediatamente para agendar o recolhimento no endereço da sua obra.
             </p>

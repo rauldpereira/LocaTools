@@ -759,12 +759,11 @@ const confirmManualPayment = async (req, res) => {
         await order.update({
             status: statusFinal,
             taxa_avaria: taxaAvariaVal,
-            taxa_atraso: taxaAtrasoVal 
+            taxa_atraso: taxaAtrasoVal
         });
 
         const valorRestanteAluguel = Number(order.valor_total) - Number(order.valor_sinal);
         const valorTotalCobrado = valorRestanteAluguel + taxaAvariaVal + taxaAtrasoVal;
-
         if (valorTotalCobrado > 0) {
             await Pagamento.create({
                 id_ordem_servico: order.id,

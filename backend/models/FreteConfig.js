@@ -18,6 +18,14 @@ module.exports = (sequelize, DataTypes) => {
         raio_maximo_km: {
             type: DataTypes.INTEGER,
             defaultValue: 50 
+        },
+        lat_origem: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        lon_origem: {
+            type: DataTypes.STRING,
+            allowNull: true
         }
     }, {
         tableName: 'frete_config'

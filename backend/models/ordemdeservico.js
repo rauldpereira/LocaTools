@@ -118,6 +118,11 @@ module.exports = (sequelize, DataTypes) => {
       data_assinatura_devolucao: {
         type: DataTypes.DATE,
         allowNull: true,
+      },
+      solicitou_devolucao: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        allowNull: false
       }
     },
     {
