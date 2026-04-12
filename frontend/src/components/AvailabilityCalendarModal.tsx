@@ -32,6 +32,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
     const [quantity, setQuantity] = useState(1);
 
     const [statusDias, setStatusDias] = useState<Map<string, IDiaStatus>>(new Map());
+    const [storeConfig, setStoreConfig] = useState<any>(null);
     const [currentMonthView, setCurrentMonthView] = useState(new Date());
     const [minDate, setMinDate] = useState<Date | undefined>(undefined);
     const [maxDate, setMaxDate] = useState<Date | undefined>(undefined);
@@ -41,6 +42,16 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
     // CARREGA OS MESES
     useEffect(() => {
+        const fetchStoreConfig = async () => {
+            try {
+                const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/config`);
+                setStoreConfig(data);
+            } catch (err) {
+                console.warn("Não foi possível carregar as configurações da loja para trava de horário.");
+            }
+        };
+        fetchStoreConfig();
+
         const fetchMesesPublicados = async () => {
             try {
                 setLoading(true);
@@ -155,6 +166,17 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
     }, [selectedRange, availabilityData]);
 
 
+    const isTodayPastLimit = () => {
+        if (!storeConfig || !storeConfig.horario_limite_hoje) return false;
+        
+        const now = new Date();
+        const [hourLimit, minLimit] = storeConfig.horario_limite_hoje.split(':').map(Number);
+        const limit = new Date();
+        limit.setHours(hourLimit, minLimit, 0, 0);
+
+        return now > limit;
+    };
+
     const getTileClassName = ({ date, view }: { date: Date, view: string }) => {
         if (view !== 'month') return null;
         const dayString = toISODate(date);
@@ -183,6 +205,11 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
             return 'day-red';
         }
 
+        // TRAVA DE HORÁRIO PARA HOJE
+        if (date.getTime() === today.getTime() && isTodayPastLimit()) {
+            return 'day-red';
+        }
+
         // Dias sem configuração ou FECHADOS -> Vermelho
         if (!diaStatusAdmin || diaStatusAdmin.status === 'FECHADO') {
             return 'day-red';
@@ -208,6 +235,14 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         if (view !== 'month') return false;
 
         if (date.getMonth() !== currentMonthView.getMonth()) {
+            return true;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // TRAVA DE HORÁRIO PARA HOJE
+        if (date.getTime() === today.getTime() && isTodayPastLimit()) {
             return true;
         }
 
@@ -276,6 +311,21 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                         <div className="day-blue" style={{ width: 15, height: 15, marginRight: 5 }}></div> Selecionado
                     </div>
                 </div>
+
+                {storeConfig?.horario_limite_hoje && isTodayPastLimit() && (
+                    <div style={{
+                        backgroundColor: '#fff3cd',
+                        color: '#856404',
+                        padding: '10px',
+                        borderRadius: '8px',
+                        marginBottom: '1rem',
+                        fontSize: '0.9rem',
+                        border: '1px solid #ffeeba',
+                        textAlign: 'center'
+                    }}>
+                        ⚠️ <strong>Atenção:</strong> O horário limite para locações para hoje ({storeConfig.horario_limite_hoje}) já passou. O dia de hoje está indisponível para novas reservas.
+                    </div>
+                )}
 
                 {loading ? <p>Carregando calendário...</p> :
                     errorMessage ? <p style={{ color: 'red' }}>{errorMessage}</p> : (

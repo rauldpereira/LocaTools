@@ -24,7 +24,12 @@ interface IMesPublicado {
   mes: number;
 }
 
-const toISODate = (date: Date) => date.toISOString().split('T')[0];
+const toISODate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuccess }) => {
   const { token, isLoadingAuth, isLoggedIn } = useAuth();
@@ -46,22 +51,21 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [availabilityData, setAvailabilityData] = useState<{ [key: string]: number }>({});
-  const [loadingCalendar, setLoadingCalendar] = useState(true);
-
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isLoadingMonth, setIsLoadingMonth] = useState(false);
+  const [loadingCalendar, setLoadingCalendar] = useState(true);
 
   const [statusDias, setStatusDias] = useState<Map<string, IDiaStatus>>(new Map());
   const [currentMonthView, setCurrentMonthView] = useState(new Date());
   const [minDate, setMinDate] = useState<Date | undefined>(undefined);
   const [maxDate, setMaxDate] = useState<Date | undefined>(undefined);
 
-
   useEffect(() => {
     if (isLoadingAuth || !isLoggedIn) return;
 
-    const fetchMesesPublicados = async () => {
+    const fetchInitialData = async () => {
       try {
-        setLoadingCalendar(true);
+        setIsInitialLoading(true);
         setError('');
 
         const { data: meses } = await axios.get<IMesPublicado[]>(
@@ -69,14 +73,13 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
         );
 
         if (meses.length === 0) {
-          setError("Nenhum mês disponível para reagendamento.");
-          setLoadingCalendar(false);
+          setError("Nenhum mês disponível.");
+          setIsInitialLoading(false);
           return;
         }
 
         const primeiroMes = meses[0];
         const ultimoMes = meses[meses.length - 1];
-
         const adminMinDate = new Date(primeiroMes.ano, primeiroMes.mes - 1, 1);
         const effectiveMinDate = adminMinDate.getTime() < today.getTime() ? today : adminMinDate;
         const dataMax = new Date(ultimoMes.ano, ultimoMes.mes, 0);
@@ -85,19 +88,34 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
         setMaxDate(dataMax);
         setCurrentMonthView(effectiveMinDate);
 
+        // Busca disponibilidade inicial ANTES de liberar o modal
+        const [resAvailability, resStatus] = await Promise.all([
+            axios.get(`${import.meta.env.VITE_API_URL}/api/equipment/${order.ItemReservas[0].Unidade.Equipamento.id}/daily-availability`, {
+                params: { startDate: toISODate(effectiveMinDate), endDate: toISODate(dataMax), excludeOrderId: order.id }
+            }),
+            axios.get(`${import.meta.env.VITE_API_URL}/api/calendario/status-mensal`, {
+                params: { ano: effectiveMinDate.getFullYear(), mes: effectiveMinDate.getMonth() + 1 }
+            })
+        ]);
+
+        setAvailabilityData(resAvailability.data.availabilityByDay);
+        setStatusDias(new Map(resStatus.data.map((dia: any) => [dia.data, dia])));
+        
       } catch (err) {
-        console.error("Erro ao buscar meses publicados:", err);
-        setError("Erro ao carregar meses disponíveis.");
+        console.error("Erro no carregamento inicial:", err);
+        setError("Erro ao carregar dados do calendário.");
+      } finally {
+        setIsInitialLoading(false);
         setLoadingCalendar(false);
       }
     };
 
-    fetchMesesPublicados();
-  }, [isLoadingAuth, isLoggedIn]);
+    fetchInitialData();
+  }, [isLoadingAuth, isLoggedIn, order.id]);
 
 
   useEffect(() => {
-    if (!minDate) return;
+    if (isInitialLoading || !minDate) return;
 
     const fetchStatusMensal = async () => {
       setIsLoadingMonth(true);
@@ -119,38 +137,28 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
     };
 
     fetchStatusMensal();
-  }, [currentMonthView, minDate]);
-
-
-  useEffect(() => {
-
-    if (!minDate || !maxDate || !order.ItemReservas || order.ItemReservas.length === 0) return;
-
-    const fetchDailyAvailability = async () => {
-      try {
-        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/api/equipment/${order.ItemReservas[0].Unidade.Equipamento.id}/daily-availability`, {
-          params: {
-            startDate: toISODate(minDate),
-            endDate: toISODate(maxDate),
-            excludeOrderId: order.id
-          }
-        });
-
-        setAvailabilityData(data.availabilityByDay);
-      } catch (error) {
-        console.error("Erro ao buscar disponibilidade diária", error);
-        setError("Erro ao carregar disponibilidade do item.");
-      } finally {
-        setLoadingCalendar(false);
-      }
-    };
-    fetchDailyAvailability();
-  }, [minDate, maxDate, order.id, order.ItemReservas]);
+  }, [currentMonthView]);
 
   useEffect(() => {
     if (!newStartDate || !newEndDate) return;
-    setAvailability({ available: null, checking: true });
+
+    // Validação de duração mínima antes de qualquer coisa
+    const dInicio = parseDateStringAsLocal(newStartDate);
+    const dFim = parseDateStringAsLocal(newEndDate);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const selectedDuration = Math.round(Math.abs((dFim.getTime() - dInicio.getTime()) / oneDay)) + 1;
+    const originalDur = originalDurationDays + 1;
+
+    if (selectedDuration < originalDur) {
+      setError(`A nova duração (${selectedDuration} dias) não pode ser menor que a original (${originalDur} dias).`);
+      setAvailability({ available: false, checking: false });
+      return; // Para aqui, não apaga o erro nem busca no banco
+    }
+
+    // Se passou na duração, limpa erro antigo e checa estoque
     setError('');
+    setAvailability({ available: null, checking: true });
+
     const check = async () => {
       try {
         const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -166,7 +174,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
     };
     const timer = setTimeout(check, 500);
     return () => clearTimeout(timer);
-  }, [newStartDate, newEndDate, order.id, token]);
+  }, [newStartDate, newEndDate, order.id, token, originalDurationDays]);
 
 
   const getTileClassName = ({ date, view }: { date: Date, view: string }) => {
@@ -244,19 +252,42 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
 
 
   const handleDateChange = (value: any) => {
-    const clickedDate = value as Date;
+    setError(''); // Limpa erros ao começar nova seleção
     
     if (isPastOrToday) {
+      const clickedDate = value as Date;
       if (clickedDate < originalStartDate) return;
       setNewEndDate(toISODate(clickedDate));
     } else {
-      const newEnd = new Date(clickedDate.getTime() + originalDurationMs);
-      setNewStartDate(toISODate(clickedDate));
-      setNewEndDate(toISODate(newEnd));
+      if (Array.isArray(value) && value.length === 2) {
+        const [start, end] = value;
+        if (start && end) {
+          const oneDay = 1000 * 60 * 60 * 24;
+          const selectedDuration = Math.round(Math.abs((end.getTime() - start.getTime()) / oneDay)) + 1;
+          
+          if (selectedDuration < originalDurationDays + 1) {
+            setError(`A nova duração (${selectedDuration} dias) não pode ser menor que a original (${originalDurationDays + 1} dias).`);
+          }
+          
+          setNewStartDate(toISODate(start));
+          setNewEndDate(toISODate(end));
+        }
+      }
     }
   };
 
   const handleSubmit = async () => {
+    // Validação extra de segurança no clique
+    const dInicio = parseDateStringAsLocal(newStartDate);
+    const dFim = parseDateStringAsLocal(newEndDate);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const newDurationDays = Math.round(Math.abs((dFim.getTime() - dInicio.getTime()) / oneDay)) + 1;
+
+    if (newDurationDays < originalDurationDays + 1) {
+        setError(`A nova duração (${newDurationDays} dias) não pode ser menor que a original (${originalDurationDays + 1} dias).`);
+        return;
+    }
+
     setError('');
     setIsSubmitting(true);
     try {
@@ -296,28 +327,38 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
           <div style={legendItemStyle}><div style={{ ...legendCircleStyle, backgroundColor: '#3498db' }}></div> Sua Seleção</div>
         </div>
 
-        <div style={calendarWrapperStyle}>
-            {(loadingCalendar || isLoadingMonth) ? (
+        <div style={{ ...calendarWrapperStyle, position: 'relative', opacity: isLoadingMonth ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+            {isInitialLoading ? (
                 <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
                     <div className="spinner"></div>
-                    <p>Carregando disponibilidade...</p>
+                    <p>Carregando calendário...</p>
                 </div>
             ) : error && !availabilityData ? (
                 <p style={{ color: '#e74c3c', textAlign: 'center', padding: '20px' }}>{error}</p>
             ) : (
-                <Calendar
-                    onChange={handleDateChange}
-                    value={parseDateStringAsLocal(newStartDate)}
-                    selectRange={false}
-                    minDate={minDate}
-                    maxDate={maxDate}
-                    activeStartDate={currentMonthView}
-                    onActiveStartDateChange={({ activeStartDate }) => setCurrentMonthView(activeStartDate || new Date())}
-                    tileClassName={getTileClassName}
-                    tileDisabled={tileDisabled}
-                    minDetail="month"
-                    maxDetail="month"
-                />
+                <>
+                    {isLoadingMonth && (
+                        <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}>
+                            <div className="spinner" style={{ width: '20px', height: '20px', margin: 0 }}></div>
+                        </div>
+                    )}
+                    <Calendar
+                        onChange={handleDateChange}
+                        value={isPastOrToday 
+                            ? parseDateStringAsLocal(newEndDate) 
+                            : [parseDateStringAsLocal(newStartDate), parseDateStringAsLocal(newEndDate)]
+                        }
+                        selectRange={!isPastOrToday}
+                        minDate={minDate}
+                        maxDate={maxDate}
+                        activeStartDate={currentMonthView}
+                        onActiveStartDateChange={({ activeStartDate }) => setCurrentMonthView(activeStartDate || new Date())}
+                        tileClassName={getTileClassName}
+                        tileDisabled={tileDisabled}
+                        minDetail="month"
+                        maxDetail="month"
+                    />
+                </>
             )}
         </div>
 
@@ -329,14 +370,20 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
             </div>
           </div>
           
+          {error && (
+            <div style={{ color: '#e74c3c', fontWeight: 'bold', fontSize: '0.95rem', marginTop: '10px' }}>
+                ⚠️ {error}
+            </div>
+          )}
+
           {availability.checking ? (
-            <div style={{ color: '#3498db', fontSize: '0.9rem' }}>Verificando estoque...</div>
-          ) : availability.available === true ? (
-            <div style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ color: '#3498db', fontSize: '0.9rem', marginTop: '10px' }}>Verificando estoque...</div>
+          ) : !error && availability.available === true ? (
+            <div style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '10px' }}>
                 ✅ Período disponível para alteração
             </div>
-          ) : availability.available === false ? (
-            <div style={{ color: '#e74c3c', fontWeight: 'bold', fontSize: '0.95rem' }}>
+          ) : !error && availability.available === false ? (
+            <div style={{ color: '#e74c3c', fontWeight: 'bold', fontSize: '0.95rem', marginTop: '10px' }}>
                 ❌ Indisponível: Não há equipamentos livres nestas datas.
             </div>
           ) : null}
@@ -351,11 +398,11 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
             </button>
             <button 
                 onClick={handleSubmit} 
-                disabled={!availability.available || availability.checking || isSubmitting}
+                disabled={!!error || !availability.available || availability.checking || isSubmitting}
                 style={{
                     ...btnConfirmStyle,
-                    opacity: (!availability.available || availability.checking || isSubmitting) ? 0.6 : 1,
-                    cursor: (!availability.available || availability.checking || isSubmitting) ? 'not-allowed' : 'pointer'
+                    opacity: (!!error || !availability.available || availability.checking || isSubmitting) ? 0.6 : 1,
+                    cursor: (!!error || !availability.available || availability.checking || isSubmitting) ? 'not-allowed' : 'pointer'
                 }}
             >
                 {isSubmitting ? 'Processando...' : 'Confirmar Alteração'}

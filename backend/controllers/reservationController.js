@@ -949,16 +949,39 @@ const rescheduleOrder = async (req, res) => {
             let novaTaxaRemarcacao = Number(order.taxa_remarcacao || 0) + taxaFixaReagendamento;
 
             const oneDay = 1000 * 60 * 60 * 24;
-            const originalDuration = (parseDateStringAsLocal(order.data_fim) - dataInicioOriginal) / oneDay;
-            const newDuration = (new Date(newEndDate) - new Date(dataInicioParaSalvar)) / oneDay;
+            const originalDuration = Math.round(Math.abs((parseDateStringAsLocal(order.data_fim) - dataInicioOriginal) / oneDay)) + 1;
+            const newDuration = Math.round(Math.abs((new Date(newEndDate) - new Date(dataInicioParaSalvar)) / oneDay)) + 1;
 
-            if (!isPastOrToday && originalDuration !== newDuration) {
-                throw new Error('A duração da remarcação deve ser a mesma da reserva original.');
+            // REGRA: A nova duração não pode ser menor que a original (pode estender, mas não encurtar)
+            if (newDuration < originalDuration) {
+                throw new Error(`A nova duração (${newDuration} dias) não pode ser menor que a original (${originalDuration} dias).`);
             }
 
-            if (newDuration < 0) {
-                throw new Error('A data de término não pode ser anterior à data de início.');
+            if (newDuration < 1) {
+                throw new Error('A data de término não pode ser anterior ou igual à data de início.');
             }
+
+            // --- CÁLCULO DE VALOR ADICIONAL POR EXTENSÃO ---
+            let valorExtraDiarias = 0;
+            if (newDuration > originalDuration) {
+                const diasExtras = newDuration - originalDuration;
+                
+                let somaDiariasEquipamentos = 0;
+                for (const item of order.ItemReservas) {
+                    const unidade = await Unidade.findByPk(item.id_unidade, { 
+                        include: [{ model: Equipamento, as: 'Equipamento' }], 
+                        transaction: t 
+                    });
+                    if (unidade?.Equipamento?.preco_diaria) {
+                        somaDiariasEquipamentos += Number(unidade.Equipamento.preco_diaria);
+                    }
+                }
+                
+                valorExtraDiarias = somaDiariasEquipamentos * diasExtras;
+                console.log(`[REAGENDAMENTO] Pedido #${order.id} estendido em ${diasExtras} dias. Valor extra: R$ ${valorExtraDiarias.toFixed(2)}`);
+            }
+
+            const novoValorTotal = Number(order.valor_total) + valorExtraDiarias;
 
             // Validar disponibilidade e realizar REMANEJAMENTO se necessário
             for (const item of order.ItemReservas) {
@@ -1021,7 +1044,8 @@ const rescheduleOrder = async (req, res) => {
             await order.update({
                 data_inicio: dataInicioParaSalvar,
                 data_fim: newEndDate,
-                taxa_remarcacao: novaTaxaRemarcacao
+                taxa_remarcacao: novaTaxaRemarcacao,
+                valor_total: novoValorTotal
             }, { transaction: t });
         });
 
