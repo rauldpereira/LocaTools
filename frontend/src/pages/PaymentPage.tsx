@@ -94,13 +94,15 @@ const CheckoutForm = ({ usuario, orderIdsList }: { usuario: UsuarioDaOrdem, orde
 
     useEffect(() => {
         if (usuario) {
-            if (usuario.tipo_pessoa === 'juridica' && usuario.cnpj) {
-                setTipoDoc('cnpj'); setDocumento(formatarCNPJ(usuario.cnpj));
-            } else if (usuario.cpf) {
-                setTipoDoc('cpf'); setDocumento(formatarCPF(usuario.cpf));
+            if (tipoDoc === 'cnpj' && usuario.cnpj) {
+                setDocumento(formatarCNPJ(usuario.cnpj));
+            } else if (tipoDoc === 'cpf' && usuario.cpf) {
+                setDocumento(formatarCPF(usuario.cpf));
+            } else {
+                setDocumento(''); // Só limpa se o usuário não tiver aquele documento específico
             }
         }
-    }, [usuario]);
+    }, [usuario, tipoDoc]);
 
     const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (tipoDoc === 'cpf') {

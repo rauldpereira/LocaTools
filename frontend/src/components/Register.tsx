@@ -236,6 +236,7 @@ const Register: React.FC = () => {
             onClick={() => {
               setTipoPessoa("fisica");
               setMensagem("");
+              setCnpj("");
             }}
             style={{
               flex: 1,
@@ -257,6 +258,7 @@ const Register: React.FC = () => {
             onClick={() => {
               setTipoPessoa("juridica");
               setMensagem("");
+              setCpf("");
             }}
             style={{
               flex: 1,
