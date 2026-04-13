@@ -129,6 +129,28 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
         setImageList(imageList.filter(img => img.id !== idToRemove));
     };
 
+    const parseBrValue = (val: string) => {
+        if (!val) return "";
+        let clean = val.replace(/\s/g, ''); // Remove espaços
+
+        // Se tem vírgula, segue o padrão BR
+        if (clean.includes(',')) {
+            return clean.replace(/\./g, '').replace(',', '.');
+        }
+
+        // Se NÃO tem vírgula, mas tem ponto:
+        if (clean.includes('.')) {
+            const parts = clean.split('.');
+            const lastPart = parts[parts.length - 1];
+
+            if (parts.length > 2) return clean.replace(/\./g, ''); // Milhar (ex: 1.000.000)
+            if (lastPart.length === 3) return clean.replace(/\./g, ''); // Milhar (ex: 4.500)
+            return clean; // Decimal (ex: 4.5 ou 4.50)
+        }
+
+        return clean;
+    };
+
     const handleMakePrincipal = (index: number) => {
         if (index === 0) return;
         const newList = [...imageList];
@@ -146,10 +168,10 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
 
             formDataEnvio.append('nome', formData.nome);
             formDataEnvio.append('descricao', formData.descricao);
-            formDataEnvio.append('preco_diaria', formData.preco_diaria);
-            formDataEnvio.append('preco_semanal', formData.preco_semanal);
-            formDataEnvio.append('preco_quinzenal', formData.preco_quinzenal);
-            formDataEnvio.append('preco_mensal', formData.preco_mensal);
+            formDataEnvio.append('preco_diaria', parseBrValue(formData.preco_diaria));
+            formDataEnvio.append('preco_semanal', parseBrValue(formData.preco_semanal));
+            formDataEnvio.append('preco_quinzenal', parseBrValue(formData.preco_quinzenal));
+            formDataEnvio.append('preco_mensal', parseBrValue(formData.preco_mensal));
             if (formData.id_categoria) formDataEnvio.append('id_categoria', formData.id_categoria);
 
             const existingUrls: string[] = [];
@@ -244,19 +266,19 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
             <div style={{display:'flex', gap:'10px', flexWrap:'wrap'}}>
                                 <div style={{flex:'1 1 45%'}}>
                                     <label style={{color: "#000", fontSize: '0.9rem'}}>Preço Diária:</label>
-                                    <input type="number" value={formData.preco_diaria} onChange={e=>setFormData({...formData, preco_diaria:e.target.value})} style={inputStyle} />
+                                    <input type="text" value={formData.preco_diaria} onChange={e=>setFormData({...formData, preco_diaria:e.target.value})} style={inputStyle} />
                                 </div>
                                 <div style={{flex:'1 1 45%'}}>
                                     <label style={{color: "#000", fontSize: '0.9rem'}}>Preço Semanal:</label>
-                                    <input type="number" value={formData.preco_semanal} onChange={e=>setFormData({...formData, preco_semanal:e.target.value})} style={inputStyle} />
+                                    <input type="text" value={formData.preco_semanal} onChange={e=>setFormData({...formData, preco_semanal:e.target.value})} style={inputStyle} />
                                 </div>
                                 <div style={{flex:'1 1 45%'}}>
                                     <label style={{color: "#000", fontSize: '0.9rem'}}>Preço Quinzenal:</label>
-                                    <input type="number" value={formData.preco_quinzenal} onChange={e=>setFormData({...formData, preco_quinzenal:e.target.value})} style={inputStyle} />
+                                    <input type="text" value={formData.preco_quinzenal} onChange={e=>setFormData({...formData, preco_quinzenal:e.target.value})} style={inputStyle} />
                                 </div>
                                 <div style={{flex:'1 1 45%'}}>
                                     <label style={{color: "#000", fontSize: '0.9rem'}}>Preço Mensal:</label>
-                                    <input type="number" value={formData.preco_mensal} onChange={e=>setFormData({...formData, preco_mensal:e.target.value})} style={inputStyle} />
+                                    <input type="text" value={formData.preco_mensal} onChange={e=>setFormData({...formData, preco_mensal:e.target.value})} style={inputStyle} />
                                 </div>
                             </div>
 

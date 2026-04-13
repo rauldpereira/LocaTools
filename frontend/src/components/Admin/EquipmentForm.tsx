@@ -43,6 +43,37 @@ const EquipmentForm: React.FC = () => {
     }
   };
 
+  const parseBrValue = (val: string) => {
+    if (!val) return "";
+    let clean = val.replace(/\s/g, ''); // Remove espaços
+
+    // Se tem vírgula, segue o padrão BR: tira pontos de milhar e troca vírgula por ponto decimal
+    if (clean.includes(',')) {
+      return clean.replace(/\./g, '').replace(',', '.');
+    }
+
+    // Se NÃO tem vírgula, mas tem ponto:
+    if (clean.includes('.')) {
+      const parts = clean.split('.');
+      const lastPart = parts[parts.length - 1];
+
+      // Se tem mais de um ponto (ex: 1.000.000), é milhar
+      if (parts.length > 2) {
+        return clean.replace(/\./g, '');
+      }
+
+      // Se tem exatamente 3 dígitos após o ponto (ex: 4.500), tratamos como milhar
+      if (lastPart.length === 3) {
+        return clean.replace(/\./g, '');
+      }
+
+      // Caso contrário (ex: 4.5 ou 4.50), tratamos como decimal internacional
+      return clean;
+    }
+
+    return clean;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -51,10 +82,10 @@ const EquipmentForm: React.FC = () => {
       const formData = new FormData();
       formData.append('nome', nome);
       formData.append('descricao', descricao);
-      formData.append('preco_diaria', precoDiaria);
-      formData.append('preco_semanal', precoSemanal);
-      formData.append('preco_quinzenal', precoQuinzenal);
-      formData.append('preco_mensal', precoMensal);
+      formData.append('preco_diaria', parseBrValue(precoDiaria));
+      formData.append('preco_semanal', parseBrValue(precoSemanal));
+      formData.append('preco_quinzenal', parseBrValue(precoQuinzenal));
+      formData.append('preco_mensal', parseBrValue(precoMensal));
       formData.append('id_categoria', categoriaId);
       formData.append('total_quantidade', totalQuantidade);
       formData.append('quantidade_inicial', totalQuantidade);
@@ -140,11 +171,10 @@ const EquipmentForm: React.FC = () => {
           <div>
             <label style={labelStyle}>Preço da Diária (R$)</label>
             <input
-              type="number"
-              step="0.01"
+              type="text"
               value={precoDiaria}
               onChange={e => setPrecoDiaria(e.target.value)}
-              placeholder="0.00"
+              placeholder="0,00"
               style={inputStyle}
               required
             />
@@ -153,11 +183,10 @@ const EquipmentForm: React.FC = () => {
           <div>
             <label style={labelStyle}>Preço Semanal (R$)</label>
             <input
-              type="number"
-              step="0.01"
+              type="text"
               value={precoSemanal}
               onChange={e => setPrecoSemanal(e.target.value)}
-              placeholder="0.00"
+              placeholder="0,00"
               style={inputStyle}
             />
           </div>
@@ -165,11 +194,10 @@ const EquipmentForm: React.FC = () => {
           <div>
             <label style={labelStyle}>Preço Quinzenal (R$)</label>
             <input
-              type="number"
-              step="0.01"
+              type="text"
               value={precoQuinzenal}
               onChange={e => setPrecoQuinzenal(e.target.value)}
-              placeholder="0.00"
+              placeholder="0,00"
               style={inputStyle}
             />
           </div>
@@ -177,11 +205,10 @@ const EquipmentForm: React.FC = () => {
           <div>
             <label style={labelStyle}>Preço Mensal (R$)</label>
             <input
-              type="number"
-              step="0.01"
+              type="text"
               value={precoMensal}
               onChange={e => setPrecoMensal(e.target.value)}
-              placeholder="0.00"
+              placeholder="0,00"
               style={inputStyle}
             />
           </div>
