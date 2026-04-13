@@ -35,6 +35,18 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
     },
+    preco_semanal: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    preco_quinzenal: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    preco_mensal: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
     id_categoria: {
       type: DataTypes.INTEGER,
       references: {

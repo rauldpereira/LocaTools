@@ -13,6 +13,9 @@ const EquipmentForm: React.FC = () => {
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
   const [precoDiaria, setPrecoDiaria] = useState('');
+  const [precoSemanal, setPrecoSemanal] = useState('');
+  const [precoQuinzenal, setPrecoQuinzenal] = useState('');
+  const [precoMensal, setPrecoMensal] = useState('');
   const [categoriaId, setCategoriaId] = useState('');
   const [totalQuantidade, setTotalQuantidade] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -49,6 +52,9 @@ const EquipmentForm: React.FC = () => {
       formData.append('nome', nome);
       formData.append('descricao', descricao);
       formData.append('preco_diaria', precoDiaria);
+      formData.append('preco_semanal', precoSemanal);
+      formData.append('preco_quinzenal', precoQuinzenal);
+      formData.append('preco_mensal', precoMensal);
       formData.append('id_categoria', categoriaId);
       formData.append('total_quantidade', totalQuantidade);
       formData.append('quantidade_inicial', totalQuantidade);
@@ -72,6 +78,7 @@ const EquipmentForm: React.FC = () => {
 
       // Limpar form
       setNome(''); setDescricao(''); setPrecoDiaria(''); 
+      setPrecoSemanal(''); setPrecoQuinzenal(''); setPrecoMensal('');
       setCategoriaId(''); setTotalQuantidade(''); 
       setSelectedFiles([]); // Limpa array
 
@@ -129,7 +136,7 @@ const EquipmentForm: React.FC = () => {
             />
           </div>
 
-          {/* Preço */}
+          {/* Preços */}
           <div>
             <label style={labelStyle}>Preço da Diária (R$)</label>
             <input
@@ -140,6 +147,42 @@ const EquipmentForm: React.FC = () => {
               placeholder="0.00"
               style={inputStyle}
               required
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Preço Semanal (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={precoSemanal}
+              onChange={e => setPrecoSemanal(e.target.value)}
+              placeholder="0.00"
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Preço Quinzenal (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={precoQuinzenal}
+              onChange={e => setPrecoQuinzenal(e.target.value)}
+              placeholder="0.00"
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Preço Mensal (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={precoMensal}
+              onChange={e => setPrecoMensal(e.target.value)}
+              placeholder="0.00"
+              style={inputStyle}
             />
           </div>
 

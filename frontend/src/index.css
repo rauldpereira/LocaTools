@@ -127,6 +127,12 @@ body {
   pointer-events: none;
 }
 
+.day-closed {
+  background-color: #6c757d !important; /* Cinza para indicar fechado, mas não proibido se atravessar */
+  color: white !important;
+  position: relative;
+}
+
 .day-blue {
   background-color: #339cff !important;
   color: #fff !important;

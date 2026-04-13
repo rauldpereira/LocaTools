@@ -13,6 +13,9 @@ interface EquipmentDetails {
   nome: string;
   descricao: string;
   preco_diaria: number;
+  preco_semanal?: number;
+  preco_quinzenal?: number;
+  preco_mensal?: number;
   status: string;
   url_imagem?: string;
   total_quantidade: number;
@@ -153,6 +156,22 @@ const EquipmentDetailsPage: React.FC = () => {
                 <p style={{ marginTop: '1.5rem', fontSize: '1.5rem', color: '#28a745', fontWeight: 'bold' }}>
                   R$ {equipment.preco_diaria.toFixed(2)} <span style={{ fontSize: '1rem', color: '#666', fontWeight: 'normal' }}>/ dia</span>
                 </p>
+
+                {equipment.preco_semanal && (
+                  <p style={{ marginTop: '0.5rem', fontSize: '1.2rem', color: '#28a745' }}>
+                    R$ {Number(equipment.preco_semanal).toFixed(2)} <span style={{ fontSize: '0.9rem', color: '#666' }}>/ semana (7 dias)</span>
+                  </p>
+                )}
+                {equipment.preco_quinzenal && (
+                  <p style={{ marginTop: '0.5rem', fontSize: '1.2rem', color: '#28a745' }}>
+                    R$ {Number(equipment.preco_quinzenal).toFixed(2)} <span style={{ fontSize: '0.9rem', color: '#666' }}>/ quinzena (15 dias)</span>
+                  </p>
+                )}
+                {equipment.preco_mensal && (
+                  <p style={{ marginTop: '0.5rem', fontSize: '1.2rem', color: '#28a745' }}>
+                    R$ {Number(equipment.preco_mensal).toFixed(2)} <span style={{ fontSize: '0.9rem', color: '#666' }}>/ mês (30 dias)</span>
+                  </p>
+                )}
 
                 <button
                   onClick={handleOpenModal}

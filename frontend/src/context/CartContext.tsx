@@ -8,6 +8,7 @@ interface CartItem {
   data_inicio: string;
   data_fim: string;
   preco: number;
+  tipo_locacao: 'diaria' | 'semanal' | 'quinzenal' | 'mensal';
 }
 
 interface CartContextType {

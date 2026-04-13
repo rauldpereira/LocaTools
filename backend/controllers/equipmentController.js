@@ -33,6 +33,9 @@ const createEquipment = async (req, res) => {
     nome,
     descricao,
     preco_diaria,
+    preco_semanal,
+    preco_quinzenal,
+    preco_mensal,
     id_categoria,
     status,
     quantidade_inicial,
@@ -71,6 +74,9 @@ const createEquipment = async (req, res) => {
           nome,
           descricao,
           preco_diaria: parseFloat(preco_diaria),
+          preco_semanal: preco_semanal ? parseFloat(preco_semanal) : null,
+          preco_quinzenal: preco_quinzenal ? parseFloat(preco_quinzenal) : null,
+          preco_mensal: preco_mensal ? parseFloat(preco_mensal) : null,
           id_categoria: parseInt(id_categoria),
           status: status || "disponivel",
           url_imagem: urlImagemParaSalvar,
@@ -231,7 +237,7 @@ const getEquipmentById = async (req, res) => {
 
 const updateEquipment = async (req, res) => {
   const { id } = req.params;
-  const { nome, descricao, preco_diaria, id_categoria, existing_images } =
+  const { nome, descricao, preco_diaria, preco_semanal, preco_quinzenal, preco_mensal, id_categoria, existing_images } =
     req.body;
 
   try {
@@ -262,6 +268,9 @@ const updateEquipment = async (req, res) => {
       nome,
       descricao,
       preco_diaria: parseFloat(preco_diaria),
+      preco_semanal: preco_semanal ? parseFloat(preco_semanal) : null,
+      preco_quinzenal: preco_quinzenal ? parseFloat(preco_quinzenal) : null,
+      preco_mensal: preco_mensal ? parseFloat(preco_mensal) : null,
       id_categoria: id_categoria ? parseInt(id_categoria) : null,
       url_imagem: urlImagemParaSalvar,
     });
@@ -503,21 +512,8 @@ const getDailyAvailability = async (req, res) => {
 
     while (currentDay <= endDay) {
       const dayString = currentDay.toISOString().split("T")[0];
-      const diaSemana = diasSemanaMap[currentDay.getDay()];
-
-      let empresaAberta = true;
-      if (excecoes[dayString]) {
-        if (!excecoes[dayString].funcionamento) empresaAberta = false;
-      } else if (regrasPadrao[diaSemana]?.fechado) {
-        empresaAberta = false;
-      }
-
-      if (!empresaAberta) {
-        availabilityByDay[dayString] = 0;
-      } else {
-        const ocupados = occupancyMap[dayString] || 0;
-        availabilityByDay[dayString] = Math.max(0, totalUnits - ocupados);
-      }
+      const ocupados = occupancyMap[dayString] || 0;
+      availabilityByDay[dayString] = Math.max(0, totalUnits - ocupados);
 
       currentDay.setDate(currentDay.getDate() + 1);
     }

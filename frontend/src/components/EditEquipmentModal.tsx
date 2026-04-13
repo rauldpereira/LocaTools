@@ -36,6 +36,9 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
         nome: '',
         descricao: '',
         preco_diaria: '',
+        preco_semanal: '',
+        preco_quinzenal: '',
+        preco_mensal: '',
         id_categoria: '',
     });
 
@@ -61,6 +64,9 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
                 nome: data.nome,
                 descricao: data.descricao,
                 preco_diaria: String(data.preco_diaria),
+                preco_semanal: data.preco_semanal ? String(data.preco_semanal) : '',
+                preco_quinzenal: data.preco_quinzenal ? String(data.preco_quinzenal) : '',
+                preco_mensal: data.preco_mensal ? String(data.preco_mensal) : '',
                 id_categoria: data.id_categoria ? String(data.id_categoria) : '',
             });
 
@@ -141,6 +147,9 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
             formDataEnvio.append('nome', formData.nome);
             formDataEnvio.append('descricao', formData.descricao);
             formDataEnvio.append('preco_diaria', formData.preco_diaria);
+            formDataEnvio.append('preco_semanal', formData.preco_semanal);
+            formDataEnvio.append('preco_quinzenal', formData.preco_quinzenal);
+            formDataEnvio.append('preco_mensal', formData.preco_mensal);
             if (formData.id_categoria) formDataEnvio.append('id_categoria', formData.id_categoria);
 
             const existingUrls: string[] = [];
@@ -232,11 +241,26 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
                             <label style={{color: "#000"}}>Nome:</label>
                             <input value={formData.nome} onChange={e=>setFormData({...formData, nome:e.target.value})} style={inputStyle} />
                             
-                            <div style={{display:'flex', gap:'10px'}}>
-                                <div style={{flex:1}}>
-                                    <label style={{color: "#000"}}>Preço Diária:</label>
+            <div style={{display:'flex', gap:'10px', flexWrap:'wrap'}}>
+                                <div style={{flex:'1 1 45%'}}>
+                                    <label style={{color: "#000", fontSize: '0.9rem'}}>Preço Diária:</label>
                                     <input type="number" value={formData.preco_diaria} onChange={e=>setFormData({...formData, preco_diaria:e.target.value})} style={inputStyle} />
                                 </div>
+                                <div style={{flex:'1 1 45%'}}>
+                                    <label style={{color: "#000", fontSize: '0.9rem'}}>Preço Semanal:</label>
+                                    <input type="number" value={formData.preco_semanal} onChange={e=>setFormData({...formData, preco_semanal:e.target.value})} style={inputStyle} />
+                                </div>
+                                <div style={{flex:'1 1 45%'}}>
+                                    <label style={{color: "#000", fontSize: '0.9rem'}}>Preço Quinzenal:</label>
+                                    <input type="number" value={formData.preco_quinzenal} onChange={e=>setFormData({...formData, preco_quinzenal:e.target.value})} style={inputStyle} />
+                                </div>
+                                <div style={{flex:'1 1 45%'}}>
+                                    <label style={{color: "#000", fontSize: '0.9rem'}}>Preço Mensal:</label>
+                                    <input type="number" value={formData.preco_mensal} onChange={e=>setFormData({...formData, preco_mensal:e.target.value})} style={inputStyle} />
+                                </div>
+                            </div>
+
+                            <div style={{display:'flex', gap:'10px'}}>
                                 <div style={{flex:1}}>
                                     <label style={{color: "#000"}}>Categoria:</label>
                                     <select 

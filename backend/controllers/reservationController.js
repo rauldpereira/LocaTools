@@ -236,7 +236,11 @@ const createOrder = async (req, res) => {
                     const equipamento = await Equipamento.findByPk(item.id_equipamento, { transaction: t });
                     if (!equipamento) throw new Error(`Equipamento ID ${item.id_equipamento} sumiu.`);
 
-                    const preco = parseFloat(equipamento.preco_diaria);
+                    const preco_diaria = parseFloat(equipamento.preco_diaria);
+                    const preco_semanal = equipamento.preco_semanal ? parseFloat(equipamento.preco_semanal) : preco_diaria * 7;
+                    const preco_quinzenal = equipamento.preco_quinzenal ? parseFloat(equipamento.preco_quinzenal) : preco_diaria * 15;
+                    const preco_mensal = equipamento.preco_mensal ? parseFloat(equipamento.preco_mensal) : preco_diaria * 30;
+
                     const startStr = item.data_inicio.split('T')[0];
                     const endStr = item.data_fim.split('T')[0];
 
@@ -245,7 +249,19 @@ const createOrder = async (req, res) => {
                     const days = Math.round(Math.abs((endMath - startMath) / (1000 * 60 * 60 * 24))) + 1;
 
                     const quantidadePedida = Number(item.quantidade);
-                    subtotal_grupo += preco * quantidadePedida * days;
+                    
+                    let itemTotal = 0;
+                    if (item.tipo_locacao === 'semanal') {
+                        itemTotal = preco_semanal * quantidadePedida;
+                    } else if (item.tipo_locacao === 'quinzenal') {
+                        itemTotal = preco_quinzenal * quantidadePedida;
+                    } else if (item.tipo_locacao === 'mensal') {
+                        itemTotal = preco_mensal * quantidadePedida;
+                    } else {
+                        itemTotal = preco_diaria * quantidadePedida * days;
+                    }
+                    
+                    subtotal_grupo += itemTotal;
 
                     // Atualiza a data fim geral apenas DESTE grupo
                     if (endStr > data_fim_grupo) data_fim_grupo = endStr;

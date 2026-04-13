@@ -180,7 +180,14 @@ const CartPage: React.FC = () => {
             const startDate = parseDateStringAsLocal(item.data_inicio);
             const endDate = parseDateStringAsLocal(item.data_fim);
             const diffDays = Math.round(Math.abs((endDate.getTime() - startDate.getTime()) / oneDay)) + 1;
-            return total + (item.preco * item.quantidade * diffDays);
+            
+            let itemTotal = 0;
+            if (item.tipo_locacao === 'diaria') {
+                itemTotal = item.preco * item.quantidade * diffDays;
+            } else {
+                itemTotal = item.preco * item.quantidade;
+            }
+            return total + itemTotal;
         }, 0);
     };
 
@@ -268,7 +275,7 @@ const CartPage: React.FC = () => {
                                                 <div className="item-details">
                                                     <h3 style={{ color: '#666' }}>{item.nome}</h3>
                                                     <p>Quantidade: {item.quantidade}</p>
-                                                    <p>Preço unitário: R$ {item.preco.toFixed(2)}</p>
+                                                    <p>Preço unitário: R$ {item.preco.toFixed(2)} ({item.tipo_locacao})</p>
                                                     <p>
                                                         Período: {parseDateStringAsLocal(item.data_inicio).toLocaleDateString()} até {parseDateStringAsLocal(item.data_fim).toLocaleDateString()}
                                                     </p>

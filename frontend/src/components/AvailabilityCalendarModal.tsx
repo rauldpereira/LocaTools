@@ -28,6 +28,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
     const [availabilityData, setAvailabilityData] = useState<{ [key: string]: number }>({});
     const [selectedRange, setSelectedRange] = useState<Date[] | null>(null);
+    const [rentalPeriod, setRentalPeriod] = useState<'diaria' | 'semanal' | 'quinzenal' | 'mensal'>('diaria');
     const [availableForRange, setAvailableForRange] = useState<number | null>(null);
     const [quantity, setQuantity] = useState(1);
 
@@ -39,6 +40,26 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    // Ajusta o range automaticamente se o período mudar
+    useEffect(() => {
+        if (selectedRange && selectedRange[0]) {
+            const start = selectedRange[0];
+            let end = selectedRange[1] || start;
+
+            if (rentalPeriod === 'semanal') {
+                end = new Date(start);
+                end.setDate(start.getDate() + 6); // 7 dias incluindo o primeiro
+            } else if (rentalPeriod === 'quinzenal') {
+                end = new Date(start);
+                end.setDate(start.getDate() + 14); // 15 dias
+            } else if (rentalPeriod === 'mensal') {
+                end = new Date(start);
+                end.setDate(start.getDate() + 29); // 30 dias
+            }
+            setSelectedRange([start, end]);
+        }
+    }, [rentalPeriod]);
 
     // CARREGA OS MESES
     useEffect(() => {
@@ -144,7 +165,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
     // LÓGICA DE CÁLCULO DE UNIDADES QUANDO CLICA NO CALENDÁRIO
 
    useEffect(() => {
-        if (selectedRange && selectedRange.length === 2) {
+        if (selectedRange && selectedRange.length === 2 && selectedRange[0] && selectedRange[1]) {
             let minAvailability = Infinity;
             
             const startDay = new Date(selectedRange[0].getFullYear(), selectedRange[0].getMonth(), selectedRange[0].getDate(), 12, 0, 0);
@@ -152,18 +173,22 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
             for (let day = new Date(startDay); day <= endDay; day.setDate(day.getDate() + 1)) {
                 const dayString = toISODate(day);
-                const availability = availabilityData[dayString];
-                
-                if (availability !== undefined && availability < minAvailability) { 
+                // Se o dia não existe no availabilityData, significa que não tem reservas, então usa o total_quantidade
+                const availability = availabilityData[dayString] !== undefined 
+                    ? availabilityData[dayString] 
+                    : equipment.total_quantidade;
+
+                if (availability < minAvailability) { 
                     minAvailability = availability; 
                 }
             }
+
             setAvailableForRange(minAvailability === Infinity ? 0 : minAvailability);
             setQuantity(1);
         } else {
             setAvailableForRange(null);
         }
-    }, [selectedRange, availabilityData]);
+    }, [selectedRange, availabilityData, equipment.total_quantidade]);
 
 
     const isTodayPastLimit = () => {
@@ -210,14 +235,14 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
             return 'day-red';
         }
 
-        // Dias sem configuração ou FECHADOS -> Vermelho
-        if (!diaStatusAdmin || diaStatusAdmin.status === 'FECHADO') {
+        // Sem estoque -> Vermelho (Indisponível de fato)
+        if (availabilityEstoque === 0) {
             return 'day-red';
         }
 
-        // Sem estoque -> Vermelho
-        if (availabilityEstoque === 0) {
-            return 'day-red';
+        // Dia FECHADO pela loja (Feriado/Folga) -> Cinza ou indicador, mas NÃO bloqueado se tiver estoque
+        if (!diaStatusAdmin || diaStatusAdmin.status === 'FECHADO') {
+            return 'day-closed';
         }
 
         if (availabilityEstoque === undefined) return null;
@@ -247,13 +272,9 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         }
 
         const dayString = toISODate(date);
-        const diaStatusAdmin = statusDias.get(dayString);
         const availabilityEstoque = availabilityData[dayString];
 
-        if (!diaStatusAdmin || diaStatusAdmin.status === 'FECHADO') {
-            return true;
-        }
-
+        // Só desabilita se NÃO houver estoque ou for passado.
         if (availabilityEstoque === 0) {
             return true;
         }
@@ -266,10 +287,28 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         if (!selectedRange) return;
 
         const startDate = selectedRange[0];
-        const endDate = selectedRange[1];
+        const endDate = selectedRange[1] || startDate;
 
-        const startDateString = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
-        const endDateString = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+        const startDateString = toISODate(startDate);
+        const endDateString = toISODate(endDate);
+
+        // Não pode começar nem terminar em dia FECHADO
+        const statusInicio = statusDias.get(startDateString);
+        const statusFim = statusDias.get(endDateString);
+
+        if (statusInicio?.status === 'FECHADO') {
+            alert(`A loja estará fechada no dia ${startDate.toLocaleDateString()}. Por favor, escolha outra data de início.`);
+            return;
+        }
+        if (statusFim?.status === 'FECHADO') {
+            alert(`A loja estará fechada no dia ${endDate.toLocaleDateString()}. Por favor, escolha outra data de término.`);
+            return;
+        }
+
+        let precoFinal = equipment.preco_diaria;
+        if (rentalPeriod === 'semanal') precoFinal = equipment.preco_semanal;
+        else if (rentalPeriod === 'quinzenal') precoFinal = equipment.preco_quinzenal;
+        else if (rentalPeriod === 'mensal') precoFinal = equipment.preco_mensal;
 
         const item = {
             id_equipamento: equipment.id,
@@ -277,10 +316,12 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
             quantidade: quantity,
             data_inicio: startDateString,
             data_fim: endDateString,
-            preco: equipment.preco_diaria,
+            preco: Number(precoFinal),
+            tipo_locacao: rentalPeriod
         };
         
         // Manda pro localStorage e vai pro carrinho
+        // @ts-ignore
         addToCart(item);
         onClose();
         navigate('/cart');
@@ -297,7 +338,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                 <p style={{ textAlign: 'center', marginBottom: '0.5rem', fontWeight: 'bold' }}>
                     Disponibilidade
                 </p>
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div className="day-green" style={{ width: 15, height: 15, marginRight: 5 }}></div> Alta
                     </div>
@@ -306,6 +347,9 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div className="day-red" style={{ width: 15, height: 15, marginRight: 5 }}></div> Indisponível
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div className="day-closed" style={{ width: 15, height: 15, marginRight: 5 }}></div> Loja Fechada
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div className="day-blue" style={{ width: 15, height: 15, marginRight: 5 }}></div> Selecionado
@@ -327,11 +371,41 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                     </div>
                 )}
 
+                <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <label style={{ fontWeight: 'bold' }}>Tipo de Locação:</label>
+                    <select 
+                        value={rentalPeriod} 
+                        onChange={(e) => setRentalPeriod(e.target.value as any)}
+                        style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc', background: '#fff', color: '#333' }}
+                    >
+                        <option value="diaria">Diária (Livre)</option>
+                        {equipment.preco_semanal && <option value="semanal">Semanal (7 dias)</option>}
+                        {equipment.preco_quinzenal && <option value="quinzenal">Quinzena (15 dias)</option>}
+                        {equipment.preco_mensal && <option value="mensal">Mensal (30 dias)</option>}
+                    </select>
+                </div>
+
                 {loading ? <p>Carregando calendário...</p> :
                     errorMessage ? <p style={{ color: 'red' }}>{errorMessage}</p> : (
                         <Calendar
-                            onChange={(value) => setSelectedRange(value as Date[])}
-                            selectRange={true}
+                            onChange={(value) => {
+                                if (rentalPeriod === 'diaria') {
+                                    // No modo diária, value é um array de [start, end] se selectRange={true}
+                                    setSelectedRange(value as Date[]);
+                                } else {
+                                    // No modo fixo (semanal/mensal/etc), value costuma vir como uma única Date
+                                    const selectedDate = Array.isArray(value) ? value[0] : (value as Date);
+                                    if (!selectedDate) return;
+
+                                    const start = selectedDate;
+                                    let end = new Date(start);
+                                    if (rentalPeriod === 'semanal') end.setDate(start.getDate() + 6);
+                                    else if (rentalPeriod === 'quinzenal') end.setDate(start.getDate() + 14);
+                                    else if (rentalPeriod === 'mensal') end.setDate(start.getDate() + 29);
+                                    setSelectedRange([start, end]);
+                                }
+                            }}
+                            selectRange={rentalPeriod === 'diaria'}
                             minDate={minDate}
                             maxDate={maxDate}
                             activeStartDate={currentMonthView}
