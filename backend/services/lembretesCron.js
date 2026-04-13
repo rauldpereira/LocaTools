@@ -195,8 +195,26 @@ const iniciarRoboDeLembretes = () => {
         );
       }
 
+      // ==========================================
+      // DISPAROS DE COBRANÇA (DÍVIDA ATIVA)
+      // ==========================================
+      const ordensComDivida = await OrdemDeServico.findAll({
+        where: {
+          status: "PREJUIZO",
+        },
+      });
+
+      for (const os of ordensComDivida) {
+        await notificarUsuario(
+          os.id_usuario,
+          "⚠️ Pendência Financeira",
+          `Sua reserva #${os.id} possui uma pendência por avaria ou extravio. Por favor, acesse os detalhes para regularizar.`,
+          `/my-reservations/${os.id}`,
+        );
+      }
+
       console.log(
-        "✅ [CRON] Varredura finalizada. Lembretes enviados com horários dinâmicos e permissões alvo.",
+        "✅ [CRON] Varredura finalizada. Lembretes enviados com horários dinâmicos, permissões alvo e cobranças.",
       );
     } catch (error) {
       console.error("❌ [CRON] Erro ao rodar os lembretes:", error);
