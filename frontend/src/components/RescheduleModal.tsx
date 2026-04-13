@@ -157,6 +157,24 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
 
     // Se passou na duração, limpa erro antigo e checa estoque
     setError('');
+
+    // --- VALIDAÇÃO DE MÚLTIPLOS POR PLANO ---
+    if (order.tipo_locacao === 'semanal' && selectedDuration % 7 !== 0) {
+      setError(`Para o plano SEMANAL, a duração total deve ser múltipla de 7 dias (Atual: ${selectedDuration} dias).`);
+      setAvailability({ available: false, checking: false });
+      return;
+    }
+    if (order.tipo_locacao === 'quinzenal' && selectedDuration % 15 !== 0) {
+      setError(`Para o plano QUINZENAL, a duração total deve ser múltipla de 15 dias (Atual: ${selectedDuration} dias).`);
+      setAvailability({ available: false, checking: false });
+      return;
+    }
+    if (order.tipo_locacao === 'mensal' && selectedDuration % 30 !== 0) {
+      setError(`Para o plano MENSAL, a duração total deve ser múltipla de 30 dias (Atual: ${selectedDuration} dias).`);
+      setAvailability({ available: false, checking: false });
+      return;
+    }
+
     setAvailability({ available: null, checking: true });
 
     const check = async () => {
@@ -196,7 +214,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
     // Dias Fechados/Feriados (Vermelho ou Cinza)
     const diaStatusAdmin = statusDias.get(dayString);
     if (diaStatusAdmin && diaStatusAdmin.status === 'FECHADO') {
-      return (diaStatusAdmin.fonte === 'padrao') ? 'day-fechado-padrao' : 'day-red';
+      return 'day-closed';
     }
 
     // Estoque ZERO (Vermelho - Indisponível)
@@ -235,12 +253,11 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
     if (date >= originalStartDate && date <= originalEndDate) return false;
 
     const dayString = toISODate(date);
-    const diaStatusAdmin = statusDias.get(dayString);
     const availabilityEstoque = availabilityData[dayString];
 
-    if (!diaStatusAdmin || diaStatusAdmin.status === 'FECHADO') return true;
-
-    if (availabilityEstoque === undefined || availabilityEstoque === 0) return true;
+    // Só desabilita se o estoque for zero E não for a reserva atual dele
+    const isOriginalPeriod = date >= originalStartDate && date <= originalEndDate;
+    if (!isOriginalPeriod && (availabilityEstoque === undefined || availabilityEstoque === 0)) return true;
 
     if (maxDate) {
       const endOfSelection = new Date(date.getTime() + originalDurationMs);

@@ -43,63 +43,76 @@ const calcularFreteInterno = async (enderecoDestino) => {
     }
 };
 
-const verificarDisponibilidade = async (item, options, excludeOrderId = null) => {
-    const { id_equipamento, data_inicio, data_fim } = item;
-
-    // Pega todas as unidades desse equipamento (Ignorando as Inativas)
-    const unidadesDoEquipamento = await Unidade.findAll({
-        where: { 
-            id_equipamento,
-            status: { [Op.ne]: 'inativo' }
-        },
+const verificarDisponibilidadeGeral = async (id_equipamento, data_inicio, data_fim, options, excludeOrderId = null) => {
+    // Pega todas as unidades
+    const unidades = await Unidade.findAll({
+        where: { id_equipamento, status: { [Op.ne]: 'inativo' } },
         ...options
     });
+    const totalUnidades = unidades.length;
 
-    // Busca TUDO que está ocupando data (seja Aluguel OU Manutenção)
+    // Busca conflitos no período
     const conflitos = await ItemReserva.findAll({
         where: {
-            // Verifica se uma começa antes da outra terminar
             data_inicio: { [Op.lte]: data_fim },
             data_fim: { [Op.gte]: data_inicio },
-
         },
-        include: [
-            {
-                model: Unidade,
-                where: { id_equipamento },
-                required: true
-            },
-            {
-                model: OrdemDeServico,
-                required: false
-            }
-        ],
+        include: [{
+            model: Unidade,
+            where: { id_equipamento },
+            required: true
+        }, {
+            model: OrdemDeServico,
+            required: false
+        }],
         ...options
     });
 
+    // Mapeia ocupação por dia e identifica unidades ocupadas
+    const occupancyMap = {};
     const idsBloqueados = [];
+    const statusOcupados = ['aprovada', 'aguardando_assinatura', 'em_andamento', 'pendente', 'aguardando_pagamento_final', 'PREJUIZO'];
 
     conflitos.forEach(reserva => {
+        if (excludeOrderId && reserva.OrdemDeServico?.id == excludeOrderId) return;
+        
+        let ocupado = false;
+        if (reserva.status === 'manutencao') ocupado = true;
+        else if (reserva.OrdemDeServico && statusOcupados.includes(reserva.OrdemDeServico.status)) ocupado = true;
 
-        if (reserva.status === 'manutencao') {
+        if (ocupado) {
             idsBloqueados.push(reserva.id_unidade);
-            return;
-        }
-
-        if (reserva.OrdemDeServico) {
-            if (excludeOrderId && reserva.OrdemDeServico.id == excludeOrderId) return;
-
-            const statusQueOcupa = ['aprovada', 'aguardando_assinatura', 'em_andamento', 'pendente'];
-
-            if (statusQueOcupa.includes(reserva.OrdemDeServico.status)) {
-                idsBloqueados.push(reserva.id_unidade);
+            let curr = new Date(reserva.data_inicio);
+            const end = new Date(reserva.data_fim);
+            while (curr <= end) {
+                const dStr = curr.toISOString().split('T')[0];
+                occupancyMap[dStr] = (occupancyMap[dStr] || 0) + 1;
+                curr.setDate(curr.getDate() + 1);
             }
         }
     });
 
-    const idsUnicosBloqueados = [...new Set(idsBloqueados)];
+    // Verifica se em algum dia a ocupação estoura o total
+    let maxOcupacao = 0;
+    const startObj = new Date(data_inicio);
+    const endObj = new Date(data_fim);
+    let curr = new Date(startObj);
+    while (curr <= endObj) {
+        const dStr = curr.toISOString().split('T')[0];
+        const ocupacaoHoje = occupancyMap[dStr] || 0;
+        if (ocupacaoHoje > maxOcupacao) maxOcupacao = ocupacaoHoje;
+        curr.setDate(curr.getDate() + 1);
+    }
 
-    return unidadesDoEquipamento.filter(u => !idsUnicosBloqueados.includes(u.id));
+    const unidadesLivresTodoPeriodo = unidades.filter(u => !idsBloqueados.includes(u.id));
+
+    return {
+        totalUnidades,
+        maxOcupacao,
+        unidadesLivresCount: totalUnidades - maxOcupacao,
+        todasUnidades: unidades,
+        unidadesLivresTodoPeriodo
+    };
 };
 
 const checkUserDebts = async (id_usuario, transaction = null) => {
@@ -243,13 +256,12 @@ const createOrder = async (req, res) => {
 
                     const startStr = item.data_inicio.split('T')[0];
                     const endStr = item.data_fim.split('T')[0];
+                    const quantidadePedida = Number(item.quantidade);
 
                     const startMath = new Date(startStr + "T12:00:00");
                     const endMath = new Date(endStr + "T12:00:00");
                     const days = Math.round(Math.abs((endMath - startMath) / (1000 * 60 * 60 * 24))) + 1;
 
-                    const quantidadePedida = Number(item.quantidade);
-                    
                     let itemTotal = 0;
                     if (item.tipo_locacao === 'semanal') {
                         itemTotal = preco_semanal * quantidadePedida;
@@ -266,15 +278,16 @@ const createOrder = async (req, res) => {
                     // Atualiza a data fim geral apenas DESTE grupo
                     if (endStr > data_fim_grupo) data_fim_grupo = endStr;
 
-                    const itemLimpo = { ...item, data_inicio: startStr, data_fim: endStr };
-
-                    const disponiveis = await verificarDisponibilidade(itemLimpo, { transaction: t });
+                    const { unidadesLivresCount, todasUnidades } = await verificarDisponibilidadeGeral(item.id_equipamento, startStr, endStr, { transaction: t });
                     
-                    if (disponiveis.length < quantidadePedida) {
-                        throw new Error(`Conflito: Estoque insuficiente para ${equipamento.nome} no dia ${startStr.split('-').reverse().join('/')}.`);
+                    console.log(`[DEBUG ESTOQUE] Equipamento: ${equipamento.nome} | Pedido: ${quantidadePedida} | Unidades Livres (Mínimas no período): ${unidadesLivresCount}`);
+
+                    if (unidadesLivresCount < quantidadePedida) {
+                        throw new Error(`Conflito: Estoque insuficiente para ${equipamento.nome} no período de ${startStr.split('-').reverse().join('/')} a ${endStr.split('-').reverse().join('/')}. Solicitado: ${quantidadePedida}, Disponível: ${unidadesLivresCount}.`);
                     }
 
-                    unidadesParaAlugar[item.id_equipamento] = disponiveis.slice(0, quantidadePedida);
+                    // Seleciona as primeiras N unidades que estão na lista de 'todasUnidades'
+                    unidadesParaAlugar[item.id_equipamento] = todasUnidades.slice(0, quantidadePedida);
                 }
 
                 // Cria a OS exclusiva pra esse dia de saída!
@@ -296,7 +309,8 @@ const createOrder = async (req, res) => {
                     tipo_entrega,
                     endereco_entrega: tipo_entrega === 'entrega' ? endereco_entrega : null,
                     custo_frete: fretePorViagem,
-                    valor_sinal: parseFloat(valor_sinal.toFixed(2))
+                    valor_sinal: parseFloat(valor_sinal.toFixed(2)),
+                    tipo_locacao: grupo.itens[0].tipo_locacao || 'diaria'
                 }, { transaction: t });
 
                 // Salva os Itens na OS desse dia
@@ -903,16 +917,11 @@ const checkRescheduleAvailability = async (req, res) => {
         // Para cada tipo de equipamento no pedido, vemos se há unidades LIVRES suficientes
         for (const idEq in itensNecessarios) {
             const info = itensNecessarios[idEq];
-            const itemRequest = {
-                id_equipamento: info.id_equipamento,
-                data_inicio: startDate,
-                data_fim: endDate,
-            };
+            
+            // verificarDisponibilidadeGeral já ignora o próprio pedido atual!
+            const { unidadesLivresCount } = await verificarDisponibilidadeGeral(info.id_equipamento, startDate, endDate, {}, orderId);
 
-            // verificarDisponibilidade já ignora o próprio pedido atual!
-            const unidadesDisponiveis = await verificarDisponibilidade(itemRequest, {}, orderId);
-
-            if (unidadesDisponiveis.length < info.quantidade) {
+            if (unidadesLivresCount < info.quantidade) {
                 allItemsAvailable = false;
                 break;
             }
@@ -968,7 +977,18 @@ const rescheduleOrder = async (req, res) => {
             const originalDuration = Math.round(Math.abs((parseDateStringAsLocal(order.data_fim) - dataInicioOriginal) / oneDay)) + 1;
             const newDuration = Math.round(Math.abs((new Date(newEndDate) - new Date(dataInicioParaSalvar)) / oneDay)) + 1;
 
-            // REGRA: A nova duração não pode ser menor que a original (pode estender, mas não encurtar)
+            // --- VALIDAÇÃO DE MÚLTIPLOS POR PLANO ---
+            if (order.tipo_locacao === 'semanal' && newDuration % 7 !== 0) {
+                throw new Error(`Para o plano SEMANAL, a duração total deve ser múltipla de 7 dias (Atual: ${newDuration} dias).`);
+            }
+            if (order.tipo_locacao === 'quinzenal' && newDuration % 15 !== 0) {
+                throw new Error(`Para o plano QUINZENAL, a duração total deve ser múltipla de 15 dias (Atual: ${newDuration} dias).`);
+            }
+            if (order.tipo_locacao === 'mensal' && newDuration % 30 !== 0) {
+                throw new Error(`Para o plano MENSAL, a duração total deve ser múltipla de 30 dias (Atual: ${newDuration} dias).`);
+            }
+
+            // A nova duração não pode ser menor que a original (pode estender, mas não encurtar)
             if (newDuration < originalDuration) {
                 throw new Error(`A nova duração (${newDuration} dias) não pode ser menor que a original (${originalDuration} dias).`);
             }
@@ -978,41 +998,48 @@ const rescheduleOrder = async (req, res) => {
             }
 
             // --- CÁLCULO DE VALOR ADICIONAL POR EXTENSÃO ---
-            let valorExtraDiarias = 0;
+            let valorExtra = 0;
             if (newDuration > originalDuration) {
                 const diasExtras = newDuration - originalDuration;
                 
-                let somaDiariasEquipamentos = 0;
                 for (const item of order.ItemReservas) {
                     const unidade = await Unidade.findByPk(item.id_unidade, { 
                         include: [{ model: Equipamento, as: 'Equipamento' }], 
                         transaction: t 
                     });
-                    if (unidade?.Equipamento?.preco_diaria) {
-                        somaDiariasEquipamentos += Number(unidade.Equipamento.preco_diaria);
+                    
+                    if (unidade?.Equipamento) {
+                        const eq = unidade.Equipamento;
+                        if (order.tipo_locacao === 'semanal') {
+                            const preco_sem = eq.preco_semanal ? Number(eq.preco_semanal) : Number(eq.preco_diaria) * 7;
+                            valorExtra += (diasExtras / 7) * preco_sem;
+                        } else if (order.tipo_locacao === 'quinzenal') {
+                            const preco_qui = eq.preco_quinzenal ? Number(eq.preco_quinzenal) : Number(eq.preco_diaria) * 15;
+                            valorExtra += (diasExtras / 15) * preco_qui;
+                        } else if (order.tipo_locacao === 'mensal') {
+                            const preco_men = eq.preco_mensal ? Number(eq.preco_mensal) : Number(eq.preco_diaria) * 30;
+                            valorExtra += (diasExtras / 30) * preco_men;
+                        } else {
+                            valorExtra += diasExtras * Number(eq.preco_diaria);
+                        }
                     }
                 }
-                
-                valorExtraDiarias = somaDiariasEquipamentos * diasExtras;
-                console.log(`[REAGENDAMENTO] Pedido #${order.id} estendido em ${diasExtras} dias. Valor extra: R$ ${valorExtraDiarias.toFixed(2)}`);
+                console.log(`[REAGENDAMENTO] Pedido #${order.id} estendido. Valor extra: R$ ${valorExtra.toFixed(2)}`);
             }
 
-            const novoValorTotal = Number(order.valor_total) + valorExtraDiarias;
+            const novoValorTotal = Number(order.valor_total) + valorExtra;
 
             // Validar disponibilidade e realizar REMANEJAMENTO se necessário
             for (const item of order.ItemReservas) {
                 const unidadeAtual = await Unidade.findByPk(item.id_unidade, { include: [{ model: Equipamento, as: 'Equipamento' }], transaction: t });
                 
-                const itemRequest = { 
-                    id_equipamento: unidadeAtual.Equipamento.id, 
-                    data_inicio: dataInicioParaSalvar, 
-                    data_fim: newEndDate 
-                };
+                const startStr = dataInicioParaSalvar.split('T')[0];
+                const endStr = newEndDate.split('T')[0];
 
-                // Verifica se há estoque total disponível
-                const unidadesLivresProModelo = await verificarDisponibilidade(itemRequest, { transaction: t }, orderId);
+                // Verifica se há estoque total disponível no período
+                const { unidadesLivresCount, unidadesLivresTodoPeriodo } = await verificarDisponibilidadeGeral(unidadeAtual.Equipamento.id, startStr, endStr, { transaction: t }, orderId);
 
-                if (unidadesLivresProModelo.length === 0) {
+                if (unidadesLivresCount <= 0) {
                     throw new Error(`Estoque esgotado para ${unidadeAtual.Equipamento.nome} no período selecionado.`);
                 }
 
@@ -1033,18 +1060,21 @@ const rescheduleOrder = async (req, res) => {
                     console.log(`[REMANEJAMENTO] A unidade #${item.id_unidade} tem conflitos. Tentando remanejar outros clientes...`);
                     
                     for (const conflito of conflitosOutros) {
-                        // Para cada cliente B que está no caminho, buscamos uma nova casa (unidade) para ele
-                        const novaUnidadeParaB = unidadesLivresProModelo.find(u => u.id !== item.id_unidade);
+                        // Para o conflito, precisamos de uma unidade que esteja livre NO PERÍODO DO CONFLITO
+                        const { unidadesLivresTodoPeriodo: opcoesRemanejamento } = await verificarDisponibilidadeGeral(
+                            unidadeAtual.Equipamento.id, 
+                            conflito.data_inicio.toISOString().split('T')[0], 
+                            conflito.data_fim.toISOString().split('T')[0], 
+                            { transaction: t }, 
+                            orderId
+                        );
+
+                        const novaUnidadeParaB = opcoesRemanejamento.find(u => u.id !== item.id_unidade);
                         
                         if (novaUnidadeParaB) {
                             await conflito.update({ id_unidade: novaUnidadeParaB.id }, { transaction: t });
                             console.log(`[REMANEJAMENTO] Pedido #${conflito.id_ordem_servico} movido da unidade #${item.id_unidade} para #${novaUnidadeParaB.id}`);
-                            
-                            // Remove essa unidade da lista de "livres" pois agora o Cliente B a ocupou
-                            const index = unidadesLivresProModelo.indexOf(novaUnidadeParaB);
-                            unidadesLivresProModelo.splice(index, 1);
                         } else {
-                            // Se não sobrou nenhuma unidade nem para o remanejamento, então realmente não dá
                             throw new Error(`Não há máquinas livres suficientes para remanejar as reservas existentes.`);
                         }
                     }

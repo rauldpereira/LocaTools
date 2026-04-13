@@ -479,6 +479,7 @@ const getDailyAvailability = async (req, res) => {
           "aguardando_assinatura",
           "em_andamento",
           "aguardando_pagamento_final",
+          "PREJUIZO",
         ];
         if (statusAtivos.includes(reserva.OrdemDeServico.status)) {
           deveContar = true;

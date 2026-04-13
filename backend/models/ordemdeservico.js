@@ -87,6 +87,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
       },
+      tipo_locacao: {
+        type: DataTypes.ENUM('diaria', 'semanal', 'quinzenal', 'mensal'),
+        allowNull: false,
+        defaultValue: 'diaria'
+      },
       taxa_avaria: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
