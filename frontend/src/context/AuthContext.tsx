@@ -5,6 +5,12 @@ interface UserData {
     id: number;
     nome: string;
     email: string;
+    telefone?: string;
+    rg?: string;
+    razao_social?: string;
+    cpf?: string;
+    cnpj?: string;
+    tipo_pessoa?: 'fisica' | 'juridica';
     tipo_usuario: 'cliente' | 'admin' | 'funcionario'; 
     permissoes?: string[];
     precisa_trocar_senha?: boolean;
@@ -18,7 +24,7 @@ interface AuthContextType {
     isLoadingAuth: boolean;
     login: (token: string) => Promise<void>;
     logout: (redirectToLogin?: boolean) => void;
-    updateUser: (newUser: { nome: string; email: string }) => void;
+    updateUser: (newUser: Partial<UserData>) => void;
     hasPermission: (permission: string) => boolean; 
 }
 
@@ -30,7 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
     const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
 
-    const updateUser = (newUser: { nome: string; email: string }) => {
+    const updateUser = (newUser: Partial<UserData>) => {
         setUser(prevUser => (prevUser ? { ...prevUser, ...newUser } : null));
     };
 

@@ -98,17 +98,36 @@ const getProfile = (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-  const { nome, email } = req.body;
+  const { nome, email, telefone, rg, razao_social } = req.body;
   const { id } = req.user;
   try {
     const user = await Usuario.findByPk(id);
     if (!user) {
       return res.status(404).json({ error: 'Usuário não encontrado.' });
     }
-    await user.update({ nome, email });
+    
+    // Atualiza apenas os campos permitidos
+    await user.update({ 
+      nome, 
+      email, 
+      telefone, 
+      rg, 
+      razao_social 
+    });
+
     res.status(200).json({
       message: 'Perfil atualizado com sucesso.',
-      usuario: { id: user.id, nome: user.nome, email: user.email },
+      usuario: { 
+        id: user.id, 
+        nome: user.nome, 
+        email: user.email, 
+        telefone: user.telefone, 
+        rg: user.rg, 
+        razao_social: user.razao_social,
+        cpf: user.cpf,
+        cnpj: user.cnpj,
+        tipo_pessoa: user.tipo_pessoa
+      },
     });
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
