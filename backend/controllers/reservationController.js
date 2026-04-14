@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo, FreteConfig, ConfigLoja } = require('../models');
+const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo, FreteConfig, ConfigLoja, HorarioFuncionamento } = require('../models');
 const { notificarUsuario, notificarOperacao } = require('../utils/notificacaoHelper');
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
@@ -540,17 +540,14 @@ const getOrderById = async (req, res) => {
 
 const generateContract = async (req, res) => {
     const { id } = req.params;
-    const userId = req.user.id;
-    const tipoUsuario = req.user.tipo_usuario;
 
     try {
-
         const order = await OrdemDeServico.findByPk(id, {
             include: [
                 {
                     model: Usuario,
                     as: 'Usuario',
-                    attributes: ['id', 'nome', 'email', 'cpf', 'cnpj', 'tipo_pessoa']
+                    attributes: ['id', 'nome', 'email', 'cpf', 'cnpj', 'telefone', 'tipo_pessoa']
                 },
                 {
                     model: ItemReserva,
@@ -561,157 +558,273 @@ const generateContract = async (req, res) => {
                     }]
                 },
                 {
-                    model: Vistoria,
-                    as: 'Vistorias',
-                    where: { tipo_vistoria: 'entrega' },
-                    required: false,
-                    include: [{
-                        model: DetalhesVistoria,
-                        as: 'detalhes',
-                        include: [{
-                            model: AvariasEncontradas,
-                            as: 'avariasEncontradas',
-                            required: false,
-                            include: [{ model: TipoAvaria, as: 'TipoAvaria' }]
-                        }]
-                    }]
+                    model: Pagamento,
+                    as: 'Pagamentos',
+                    required: false
                 }
             ]
         });
 
-        if (!order) {
-            return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
+        if (!order) return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
+
+        // Acesso restrito
+        if (req.user.tipo_usuario !== 'admin' && req.user.tipo_usuario !== 'funcionario' && order.id_usuario !== req.user.id) {
+             return res.status(403).json({ error: 'Acesso negado.' });
         }
+
+        const configLoja = await ConfigLoja.findOne();
+        const freteConfig = await FreteConfig.findOne();
+        const horarios = await HorarioFuncionamento.findAll();
+
+        // --- LÓGICA: IDENTIFICAR MÉTODO DE PAGAMENTO (STRIPE) ---
+        let metodoPagamentoFinal = 'A Combinar';
+        if (order.Pagamentos && order.Pagamentos.length > 0) {
+            const p = order.Pagamentos[0];
+            if (p.id_transacao_externa?.startsWith('ch_')) {
+                try {
+                    const charge = await stripe.charges.retrieve(p.id_transacao_externa);
+                    if (charge.payment_method_details?.type === 'card') {
+                        metodoPagamentoFinal = `Cartão de Crédito (Site) - Final ${charge.payment_method_details.card.last4}`;
+                    } else {
+                        metodoPagamentoFinal = `Site (${charge.payment_method_details?.type?.toUpperCase() || 'Cartão'})`;
+                    }
+                } catch (e) {
+                    metodoPagamentoFinal = 'Cartão de Crédito (Site)';
+                }
+            } else if (p.id_transacao_externa?.startsWith('manual_')) {
+                metodoPagamentoFinal = 'Presencial / Loja';
+            }
+        }
+
+        // --- LÓGICA: AGRUPAR HORÁRIOS (Melhorada) ---
+        const diasOrdem = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+        const diaToHorario = {};
         
-        const isOwner = order.id_usuario === req.user.id;
-        const isAdmin = req.user.tipo_usuario === 'admin';
-        const hasPermission = req.user.permissoes && (
-            req.user.permissoes.includes('gerenciar_reservas') || 
-            req.user.permissoes.includes('fazer_vistoria')
-        );
+        horarios.forEach(h => {
+            const label = h.fechado ? 'Fechado' : `${h.horario_abertura.substring(0, 5)} às ${h.horario_fechamento.substring(0, 5)}`;
+            // Normaliza o nome do banco para casar com o array fixo (remove acentos e deixa LowerCase para comparação)
+            const normalizar = (str) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split('-')[0].trim();
+            const diaLimpo = normalizar(h.dia_semana);
+            
+            // Mapeia o dia do banco para o nome bonito do array diasOrdem
+            const diaOriginal = diasOrdem.find(d => normalizar(d) === diaLimpo);
+            if (diaOriginal) {
+                diaToHorario[diaOriginal] = label;
+            }
+        });
 
-        if (!isOwner && !isAdmin && !hasPermission) {
-            return res.status(403).json({ error: 'Acesso negado. Você não tem permissão para baixar este contrato.' });
+        const resultados = [];
+        if (diasOrdem.length > 0) {
+            let diaInicio = diasOrdem[0];
+            let horarioAtual = diaToHorario[diaInicio] || 'Não informado';
+
+            for (let i = 1; i <= diasOrdem.length; i++) {
+                const dia = diasOrdem[i];
+                const horario = diaToHorario[dia];
+
+                if (horario !== horarioAtual || i === diasOrdem.length) {
+                    const diaFim = diasOrdem[i - 1];
+                    if (diaInicio === diaFim) {
+                        resultados.push(`${diaInicio}: ${horarioAtual}`);
+                    } else {
+                        resultados.push(`${diaInicio} a ${diaFim}: ${horarioAtual}`);
+                    }
+                    diaInicio = dia;
+                    horarioAtual = horario;
+                }
+            }
         }
-
-        if (!order.ItemReservas || order.ItemReservas.length === 0) {
-            return res.status(500).json({ error: 'Pedido sem itens.' });
-        }
-
-        const vistoriaSaida = (order.Vistorias && order.Vistorias.length > 0) ? order.Vistorias[0] : null;
+        const hListAgrupado = resultados.join(' | ');
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=contrato_locacao_${id}.pdf`);
 
-        const doc = new PDFDocument({ margin: 50 });
+        const doc = new PDFDocument({ margin: 30, size: 'A4' });
         doc.pipe(res);
 
+        const cnpjLoja = configLoja?.cnpj || '34.212.953/0001-35';
+        const enderecoLoja = freteConfig?.endereco_origem || 'Rua: Jorge Winther, 798 Sala 9 - Centro - Taubaté / SP';
 
-        doc.fontSize(18).font('Helvetica-Bold').text('CONTRATO DE LOCAÇÃO DE EQUIPAMENTOS', { align: 'center' });
-        doc.fontSize(14).text(`Contrato Nº: ${order.id}`, { align: 'center' });
+        // --- CABEÇALHO (B&W) ---
+        doc.fontSize(12).font('Helvetica-Bold').text('LOCATOOLS - Locação de Equipamentos', 30, 35);
+        doc.font('Helvetica').fontSize(8).text(`CNPJ: ${cnpjLoja}`, 30, 48);
+        doc.text(enderecoLoja, 30, 58);
+        doc.text('Fone: 12 98837-6000 | comercial@beacomercioeservicos.com.br', 30, 68);
+
+        doc.fontSize(16).font('Helvetica-Bold').text(`Locação número ${order.id}`, 350, 35, { align: 'right' });
         doc.moveDown(2);
 
-        const configLoja = await ConfigLoja.findOne();
-        const cnpjLoja = configLoja?.cnpj || '00.000.000/0001-00';
+        let y = 100;
 
-        doc.fontSize(12).font('Helvetica-Bold').text('1. AS PARTES');
-        doc.font('Helvetica').text(`LOCADORA: LOCATOOLS LTDA, CNPJ ${cnpjLoja}`);
-        doc.text(`LOCATÁRIO(A): ${order.Usuario.nome}, Email: ${order.Usuario.email}`);
-        doc.moveDown();
+        // --- DADOS DO CLIENTE ---
+        const startYDados = y;
+        doc.font('Helvetica-Bold').fontSize(9).text('DADOS DA LOCAÇÃO / CLIENTE', 35, y + 5);
+        y += 20;
 
-        doc.font('Helvetica-Bold').text('2. OBJETO DO CONTRATO');
-        doc.font('Helvetica').text('O presente contrato tem como objeto a locação do(s) equipamento(s) descrito(s) abaixo:');
-        doc.moveDown();
+        doc.font('Helvetica').fontSize(8);
+        const dataEmissao = new Date(order.createdAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        
+        const col1X = 35;
+        const col2X = 350;
+        
+        doc.text(`Cliente: ${order.Usuario.nome}`, col1X, y);
+        doc.text(`CPF/CNPJ: ${order.Usuario.cpf || order.Usuario.cnpj || 'N/A'}`, col1X, y + 10);
+        doc.text(`Telefone: ${order.Usuario.telefone || 'N/A'}`, col1X, y + 20);
+        doc.text(`E-mail: ${order.Usuario.email || 'N/A'}`, col1X, y + 30);
+        
+        doc.text(`Data: ${dataEmissao}`, col2X, y);
+        doc.text(`Situação: ${order.status.toUpperCase()}`, col2X, y + 10);
 
-        order.ItemReservas.forEach((item, index) => {
-            doc.font('Helvetica-Bold').text(`Item ${index + 1}: ${item.Unidade.Equipamento.nome} (Unidade ID: ${item.id_unidade})`);
-            doc.font('Helvetica').text(`Descrição: ${item.Unidade.Equipamento.descricao.substring(0, 150)}...`);
-            doc.moveDown(0.5);
+        const deliveryText = order.tipo_entrega === 'entrega' 
+            ? `Local de Entrega: ${order.endereco_entrega}` 
+            : `Retirada em: Loja física (${enderecoLoja})`;
+        
+        doc.text(deliveryText, col2X, y + 20, { width: 210 });
+        const deliveryHeight = doc.heightOfString(deliveryText, { width: 210 });
+
+        const contentHeight = Math.max(40, 20 + deliveryHeight);
+        y += contentHeight + 10;
+        doc.rect(30, startYDados, 535, y - startYDados).stroke();
+        y += 15;
+
+        // --- ITENS DA LOCAÇÃO ---
+        const startYItens = y;
+        doc.rect(30, y, 535, 20).stroke();
+        doc.font('Helvetica-Bold').text('ITENS DA LOCAÇÃO', 35, y + 6);
+        y += 20;
+
+        doc.text('Descrição', 35, y + 5);
+        doc.text('Preço unit.', 350, y + 5);
+        doc.text('Quant.', 410, y + 5);
+        doc.text('Total', 500, y + 5);
+        y += 20;
+
+        doc.font('Helvetica');
+        let totalProdutos = 0;
+        order.ItemReservas.forEach((item) => {
+            if (y > 750) {
+                doc.addPage();
+                y = 50;
+            }
+            const preco = Number(item.Unidade.Equipamento.preco_diaria) || 0;
+            totalProdutos += preco;
+
+            const itemTitle = `${item.Unidade.Equipamento.nome} (Patrimônio #${item.id_unidade})`;
+            doc.text(itemTitle, 35, y, { width: 300 });
+            const itemTitleHeight = doc.heightOfString(itemTitle, { width: 300 });
+
+            doc.text(`R$ ${preco.toFixed(2)}`, 350, y);
+            doc.text('1', 415, y);
+            doc.text(`R$ ${preco.toFixed(2)}`, 500, y);
+            
+            y += itemTitleHeight;
+            const dataInicio = new Date(order.data_inicio).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+            const dataFim = new Date(order.data_fim).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+            doc.fontSize(7).text(`Período: ${dataInicio} até ${dataFim}`, 35, y);
+            doc.fontSize(8);
+            y += 15;
         });
 
-        doc.font('Helvetica-Bold').text('3. PERÍODO DE LOCAÇÃO');
-        const dataInicio = new Date(order.data_inicio).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-        const dataFim = new Date(order.data_fim).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-        doc.font('Helvetica').text(`Início: ${dataInicio} (Horário de retirada conforme funcionamento).`);
-        doc.text(`Fim: ${dataFim} (Horário de devolução conforme funcionamento).`);
-        doc.moveDown();
+        doc.rect(30, y, 535, 20).stroke();
+        doc.font('Helvetica-Bold').text('TOTAL PRODUTOS', 35, y + 6);
+        doc.text(`${order.ItemReservas.length}`, 415, y + 6);
+        doc.text(`R$ ${totalProdutos.toFixed(2)}`, 500, y + 6);
+        y += 35;
 
-        doc.font('Helvetica-Bold').text('4. VISTORIA DE SAÍDA (ESTADO DO EQUIPAMENTO)');
-        if (vistoriaSaida) {
-            doc.font('Helvetica').text('O(A) LOCATÁRIO(A) declara receber o(s) equipamento(s) no estado descrito pela vistoria de saída:');
-            vistoriaSaida.detalhes.forEach(detalhe => {
-                doc.font('Helvetica-Bold').text(`- Unidade ID #${detalhe.id_unidade}:`);
-                doc.font('Helvetica').text(`  Condição Geral: ${detalhe.condicao}`);
-                doc.text(`  Comentários: ${detalhe.comentarios || 'Nenhum.'}`);
-                if (detalhe.avariasEncontradas && detalhe.avariasEncontradas.length > 0) {
-                    doc.text('  Avarias pré-existentes (check):');
-                    detalhe.avariasEncontradas.forEach(avaria => {
-                        doc.text(`    - ${avaria.TipoAvaria.descricao}`);
-                    });
-                }
-            });
-        } else {
-            doc.font('Helvetica').text('Vistoria de saída pendente de realização.');
+        // --- FINANCEIRO ---
+        const startYFinanceiro = y;
+        doc.rect(30, y, 535, 20).stroke();
+        doc.font('Helvetica-Bold').text('PAGAMENTO', 35, y + 6);
+        y += 25;
+        
+        doc.text('Valor Total', 35, y);
+        doc.text('Sinal Pago', 150, y);
+        doc.text('Forma de pagamento', 300, y);
+        doc.text('Situação', 500, y);
+
+        y += 15;
+        doc.font('Helvetica');
+        const valorFinal = Number(order.valor_total);
+        const valorSinal = Number(order.valor_sinal);
+        
+        const totalPago = order.Pagamentos ? order.Pagamentos.reduce((acc, p) => acc + Number(p.valor), 0) : 0;
+        
+        let situacao = 'Pendente';
+        if (totalPago >= valorFinal - 0.01) {
+            situacao = 'Paga';
+        } else if (totalPago >= valorSinal - 0.01) {
+            situacao = 'Sinal Pago';
         }
-        doc.moveDown();
 
-        doc.font('Helvetica-Bold').text('5. VALORES E PAGAMENTO');
-        doc.font('Helvetica').text(`Valor Total do Aluguel: R$ ${Number(order.valor_total).toFixed(2)}`);
-        doc.text(`Sinal (50%) Pago: R$ ${Number(order.valor_sinal).toFixed(2)}`);
-        doc.text(`Valor Restante: R$ ${(Number(order.valor_total) - Number(order.valor_sinal)).toFixed(2)} (a ser pago na devolução).`);
-        doc.moveDown();
+        doc.text(`R$ ${valorFinal.toFixed(2)}`, 35, y);
+        doc.text(`R$ ${valorSinal.toFixed(2)}`, 150, y);
+        doc.text(metodoPagamentoFinal, 300, y, { width: 180 });
+        const metodoPagamentoHeight = doc.heightOfString(metodoPagamentoFinal, { width: 180 });
+        doc.text(situacao, 500, y);
 
-        doc.font('Helvetica-Bold').text('6. TERMOS E CONDIÇÕES');
-        doc.font('Helvetica').fontSize(10);
-        doc.text('6.1. OBRIGAÇÕES DA LOCATÁRIA (Cliente):');
-        doc.list([
-            'Utilizar o equipamento conforme as instruções de uso.',
-            'Zelar pela guarda e conservação do equipamento.',
-            'Devolver o equipamento na data estipulada. A não devolução implicará em multa diária no valor de 10% do total do contrato.',
-            'Responsabilizar-se por qualquer dano, quebra ou perda do equipamento durante o período de locação.'
-        ], { indent: 20 });
-        doc.moveDown(0.5);
+        y += Math.max(15, metodoPagamentoHeight) + 10;
+        doc.rect(30, y, 535, 20).stroke();
+        const saldoDevedor = valorFinal - totalPago;
+        const textoResumo = `Total do Contrato: R$ ${valorFinal.toFixed(2)}` + (saldoDevedor > 0.01 ? ` | Saldo Devedor: R$ ${saldoDevedor.toFixed(2)}` : "");
+        doc.font('Helvetica-Bold').fontSize(10).text(textoResumo, 35, y + 5);
+        
+        y += 40;
 
-        doc.text('6.2. DEVOLUÇÃO E AVARIAS:');
-        doc.text('Na devolução, uma nova vistoria será realizada. Avarias que não constam na Vistoria de Saída (Cláusula 4) serão de responsabilidade do(a) LOCATÁRIO(A), sendo os custos de reparo (baseados no catálogo de avarias) adicionados ao valor final do pagamento.');
-        doc.moveDown(0.5);
+        // --- SEÇÃO: OBSERVAÇÕES GERAIS ---
+        doc.font('Helvetica-Bold').fontSize(10).text('Observações gerais', 30, y);
+        y += 15;
+        doc.font('Helvetica').fontSize(8);
+        doc.text('OBSERVAÇÃO GERAL:', 30, y);
+        y += 10;
+        
+        const clausulas = [
+            '1- DECLARAÇÃO:',
+            'O LOCATÁRIO recebe nesse ato, ou na entrega, por si mesmo ou seu preposto, o(s) bem(ns) móvel(is) referido(s) no presente instrumento e declara: a) Tê-lo(s) testado e aprovado(s) e afirma que conhece sua correta utilização e funcionamento, assim se obrigando a devolvê-los em idênticas condições de funcionamento, limpeza e segurança, no final desta locação ou na hipótese de rescisão do presente contrato, ou será aplicada a cobrança do valor/garantia do equipamento/ferramenta;',
+            'b) Que recebeu o(s) manual(is) de instruções de uso e segurança e se compromete a repassá-las a quem for utilizar o(s) mesmo(s);',
+            'c) Que somente permitirá o uso do(s) equipamento(s) por profissional(is) qualificado(s) e capacitado(s) a operá-los;',
+            'd) Que fará uso de todos os equipamentos de segurança (EPI\'S) necessários na utilização do(s) bem(ns) móvel(is) alugado(s), bem como seguirá as normas de segurança pertinentes;',
+            'e) A prorrogação deste contrato deve ser realizada EXCLUSIVAMENTE através do site/plataforma. Caso o equipamento não seja devolvido na data prevista e não haja renovação formalizada, será cobrada multa por atraso conforme política vigente;',
+            'f) O equipamento deverá ser devolvido na loja física ou, caso deseje retirada pela equipe, a solicitação deve ser feita obrigatoriamente através do site para geração de protocolo e agendamento;',
+            'g) Ter ciência do tratamento dos dados pessoais fornecidos para realização do presente CONTRATO, nos termos da LGPD;',
+            'h) Devolver o bem nas condições estabelecidas, no fim do contrato — caso o locatário provocar danos ao equipamento ou não devolver em condições favoráveis, será cobrada uma multa;',
+            '',
+            order.tipo_entrega === 'entrega' ? `LOCAL DE ENTREGA: ${order.endereco_entrega}` : `RETIRADA EM: Loja física (${enderecoLoja})`,
+            '',
+            '2- FORMA DE PAGAMENTO:',
+            'O pagamento poderá ser efetuado por meio da plataforma online da empresa ou presencialmente na loja física.',
+            'Na plataforma, são aceitos pagamentos via cartão (crédito ou débito) ou PIX.',
+            'Na loja física, o pagamento poderá ser realizado por meio de cartão (débito ou crédito) via maquininha, PIX ou dinheiro em espécie.',
+            '',
+            `3- HORÁRIO DE FUNCIONAMENTO: ${hListAgrupado}`
+        ];
 
-        doc.font('Helvetica-Bold').text('6.3. POLÍTICA DE CANCELAMENTO:');
-        doc.font('Helvetica').text(
-            'O(A) LOCATÁRIO(A) pode solicitar o cancelamento desta reserva, sujeito às seguintes regras:',
-            { continued: true }
-        ).text(' ');
-        doc.list([
-            'Direito de Arrependimento (Art. 49, CDC): O(A) LOCATÁRIO(A) pode cancelar esta reserva em até 7 (sete) dias corridos após a data do pagamento do sinal, recebendo o reembolso integral do valor pago.',
-            'Política da Loja (Após 7 dias): Se o prazo legal de 7 dias já passou, valerá a seguinte regra:',
-            '  - Cancelamento com mais de 2 dias de antecedência do início do aluguel: Reembolso integral do sinal.',
-            '  - Cancelamento com 2 dias ou menos de antecedência do início do aluguel: Será retida uma taxa de 5% sobre o VALOR TOTAL do contrato, e o restante do sinal pago será reembolsado.'
-        ], { indent: 20 });
+        clausulas.forEach(c => {
+            if (y > 750) {
+                doc.addPage();
+                y = 50;
+            }
+            doc.text(c, 30, y, { width: 535, align: 'justify' });
+            y += doc.heightOfString(c, { width: 535 }) + 2;
+        });
 
-        doc.moveDown(2);
+        // --- ASSINATURA ---
+        if (y > 650) {
+            doc.addPage();
+            y = 50;
+        } else {
+            y += 60;
+        }
 
+        doc.moveTo(30, y).lineTo(300, y).stroke();
+        doc.text('ASSINATURA DO LOCATÁRIO:', 30, y + 5);
 
         if (order.assinatura_cliente) {
-            try {
+             try {
                 const base64Data = order.assinatura_cliente.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
-                
                 const imgBuffer = Buffer.from(base64Data, 'base64');
-                
-                doc.image(imgBuffer, 230, doc.y, { fit: [150, 70] });
-                
-                doc.moveDown(4);
-            } catch (err) {
-                console.error("Erro ao processar imagem da assinatura no PDF:", err);
-                doc.moveDown(3);
-            }
-        } else {
-            doc.moveDown(3);
+                doc.image(imgBuffer, 50, y - 45, { fit: [150, 45] });
+            } catch (err) { console.log("Erro ao carregar imagem da assinatura"); }
         }
-
-        doc.fontSize(12);
-        doc.text('________________________________________', { align: 'center' });
-        doc.text(order.Usuario.nome, { align: 'center' });
-        doc.text('(Assinado digitalmente ao aceitar os termos na plataforma)', { align: 'center', fontSize: 9 });
 
         doc.end();
 
