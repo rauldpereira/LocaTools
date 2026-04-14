@@ -9,6 +9,17 @@ const { parseDateStringAsLocal } = require('../utils/dateUtils');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+const formatarTelefone = (tel) => {
+    if (!tel) return 'N/A';
+    const num = tel.replace(/\D/g, '');
+    if (num.length === 11) {
+        return `(${num.slice(0, 2)}) ${num.slice(2, 7)}-${num.slice(7)}`;
+    } else if (num.length === 10) {
+        return `(${num.slice(0, 2)}) ${num.slice(2, 6)}-${num.slice(6)}`;
+    }
+    return tel;
+};
+
 const calcularFreteInterno = async (enderecoDestino) => {
     try {
         const config = await FreteConfig.findOne();
@@ -644,12 +655,14 @@ const generateContract = async (req, res) => {
 
         const cnpjLoja = configLoja?.cnpj || '34.212.953/0001-35';
         const enderecoLoja = freteConfig?.endereco_origem || 'Rua: Jorge Winther, 798 Sala 9 - Centro - Taubaté / SP';
+        const telefoneLoja = formatarTelefone(configLoja?.telefone_contato || '12 98837-6000');
+        const emailLoja = configLoja?.email_contato || 'exemplo@exemplo.com';
 
         // --- CABEÇALHO (B&W) ---
         doc.fontSize(12).font('Helvetica-Bold').text('LOCATOOLS - Locação de Equipamentos', 30, 35);
         doc.font('Helvetica').fontSize(8).text(`CNPJ: ${cnpjLoja}`, 30, 48);
         doc.text(enderecoLoja, 30, 58);
-        doc.text('Fone: 12 98837-6000 | comercial@beacomercioeservicos.com.br', 30, 68);
+        doc.text(`Fone: ${telefoneLoja} | ${emailLoja}`, 30, 68);
 
         doc.fontSize(16).font('Helvetica-Bold').text(`Locação número ${order.id}`, 350, 35, { align: 'right' });
         doc.moveDown(2);
@@ -669,7 +682,7 @@ const generateContract = async (req, res) => {
         
         doc.text(`Cliente: ${order.Usuario.nome}`, col1X, y);
         doc.text(`CPF/CNPJ: ${order.Usuario.cpf || order.Usuario.cnpj || 'N/A'}`, col1X, y + 10);
-        doc.text(`Telefone: ${order.Usuario.telefone || 'N/A'}`, col1X, y + 20);
+        doc.text(`Telefone: ${formatarTelefone(order.Usuario.telefone)}`, col1X, y + 20);
         doc.text(`E-mail: ${order.Usuario.email || 'N/A'}`, col1X, y + 30);
         
         doc.text(`Data: ${dataEmissao}`, col2X, y);

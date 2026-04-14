@@ -492,8 +492,4 @@ const CartPage: React.FC = () => {
     );
 };
 
-const handleCheckout = async () => {
-    // ... código removido do componente para brevidade, mas o replace vai tratar o bloco interno
-}
-
 export default CartPage;

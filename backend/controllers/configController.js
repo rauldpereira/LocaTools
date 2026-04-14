@@ -11,7 +11,9 @@ const getConfig = async (req, res) => {
                 horario_limite_hoje: '12:00',
                 cnpj: '00.000.000/0001-00',
                 taxa_reagendamento: 0.00,
-                sinal_porcentagem: 50.00
+                sinal_porcentagem: 50.00,
+                telefone_contato: '12 99999-9999',
+                email_contato: 'exemplo@exemplo.com'
             });
         }
 
@@ -44,6 +46,8 @@ const updateConfig = async (req, res) => {
         cnpj,
         taxa_reagendamento,
         sinal_porcentagem,
+        telefone_contato,
+        email_contato,
         frete
     } = req.body;
     
@@ -57,7 +61,9 @@ const updateConfig = async (req, res) => {
                 horario_limite_hoje,
                 cnpj,
                 taxa_reagendamento,
-                sinal_porcentagem
+                sinal_porcentagem,
+                telefone_contato,
+                email_contato
             });
         } else {
             await configLoja.update({
@@ -67,7 +73,9 @@ const updateConfig = async (req, res) => {
                 horario_limite_hoje,
                 cnpj,
                 taxa_reagendamento,
-                sinal_porcentagem
+                sinal_porcentagem,
+                telefone_contato,
+                email_contato
             });
         }
 

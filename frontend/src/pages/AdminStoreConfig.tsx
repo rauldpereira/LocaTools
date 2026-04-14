@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -16,6 +16,8 @@ const AdminStoreConfig: React.FC = () => {
     cnpj: '00.000.000/0001-00',
     taxa_reagendamento: 0.00,
     sinal_porcentagem: 50.00,
+    telefone_contato: '12 98837-6000',
+    email_contato: 'Exemplo@exemplo.com',
     frete: {
         preco_km: 0,
         taxa_fixa: 0,
@@ -50,6 +52,8 @@ const AdminStoreConfig: React.FC = () => {
             cnpj: data.cnpj || '00.000.000/0001-00',
             taxa_reagendamento: Number(data.taxa_reagendamento || 0),
             sinal_porcentagem: Number(data.sinal_porcentagem ?? 50.00),
+            telefone_contato: data.telefone_contato || '12 98837-6000',
+            email_contato: data.email_contato || 'exemplo@exemplo.com',
             frete: {
                 preco_km: Number(data.frete?.preco_km || 0),
                 taxa_fixa: Number(data.frete?.taxa_fixa || 0),
@@ -138,7 +142,7 @@ const AdminStoreConfig: React.FC = () => {
       const authConfig = { headers: { Authorization: `Bearer ${token}` } };
       await axios.put(backendUrl, payload, authConfig);
       alert("✅ Configurações atualizadas com sucesso!");
-      
+
       if (enderecoFinal && enderecoFinal !== ENDERECO_PADRAO) {
           setIsCustomAddress(true);
           setConfig(prev => ({ ...prev, frete: { ...prev.frete, endereco_origem: enderecoFinal } }));
@@ -154,10 +158,10 @@ const AdminStoreConfig: React.FC = () => {
   const formatCNPJ = (value: string) => {
     const digits = value.replace(/\D/g, "");
     return digits
-      .replace(/^(\d{2})(\d)/, "$1.$2")
-      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-      .replace(/\.(\d{3})(\d)/, ".$1/$2")
-      .replace(/(\d{4})(\d)/, "$1-$2")
+      .replace(/^(\d{2})(\d)/, ".")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "..")
+      .replace(/\.(\d{3})(\d)/, "./")
+      .replace(/(\d{4})(\d)/, "-")
       .slice(0, 18);
   };
 
@@ -422,17 +426,17 @@ const AdminStoreConfig: React.FC = () => {
         </div>
       </div>
 
-      {/* INFORMAÇÕES LEGAIS */}
+      {/* INFORMAÇÕES LEGAIS E CONTATO */}
       <div style={cardStyle}>
         <h3 style={{ marginTop: 0, color: "#17a2b8", display: "flex", alignItems: "center", gap: "10px" }}>
-          Informações Legais
+          Informações Legais e Contato
         </h3>
         <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
-          Dados que aparecerão nos contratos e termos de devolução.
+          Dados que aparecerão nos contratos, cabeçalhos e termos de devolução.
         </p>
 
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: "250px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" }}>
+          <div style={formGroupStyle}>
             <label style={labelStyle}>CNPJ da Loja</label>
             <input
               type="text"
@@ -442,6 +446,30 @@ const AdminStoreConfig: React.FC = () => {
               placeholder="00.000.000/0001-00"
             />
             <small style={helpTextStyle}>Este CNPJ será impresso automaticamente nos documentos em PDF.</small>
+          </div>
+
+          <div style={formGroupStyle}>
+            <label style={labelStyle}>Telefone de Contato</label>
+            <input
+              type="text"
+              value={config.telefone_contato}
+              onChange={(e) => setConfig({ ...config, telefone_contato: e.target.value })}
+              style={inputStyle}
+              placeholder="12 98837-6000"
+            />
+            <small style={helpTextStyle}>Aparecerá no cabeçalho dos contratos PDF.</small>
+          </div>
+
+          <div style={formGroupStyle}>
+            <label style={labelStyle}>E-mail de Contato</label>
+            <input
+              type="email"
+              value={config.email_contato}
+              onChange={(e) => setConfig({ ...config, email_contato: e.target.value })}
+              style={inputStyle}
+              placeholder="exemplo@exemplo.com"
+            />
+            <small style={helpTextStyle}>Aparecerá no cabeçalho dos contratos PDF.</small>
           </div>
         </div>
       </div>

@@ -41,6 +41,16 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DECIMAL(5, 2),
         allowNull: false,
         defaultValue: 50.00
+    },
+    telefone_contato: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: '12 98837-6000'
+    },
+    email_contato: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: 'exemplo@exemplo'
     }
   }, {
     sequelize,
