@@ -84,11 +84,13 @@ interface OrderDetails {
   endereco_entrega?: string;
   custo_frete: string;
   taxa_avaria: string;
+  taxa_atraso?: string;
   taxa_cancelamento?: string;
   valor_reembolsado?: string;
   taxa_remarcacao?: string;
   ItemReservas: ItemReserva[];
   Vistorias: Vistoria[];
+  Pagamentos?: any[];
   createdAt?: string;
   assinatura_devolucao?: string;
   data_assinatura_devolucao?: string;
@@ -162,8 +164,9 @@ const ReservationDetailsPage: React.FC = () => {
 
   const subtotal = order ? Number(order.valor_total) - Number(order.custo_frete) : 0;
   const valorTotalAjustado = order
-    ? Number(order.valor_total) + Number(order.taxa_avaria || 0) + Number(order.taxa_remarcacao || 0)
+    ? Number(order.valor_total) + Number(order.taxa_avaria || 0) + Number(order.taxa_remarcacao || 0) + Number(order.taxa_atraso || 0)
     : 0;
+
 
   //  DOCUMENTO FISCAL DE LOCAÇÃO DE BENS MÓVEIS (DFE Pós-Reforma)
   const handleDownloadDFE = () => {
@@ -1637,41 +1640,62 @@ const ReservationDetailsPage: React.FC = () => {
               <strong>R$ {valorTotalAjustado.toFixed(2)}</strong>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: "5px",
-                color: order.status === "pendente" ? "#e65100" : "#2e7d32",
-              }}
-            >
-              <span>
-                {order.status === "pendente"
-                  ? "Sinal a Pagar (Pendente):"
-                  : "Sinal Pago (Reserva):"}
-              </span>
-              <strong>- R$ {Number(order.valor_sinal).toFixed(2)}</strong>
-            </div>
+            {/* Só mostra detalhamento de sinal se NÃO for pagamento integral (100%) */}
+            {Math.abs(valorTotalAjustado - Number(order.valor_sinal)) > 0.01 ? (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginTop: "5px",
+                    color: order.status === "pendente" ? "#e65100" : "#2e7d32",
+                  }}
+                >
+                  <span>
+                    {order.status === "pendente"
+                      ? "Sinal a Pagar (Pendente):"
+                      : "Sinal Pago (Reserva):"}
+                  </span>
+                  <strong>- R$ {Number(order.valor_sinal).toFixed(2)}</strong>
+                </div>
 
-            {order.status === "finalizada" && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
+                {order.status === "finalizada" && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginTop: "10px",
+                      padding: "10px",
+                      backgroundColor: "#e8f5e9",
+                      borderRadius: "6px",
+                      color: "#1b5e20",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    <span>Restante Quitado:</span>
+                    <span>
+                      R${" "}
+                      {(valorTotalAjustado - Number(order.valor_sinal)).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              // Se for INTEGRAL, apenas confirma que está tudo pago
+              (order.status !== "pendente" && order.status !== "cancelada") && (
+                <div style={{
                   marginTop: "10px",
-                  padding: "10px",
+                  padding: "8px",
                   backgroundColor: "#e8f5e9",
                   borderRadius: "6px",
                   color: "#1b5e20",
-                  fontWeight: "bold",
-                }}
-              >
-                <span>Restante Quitado:</span>
-                <span>
-                  R${" "}
-                  {(valorTotalAjustado - Number(order.valor_sinal)).toFixed(2)}
-                </span>
-              </div>
+                  textAlign: "center",
+                  fontSize: "0.9rem",
+                  fontWeight: "bold"
+                }}>
+                  ✅ Conta Integralmente Quitada
+                </div>
+              )
             )}
           </div>
         </div>

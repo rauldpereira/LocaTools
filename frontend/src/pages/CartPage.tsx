@@ -37,37 +37,42 @@ const CartPage: React.FC = () => {
         estado: ''
     });
 
-    // --- ESTADOS DE FIDELIDADE ---
+    // --- ESTADOS DE LOJA ---
     const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number, ativo: boolean } | null>(null);
+    const [lojaConfig, setLojaConfig] = useState<any>(null);
     const [completedOrders, setCompletedOrders] = useState(0);
 
-    // BUSCA CONFIGURAÇÕES DE FIDELIDADE E HISTÓRICO
+    // BUSCA CONFIGURAÇÕES E HISTÓRICO
     useEffect(() => {
-        const fetchLoyaltyData = async () => {
-            if (!token) return;
+        const fetchStoreData = async () => {
             try {
-                const config = { headers: { Authorization: `Bearer ${token}` } };
-                
                 // Busca config da loja
                 const { data: storeConfig } = await axios.get(`${import.meta.env.VITE_API_URL}/api/config`);
                 if (storeConfig) {
+                    setLojaConfig(storeConfig);
                     setLoyaltyConfig({
                         num: storeConfig.fidelidade_num_pedidos,
                         pct: parseFloat(storeConfig.fidelidade_desconto_pct),
                         ativo: !!storeConfig.fidelidade_ativo
                     });
+                    if (storeConfig.frete?.endereco_origem) {
+                        setLojaAddress("Nosso endereço: " + storeConfig.frete.endereco_origem);
+                    } else {
+                        setLojaAddress('Endereço não configurado.');
+                    }
                 }
 
-                // Busca pedidos do usuário para contar os válidos
-                const { data: myOrders } = await axios.get(`${import.meta.env.VITE_API_URL}/api/reservations/my`, config);
-                // Conta todos os que NÃO estão cancelados
-                const count = myOrders.filter((o: any) => o.status !== 'cancelada').length;
-                setCompletedOrders(count);
+                if (token) {
+                    const configAuth = { headers: { Authorization: `Bearer ${token}` } };
+                    const { data: myOrders } = await axios.get(`${import.meta.env.VITE_API_URL}/api/reservations/my`, configAuth);
+                    const count = myOrders.filter((o: any) => o.status !== 'cancelada').length;
+                    setCompletedOrders(count);
+                }
             } catch (error) {
-                console.error('Erro ao buscar dados de fidelidade:', error);
+                console.error('Erro ao buscar dados da loja:', error);
             }
         };
-        fetchLoyaltyData();
+        fetchStoreData();
     }, [token]);
 
     // Conta quantas datas diferentes existem no carrinho
@@ -241,8 +246,14 @@ const CartPage: React.FC = () => {
             };
             const { data: newOrder } = await axios.post(`${import.meta.env.VITE_API_URL}/api/reservations`, reservationData, config);
             clearCart();
-            // Passa os IDs separados por vírgula na URL (ex: /payment-multi?ids=101,102)
-            navigate(`/payment-multi?ids=${newOrder.ids.join(',')}`);
+            
+            if (lojaConfig?.momento_pagamento === 'entrega') {
+                alert('✅ Reserva realizada com sucesso! O pagamento será feito presencialmente.');
+                navigate('/my-reservations');
+            } else {
+                // Passa os IDs separados por vírgula na URL (ex: /payment-multi?ids=101,102)
+                navigate(`/payment-multi?ids=${newOrder.ids.join(',')}`);
+            }
         } catch (err: any) {
             setError(err.response?.data?.error || 'Erro ao finalizar a reserva. Tente novamente.');
             console.error(err);
@@ -448,9 +459,13 @@ const CartPage: React.FC = () => {
                                 Total: R$ {valorTotalComFrete.toFixed(2)}
                             </h2>
 
-                            <p style={{ color: 'green', fontWeight: 'bold' }}>
-                                Sinal de 50% a pagar agora: R$ {(valorTotalComFrete * 0.5).toFixed(2)}
-                            </p>
+                            {lojaConfig && (
+                                <p style={{ color: 'green', fontWeight: 'bold' }}>
+                                    {lojaConfig.sinal_porcentagem < 100 &&
+                                        `Sinal de ${lojaConfig.sinal_porcentagem}% a pagar agora: R$ ${(valorTotalComFrete * (lojaConfig.sinal_porcentagem / 100)).toFixed(2)}`
+                                    }
+                                </p>
+                            )}
 
                             {error && (
                                 <div style={{
@@ -476,5 +491,9 @@ const CartPage: React.FC = () => {
         </div>
     );
 };
+
+const handleCheckout = async () => {
+    // ... código removido do componente para brevidade, mas o replace vai tratar o bloco interno
+}
 
 export default CartPage;

@@ -10,7 +10,8 @@ const getConfig = async (req, res) => {
                 fidelidade_ativo: true,
                 horario_limite_hoje: '12:00',
                 cnpj: '00.000.000/0001-00',
-                taxa_reagendamento: 0.00
+                taxa_reagendamento: 0.00,
+                sinal_porcentagem: 50.00
             });
         }
 
@@ -42,6 +43,7 @@ const updateConfig = async (req, res) => {
         horario_limite_hoje, 
         cnpj,
         taxa_reagendamento,
+        sinal_porcentagem,
         frete
     } = req.body;
     
@@ -54,7 +56,8 @@ const updateConfig = async (req, res) => {
                 fidelidade_ativo,
                 horario_limite_hoje,
                 cnpj,
-                taxa_reagendamento
+                taxa_reagendamento,
+                sinal_porcentagem
             });
         } else {
             await configLoja.update({
@@ -63,7 +66,8 @@ const updateConfig = async (req, res) => {
                 fidelidade_ativo,
                 horario_limite_hoje,
                 cnpj,
-                taxa_reagendamento
+                taxa_reagendamento,
+                sinal_porcentagem
             });
         }
 

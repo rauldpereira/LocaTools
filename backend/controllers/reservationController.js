@@ -298,7 +298,9 @@ const createOrder = async (req, res) => {
                     valor_total = valor_total * (1 - pctDesconto);
                 }
 
-                const valor_sinal = valor_total * 0.5;
+                // Calcula o valor do sinal baseado na config da loja
+                const sinalPct = configLoja ? (parseFloat(configLoja.sinal_porcentagem) / 100) : 0.5;
+                const valor_sinal = valor_total * sinalPct;
 
                 const ordemDeServico = await OrdemDeServico.create({
                     id_usuario,
@@ -512,6 +514,11 @@ const getOrderById = async (req, res) => {
                     model: Usuario,
                     as: 'Usuario',
                     attributes: ['id', 'nome', 'email', 'cpf', 'cnpj', 'tipo_pessoa']
+                },
+                {
+                    model: Pagamento,
+                    as: 'Pagamentos',
+                    required: false
                 }
             ]
         });
@@ -806,6 +813,36 @@ const confirmManualPayment = async (req, res) => {
         res.status(200).json({ message: 'Pagamento confirmado!', statusFinal });
     } catch (error) {
         console.error('Erro ao confirmar pagamento manual:', error);
+        res.status(500).json({ error: 'Erro interno.' });
+    }
+};
+
+const confirmInitialPayment = async (req, res) => {
+    try {
+        const order = await OrdemDeServico.findByPk(req.params.id);
+        if (!order) return res.status(404).json({ error: 'Ordem não encontrada.' });
+
+        const statusPermitidos = ['pendente', 'aprovada', 'aguardando_assinatura'];
+        if (!statusPermitidos.includes(order.status)) {
+            return res.status(400).json({ error: 'Status atual não permite registro de sinal.' });
+        }
+
+        // Registra o pagamento do valor_sinal integral
+        await Pagamento.create({
+            id_ordem_servico: order.id,
+            valor: order.valor_sinal,
+            status_pagamento: 'aprovado',
+            id_transacao_externa: `manual_sinal_${req.user.id}_${Date.now()}`
+        });
+
+        // Se estava pendente, agora aprova
+        if (order.status === 'pendente') {
+            await order.update({ status: 'aprovada' });
+        }
+
+        res.status(200).json({ message: 'Pagamento de sinal registrado com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao confirmar sinal manual:', error);
         res.status(500).json({ error: 'Erro interno.' });
     }
 };
@@ -1341,13 +1378,19 @@ const saveReturnSignature = async (req, res) => {
         // Define o próximo status da OS depois da assinatura
         let proximoStatus = 'finalizada';
         
-        // Se tem prejuízo físico, vai pra PREJUIZO
+        // Se tem prejuízo físico, vai pra PREJUIZO obrigatoriamente
         if (temPrejuizoNoBanco) {
             proximoStatus = 'PREJUIZO';
         } 
-        // Se não tem prejuízo, mas o cara ainda deve dinheiro (sinal menor que total)
-        else if (parseFloat(order.valor_sinal) < parseFloat(order.valor_total)) {
-            proximoStatus = 'aguardando_pagamento_final';
+        else {
+            // Cálculo financeiro: Considera Valor Total + Taxas Extras - Sinal Pago
+            const totalAPagar = parseFloat(order.valor_total) + parseFloat(order.taxa_avaria || 0) + parseFloat(order.taxa_remarcacao || 0) + parseFloat(order.taxa_atraso || 0);
+            const jaPago = parseFloat(order.valor_sinal);
+            
+            // Se a diferença for maior que 0.01 (um centavo), ainda deve dinheiro
+            if ((totalAPagar - jaPago) > 0.01) {
+                proximoStatus = 'aguardando_pagamento_final';
+            }
         }
 
         await order.update({

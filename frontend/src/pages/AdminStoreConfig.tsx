@@ -15,6 +15,7 @@ const AdminStoreConfig: React.FC = () => {
     horario_limite_hoje: '12:00',
     cnpj: '00.000.000/0001-00',
     taxa_reagendamento: 0.00,
+    sinal_porcentagem: 50.00,
     frete: {
         preco_km: 0,
         taxa_fixa: 0,
@@ -42,12 +43,13 @@ const AdminStoreConfig: React.FC = () => {
         const { data } = await axios.get(backendUrl);
         if (data) {
           setConfig({
-            fidelidade_num_pedidos: data.fidelidade_num_pedidos,
-            fidelidade_desconto_pct: parseFloat(data.fidelidade_desconto_pct),
+            fidelidade_num_pedidos: data.fidelidade_num_pedidos ?? 10,
+            fidelidade_desconto_pct: parseFloat(data.fidelidade_desconto_pct || 0),
             fidelidade_ativo: data.fidelidade_ativo ?? true,
             horario_limite_hoje: data.horario_limite_hoje || '12:00',
             cnpj: data.cnpj || '00.000.000/0001-00',
             taxa_reagendamento: Number(data.taxa_reagendamento || 0),
+            sinal_porcentagem: Number(data.sinal_porcentagem ?? 50.00),
             frete: {
                 preco_km: Number(data.frete?.preco_km || 0),
                 taxa_fixa: Number(data.frete?.taxa_fixa || 0),
@@ -388,6 +390,33 @@ const AdminStoreConfig: React.FC = () => {
             />
             <small style={helpTextStyle}>
               Exemplo: Se definido como 12:00, às 12:01 ninguém poderá alugar algo para hoje.
+            </small>
+          </div>
+        </div>
+      </div>
+
+      {/* REGRAS DE PAGAMENTO */}
+      <div style={cardStyle}>
+        <h3 style={{ marginTop: 0, color: "#e67e22", display: "flex", alignItems: "center", gap: "10px" }}>
+          Regras de Pagamento
+        </h3>
+        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
+          Defina quanto o cliente deve pagar no ato da reserva e quando o restante deve ser quitado.
+        </p>
+
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: "250px" }}>
+            <label style={labelStyle}>Porcentagem do Sinal (%)</label>
+            <input
+              type="number"
+              value={config.sinal_porcentagem}
+              onChange={(e) => setConfig({ ...config, sinal_porcentagem: parseFloat(e.target.value) || 0 })}
+              style={inputStyle}
+              min="0"
+              max="100"
+            />
+            <small style={helpTextStyle}>
+              Quanto do valor total deve ser pago imediatamente para confirmar a reserva (0 a 100).
             </small>
           </div>
         </div>

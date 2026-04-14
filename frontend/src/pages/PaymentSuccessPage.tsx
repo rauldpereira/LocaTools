@@ -28,6 +28,7 @@ const PaymentSuccessPage: React.FC = () => {
 
     const navigate = useNavigate();
     const [orders, setOrders] = useState<OrderDetails[]>([]);
+    const [lojaConfig, setLojaConfig] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const { token } = useAuth();
 
@@ -37,20 +38,26 @@ const PaymentSuccessPage: React.FC = () => {
     useEffect(() => {
         if (idList.length === 0 || !token) return;
 
-        const fetchOrders = async () => {
+        const fetchData = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
+                
+                // Busca Config da Loja
+                const { data: storeConfig } = await axios.get(`${import.meta.env.VITE_API_URL}/api/config`);
+                setLojaConfig(storeConfig);
+
+                // Busca Detalhes das Ordens
                 const fetchedOrders = await Promise.all(
                     idList.map(id => axios.get(`${import.meta.env.VITE_API_URL}/api/reservations/${id}`, config).then(res => res.data))
                 );
                 setOrders(fetchedOrders);
             } catch (error) {
-                console.error("Erro ao buscar detalhes das ordens:", error);
+                console.error("Erro ao buscar detalhes das ordens/config:", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchOrders();
+        fetchData();
     }, [rawIds, token]);
 
     if (loading) {
@@ -133,7 +140,7 @@ const PaymentSuccessPage: React.FC = () => {
                                         <strong>Logística:</strong> {order.tipo_entrega === 'entrega' ? `Entrega em: ${order.endereco_entrega}` : 'Retirada na Loja'}
                                     </p>
                                     <p style={{ margin: 0, fontSize: '1.05rem', color: '#2e7d32', fontWeight: 'bold' }}>
-                                        Sinal desta etapa: R$ {order.valorPagoNestaOS.toFixed(2)}
+                                        {lojaConfig?.sinal_porcentagem >= 100 ? 'Pagamento Integral:' : 'Sinal desta etapa:'} R$ {order.valorPagoNestaOS.toFixed(2)}
                                     </p>
                                 </>
                             ) : (

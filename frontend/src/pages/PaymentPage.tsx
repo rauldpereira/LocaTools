@@ -272,17 +272,19 @@ const PaymentPage: React.FC = () => {
     const { token } = useAuth();
     const navigate = useNavigate();
 
-    // --- FIDELIDADE ---
+    // --- LOJA E FIDELIDADE ---
     const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number, ativo: boolean } | null>(null);
+    const [lojaConfig, setLojaConfig] = useState<any>(null);
     const [completedOrders, setCompletedOrders] = useState(0);
 
     useEffect(() => {
-        const fetchLoyaltyData = async () => {
+        const fetchStoreData = async () => {
             if (!token) return;
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 const { data: storeConfig } = await axios.get(`${import.meta.env.VITE_API_URL}/api/config`);
                 if (storeConfig) {
+                    setLojaConfig(storeConfig);
                     setLoyaltyConfig({
                         num: storeConfig.fidelidade_num_pedidos,
                         pct: parseFloat(storeConfig.fidelidade_desconto_pct),
@@ -293,10 +295,10 @@ const PaymentPage: React.FC = () => {
                 const count = myOrders.filter((o: any) => o.status !== 'cancelada').length;
                 setCompletedOrders(count);
             } catch (error) {
-                console.error('Erro fidelidade:', error);
+                console.error('Erro ao buscar dados da loja:', error);
             }
         };
-        fetchLoyaltyData();
+        fetchStoreData();
     }, [token]);
 
     const rawIds = queryIds || orderId || '';
@@ -434,7 +436,6 @@ const PaymentPage: React.FC = () => {
                     </>
                 )}
 
-                {/* CAIXA DE DESTAQUE COM O VALOR FINAL QUE VAI PASSAR NO CARTÃO */}
                 <div style={{
                     marginTop: '15px', padding: '15px', borderRadius: '8px', textAlign: 'center', 
                     backgroundColor: isDivida ? '#ffebee' : '#e8f5e9', 
@@ -442,7 +443,10 @@ const PaymentPage: React.FC = () => {
                     color: isDivida ? '#c62828' : '#000'
                 }}>
                     <small style={{display: 'block', marginBottom: '5px', fontWeight: 600}}>
-                        {isDivida ? 'Valor Total Devido (A Pagar)' : 'Sinal para reservar o Lote (50%)'}
+                        {isDivida 
+                            ? 'Valor Total Devido (A Pagar)' 
+                            : (lojaConfig?.sinal_porcentagem >= 100 ? 'Pagamento Integral da Reserva' : `Sinal para reservar o Lote (${lojaConfig?.sinal_porcentagem || 50}%)`)
+                        }
                     </small>
                     <span style={{fontSize: '1.5rem', fontWeight: 'bold'}}>R$ {valorApresentado.toFixed(2)}</span>
                 </div>
