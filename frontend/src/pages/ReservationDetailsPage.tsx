@@ -1625,6 +1625,19 @@ const ReservationDetailsPage: React.FC = () => {
                 <strong>+ R$ {Number(order.taxa_avaria).toFixed(2)}</strong>
               </div>
             )}
+            {Number(order.taxa_atraso) > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "8px",
+                  color: "#d35400",
+                }}
+              >
+                <span>Multa por Atraso:</span>
+                <strong>+ R$ {Number(order.taxa_atraso).toFixed(2)}</strong>
+              </div>
+            )}
             <div
               style={{
                 display: "flex",

@@ -1187,6 +1187,7 @@ const skipReturnInspection = async (req, res) => {
 const finalizarComPendencia = async (req, res) => {
     try {
         const { id } = req.params;
+        const { damageFee, lateFee } = req.body;
         const order = await OrdemDeServico.findByPk(id);
 
         if (!order) {
@@ -1197,10 +1198,14 @@ const finalizarComPendencia = async (req, res) => {
             return res.status(400).json({ error: 'Ordem já está encerrada.' });
         }
 
-        await order.update({
-            status: 'PREJUIZO', 
-        });
+        const taxaAvariaVal = Number(damageFee) || 0;
+        const taxaAtrasoVal = Number(lateFee) || 0;
 
+        await order.update({
+            status: 'PREJUIZO',
+            taxa_avaria: taxaAvariaVal,
+            taxa_atraso: taxaAtrasoVal
+        });
         await notificarUsuario(
             order.id_usuario,
             '⚠️ Pendência Financeira',
@@ -1465,16 +1470,30 @@ const generateReturnContract = async (req, res) => {
         doc.font('Helvetica').text(`Data e Hora da Devolução: ${dataDevolucao}`);
         
         if (order.status === 'PREJUIZO') {
-            doc.fillColor('red').text('Status: Devolvido COM AVARIAS ou PENDÊNCIAS. Valores de reparo/reposição serão apurados e cobrados.');
+            doc.fillColor('red').text('Status: Devolvido COM AVARIAS ou PENDÊNCIAS.');
             doc.fillColor('black');
         } else {
-            doc.fillColor('green').text('Status: Devolvido em PERFEITO ESTADO. Contrato encerrado sem pendências físicas.');
+            doc.fillColor('green').text('Status: Devolvido em PERFEITO ESTADO.');
             doc.fillColor('black');
         }
-        doc.moveDown(3);
+        doc.moveDown(0.5);
+
+        // Detalhamento Financeiro na Devolução
+        if (Number(order.taxa_avaria) > 0 || Number(order.taxa_atraso) > 0) {
+            doc.font('Helvetica-Bold').text('4. VALORES ADICIONAIS APURADOS');
+            if (Number(order.taxa_avaria) > 0) {
+                doc.font('Helvetica').text(`- Taxa de Avarias/Reparos: R$ ${Number(order.taxa_avaria).toFixed(2)}`);
+            }
+            if (Number(order.taxa_atraso) > 0) {
+                doc.font('Helvetica').text(`- Multa por Atraso na Devolução: R$ ${Number(order.taxa_atraso).toFixed(2)}`);
+            }
+            doc.moveDown();
+        }
+
+        doc.moveDown(2);
 
         // Assinatura
-        doc.font('Helvetica-Bold').text('4. ASSINATURA DE CONFIRMAÇÃO');
+        doc.font('Helvetica-Bold').text('5. ASSINATURA DE CONFIRMAÇÃO');
         doc.font('Helvetica').text('Declaro estar ciente e de acordo com as condições de devolução descritas acima.');
         doc.moveDown(2);
 

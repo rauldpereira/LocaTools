@@ -220,7 +220,11 @@ const FinalizePaymentPage: React.FC = () => {
         setLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put(`${backendUrl}/api/reservations/${orderId}/finish-with-debt`, {}, config);
+            const body = { 
+                damageFee: (calculatedFee + outrosFee),
+                lateFee: multaAtraso
+            };
+            await axios.put(`${backendUrl}/api/reservations/${orderId}/finish-with-debt`, body, config);
             alert("Ordem encerrada com pendências financeiras.");
             navigate('/admin');
         } catch (error) {

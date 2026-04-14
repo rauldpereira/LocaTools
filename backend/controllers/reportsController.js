@@ -45,6 +45,7 @@ const getFinancialReport = async (req, res) => {
           sequelize.fn("SUM", sequelize.col("taxa_remarcacao")),
           "totalTaxaRemarcacao",
         ],
+        [sequelize.fn("SUM", sequelize.col("taxa_atraso")), "totalTaxaAtraso"],
       ],
       where: { status: "finalizada", ...dateFilter("updatedAt") },
       raw: true,
@@ -52,6 +53,9 @@ const getFinancialReport = async (req, res) => {
 
     const data = metrics[0] || {};
     const faturamentoBase = Number(data.faturamentoTotal) || 0;
+    const totalTaxaAvaria = Number(data.totalTaxaAvaria) || 0;
+    const totalTaxaRemarcacao = Number(data.totalTaxaRemarcacao) || 0;
+    const totalTaxaAtraso = Number(data.totalTaxaAtraso) || 0;
     const totalPedidos = Number(data.totalPedidos) || 0;
 
     const totalPrejuizoAberto =
@@ -79,7 +83,7 @@ const getFinancialReport = async (req, res) => {
     const taxaAbandono =
       totalPedidosGeral > 0 ? (totalAbandonos / totalPedidosGeral) * 100 : 0;
 
-    const faturamentoTotal = faturamentoBase + totalPrejuizoRecuperado;
+    const faturamentoTotal = faturamentoBase + totalTaxaAvaria + totalTaxaRemarcacao + totalTaxaAtraso + totalPrejuizoRecuperado;
     const lucroLiquido = faturamentoTotal - totalPrejuizoAberto;
 
     const totalMaquinas = await Unidade.count();
