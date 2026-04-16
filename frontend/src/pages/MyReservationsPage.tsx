@@ -91,6 +91,8 @@ const MyReservationsPage: React.FC = () => {
     fetchOrders();
   }, [token]);
 
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+
   const handleCancelOrder = async (orderId: number, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -103,6 +105,7 @@ const MyReservationsPage: React.FC = () => {
       return;
     }
 
+    setCancellingId(orderId);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const { data } = await axios.put(
@@ -110,13 +113,15 @@ const MyReservationsPage: React.FC = () => {
         {},
         config,
       );
-      setMessage(data.message || "Reserva cancelada com sucesso!");
+      alert(data.message || "Reserva cancelada com sucesso!");
       fetchOrders();
     } catch (error: any) {
-      setMessage(
+      alert(
         error.response?.data?.error || "Não foi possível cancelar a reserva.",
       );
       console.error("Erro ao cancelar reserva:", error);
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -487,28 +492,33 @@ const MyReservationsPage: React.FC = () => {
               {cancellableStatuses.includes(order.status) && (
                 <button
                   onClick={(e) => handleCancelOrder(order.id, e)}
+                  disabled={cancellingId === order.id}
                   style={{
                     marginTop: "15px",
                     width: "100%",
-                    backgroundColor: "#fff",
-                    color: "#dc3545",
-                    border: "1px solid #dc3545",
+                    backgroundColor: cancellingId === order.id ? "#f8f9fa" : "#fff",
+                    color: cancellingId === order.id ? "#999" : "#dc3545",
+                    border: `1px solid ${cancellingId === order.id ? "#ccc" : "#dc3545"}`,
                     padding: "8px 15px",
                     borderRadius: "4px",
-                    cursor: "pointer",
+                    cursor: cancellingId === order.id ? "wait" : "pointer",
                     fontWeight: "bold",
                     transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#dc3545";
-                    e.currentTarget.style.color = "#fff";
+                    if (cancellingId !== order.id) {
+                      e.currentTarget.style.backgroundColor = "#dc3545";
+                      e.currentTarget.style.color = "#fff";
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#fff";
-                    e.currentTarget.style.color = "#dc3545";
+                    if (cancellingId !== order.id) {
+                      e.currentTarget.style.backgroundColor = "#fff";
+                      e.currentTarget.style.color = "#dc3545";
+                    }
                   }}
                 >
-                  Cancelar Reserva
+                  {cancellingId === order.id ? "Cancelando..." : "Cancelar Reserva"}
                 </button>
               )}
             </li>

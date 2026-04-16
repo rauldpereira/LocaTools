@@ -1088,12 +1088,30 @@ const cancelOrder = async (req, res) => {
         if (valor_reembolsado < 0) valor_reembolsado = 0;
 
         if (valor_reembolsado > 0) {
-            await mpRefund.create({
-                paymentId: pagamentoOriginal.id_transacao_externa,
-                body: {
-                    amount: valor_reembolsado
+            const isMP = pagamentoOriginal.id_transacao_externa && 
+                         !pagamentoOriginal.id_transacao_externa.startsWith('manual_') && 
+                         !pagamentoOriginal.id_transacao_externa.startsWith('recuperacao_');
+
+            if (isMP) {
+                try {
+                    await mpRefund.create({
+                        paymentId: pagamentoOriginal.id_transacao_externa,
+                        body: {
+                            amount: valor_reembolsado
+                        }
+                    });
+                } catch (mpError) {
+                    // Silenciamos o erro técnico no console para não assustar
+                    // E apenas avisamos na mensagem final que o estorno será manual
+                    mensagem = `Sua reserva foi cancelada com sucesso!`;
+                    if (taxa_cancelamento > 0) {
+                        mensagem += ` Foi aplicada uma taxa de R$ ${taxa_cancelamento.toFixed(2)}.`;
+                    }
+                    mensagem += ` O reembolso de R$ ${valor_reembolsado.toFixed(2)} será processado manualmente pela nossa equipe em breve.`;
                 }
-            });
+            } else {
+                mensagem += " O estorno de R$ " + valor_reembolsado.toFixed(2) + " deve ser solicitado/feito manualmente com a loja.";
+            }
         }
 
         await order.update({
