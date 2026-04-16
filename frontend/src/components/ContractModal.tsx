@@ -43,14 +43,47 @@ interface StoreConfig {
 }
 
 const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess }) => {
-  const sigCanvas = useRef<SignatureCanvas>(null);
+  const sigCanvasCliente = useRef<SignatureCanvas>(null);
+  const sigCanvasEntregador = useRef<SignatureCanvas>(null);
+  
   const [signing, setSigning] = useState(false);
   const [storeConfig, setStoreConfig] = useState<StoreConfig | null>(null);
-  const backendUrl = import.meta.env.VITE_API_URL;
   
+  const [docType, setDocType] = useState<"CPF" | "RG">("CPF");
+  const [nomeRecebedor, setNomeRecebedor] = useState("");
+  const [docRecebedor, setDocRecebedor] = useState("");
+
+  const backendUrl = import.meta.env.VITE_API_URL;
   const { token } = useAuth();
 
+  const formatDocumento = (value: string, type: "CPF" | "RG") => {
+    let v = value.toUpperCase().replace(/[^0-9Xx]/g, "");
+    
+    if (type === "CPF") {
+      v = v.replace(/\D/g, "").substring(0, 11);
+      return v
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    } 
+    
+    return v.substring(0, 15);
+  };
+
+  const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatDocumento(e.target.value, docType);
+    setDocRecebedor(formatted);
+  };
+
+  // Quando troca o tipo (CPF/RG), reformata o valor atual
   React.useEffect(() => {
+    setDocRecebedor(prev => formatDocumento(prev, docType));
+  }, [docType]);
+
+  React.useEffect(() => {
+    // Tenta preencher nome do recebedor com o nome do cliente por padrão
+    if (order.Usuario?.nome) setNomeRecebedor(order.Usuario.nome);
+    
     const fetchConfig = async () => {
       try {
         const { data } = await axios.get(`${backendUrl}/api/config`);
@@ -60,33 +93,46 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
       }
     };
     fetchConfig();
-  }, [backendUrl]);
+  }, [backendUrl, order.Usuario?.nome]);
 
   const handleSignContract = async () => {
     if (!token) {
         return alert("Erro: Sessão expirada. Atualize a página e tente novamente.");
     }
 
-    if (sigCanvas.current?.isEmpty()) {
-      return alert("Por favor, assine no quadro no final do documento antes de confirmar.");
+    if (sigCanvasEntregador.current?.isEmpty()) {
+      return alert("A assinatura do entregador é OBRIGATÓRIA.");
+    }
+
+    if (!nomeRecebedor.trim()) {
+      return alert("Por favor, informe o nome de quem está recebendo o equipamento.");
+    }
+
+    if (sigCanvasCliente.current?.isEmpty()) {
+      return alert("A assinatura do recebedor é OBRIGATÓRIA.");
     }
 
     setSigning(true);
     try {
-      // Pega o desenho e transforma em texto
-      const assinaturaDataUrl = sigCanvas.current?.getCanvas().toDataURL("image/png");
+      const assinaturaCliente = sigCanvasCliente.current?.getCanvas().toDataURL("image/png");
+      const assinaturaEntregador = sigCanvasEntregador.current?.getCanvas().toDataURL("image/png");
 
       await axios.put(
         `${backendUrl}/api/reservations/${order.id}/sign`,
-        { assinatura_cliente: assinaturaDataUrl },
+        { 
+            assinatura_cliente: assinaturaCliente,
+            assinatura_entregador: assinaturaEntregador,
+            nome_recebedor: nomeRecebedor,
+            documento_recebedor: docRecebedor
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      alert("Contrato assinado com sucesso! A retirada está liberada.");
+      alert("Contrato assinado com sucesso! Entrega concluída.");
       onSuccess(); 
     } catch (error) {
       console.error("Erro no servidor:", error);
-      alert("Erro ao salvar assinatura. Verifique o console.");
+      alert("Erro ao salvar assinaturas. Verifique o console.");
     } finally {
       setSigning(false);
     }
@@ -109,7 +155,7 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
         
         {/* CABEÇALHO */}
         <div style={{ padding: "20px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f8f9fa" }}>
-          <h2 style={{ margin: 0, color: "#2c3e50", fontSize: "1.4rem" }}>Contrato de Locação</h2>
+          <h2 style={{ margin: 0, color: "#2c3e50", fontSize: "1.4rem" }}>Protocolo de Entrega e Contrato</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "1.8rem", color: "#999", cursor: "pointer" }}>&times;</button>
         </div>
 
@@ -132,13 +178,12 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
           <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>3. VALORES E VIGÊNCIA</h4>
           <p>Valor da Locação: <strong>R$ {Number(order.valor_total).toFixed(2)}</strong>. A locação tem início em <strong>{new Date(order.data_inicio).toLocaleDateString()}</strong> e término em <strong>{new Date(order.data_fim).toLocaleDateString()}</strong>.</p>
           
+          {/* HISTÓRICO DE PAGAMENTOS MANTIDO AQUI */}
           {order.Pagamentos && order.Pagamentos.length > 0 && (
             <div style={{ marginTop: "10px", padding: "10px", border: "1px solid #eee", borderRadius: "8px", backgroundColor: "#fafafa" }}>
               <p style={{ margin: "0 0 10px 0" }}><strong>HISTÓRICO DE PAGAMENTOS:</strong></p>
               {order.Pagamentos.filter((p) => p.status_pagamento === 'aprovado').map((p) => {
                 let metodo = p.metodo_detalhe ? p.metodo_detalhe.toUpperCase() : 'NÃO INFORMADO';
-                
-                // Normaliza o método para evitar duplicação 
                 if (p.parcelas > 1) {
                   metodo = `CARTÃO DE CRÉDITO`;
                 } else if (p.cartao_final || metodo.includes('CARD')) {
@@ -146,10 +191,8 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
                 } else if (metodo.includes('PIX')) {
                   metodo = 'PIX';
                 }
-
-                const valorTotalPagoMP = Number(p.valor); // valor base do BD
+                const valorTotalPagoMP = Number(p.valor);
                 const valorParcela = valorTotalPagoMP / (p.parcelas || 1);
-
                 return (
                   <p key={p.id} style={{ margin: "5px 0", fontSize: "0.95rem" }}>
                     • {metodo} 
@@ -161,22 +204,13 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
                   </p>
                 );
               })}
-
               <div style={{ borderTop: "1px solid #ddd", marginTop: "10px", paddingTop: "10px" }}>
-                 <p style={{ margin: "5px 0" }}>
-                   Total Pago: <strong>R$ {order.Pagamentos.filter(p => p.status_pagamento === 'aprovado').reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2)}</strong>
-                 </p>
+                 <p style={{ margin: "5px 0" }}>Total Pago: <strong>R$ {order.Pagamentos.filter(p => p.status_pagamento === 'aprovado').reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2)}</strong></p>
                  {Number(order.valor_total) - order.Pagamentos.filter(p => p.status_pagamento === 'aprovado').reduce((acc, p) => acc + Number(p.valor), 0) > 0.01 && (
-                   <p style={{ margin: "5px 0", color: "#d9534f" }}>
-                     Restante a Pagar: <strong>R$ {(Number(order.valor_total) - order.Pagamentos.filter(p => p.status_pagamento === 'aprovado').reduce((acc, p) => acc + Number(p.valor), 0)).toFixed(2)}</strong>
-                   </p>
+                   <p style={{ margin: "5px 0", color: "#d9534f" }}>Restante a Pagar: <strong>R$ {(Number(order.valor_total) - order.Pagamentos.filter(p => p.status_pagamento === 'aprovado').reduce((acc, p) => acc + Number(p.valor), 0)).toFixed(2)}</strong></p>
                  )}
               </div>
             </div>
-          )}
-          
-          {(!order.Pagamentos || order.Pagamentos.every((p) => p.status_pagamento !== 'aprovado')) && (
-             <p><strong>FORMA DE PAGAMENTO:</strong> A COMBINAR / PENDENTE</p>
           )}
 
           <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>4. REAGENDAMENTO E ALTERAÇÕES</h4>
@@ -191,30 +225,87 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
           </p>
 
           <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>5. TERMOS E CONDIÇÕES</h4>
-          <p>4.1. O Locatário se compromete a utilizar o equipamento de forma correta e segura.</p>
-          <p>4.2. O equipamento deverá ser devolvido nas mesmas condições da Vistoria de Saída.</p>
-          <p>4.3. Danos, perdas, furtos ou devolução com atraso acarretarão em multas e cobranças adicionais.</p>
+          <p>5.1. O Locatário se compromete a utilizar o equipamento de forma correta e segura.</p>
+          <p>5.2. O equipamento deverá ser devolvido nas mesmas condições da Vistoria de Saída.</p>
+          <p>5.3. Danos, perdas, furtos ou devolução com atraso acarretarão em multas e cobranças adicionais.</p>
 
-          {/* ÁREA DE ASSINATURA */}
-          <div style={{ marginTop: "40px", borderTop: "2px dashed #ccc", paddingTop: "30px" }}>
-            <h3 style={{ textAlign: "center", color: "#007bff", marginBottom: "5px" }}>Assinatura Digital do Locatário</h3>
-            <p style={{ textAlign: "center", color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
-              Utilize o mouse ou o dedo na tela para assinar no quadro abaixo.
-            </p>
+          <h4 style={{ backgroundColor: "#eef2f7", padding: "12px", borderRadius: "4px", marginTop: "30px", borderLeft: "4px solid #007bff" }}>6. PROTOCOLO DE RECEBIMENTO</h4>
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px", marginBottom: "30px" }}>
+              <div>
+                  <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "5px" }}>Nome de quem recebeu (Obrigatório):</label>
+                  <input 
+                    type="text" 
+                    value={nomeRecebedor} 
+                    onChange={(e) => setNomeRecebedor(e.target.value)}
+                    maxLength={100}
+                    style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "2px solid #ddd", fontSize: "1rem" }}
+                    placeholder="Nome completo do recebedor"
+                  />
+              </div>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "15px" }}>
+                  <div>
+                      <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "5px" }}>Tipo:</label>
+                      <select 
+                        value={docType} 
+                        onChange={(e) => setDocType(e.target.value as "CPF" | "RG")}
+                        style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "2px solid #ddd", fontSize: "1rem", backgroundColor: "#fff" }}
+                      >
+                          <option value="CPF">CPF</option>
+                          <option value="RG">RG</option>
+                      </select>
+                  </div>
+                  <div>
+                      <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "5px" }}>Documento:</label>
+                      <input 
+                        type="text" 
+                        value={docRecebedor} 
+                        onChange={handleDocChange}
+                        style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "2px solid #ddd", fontSize: "1rem" }}
+                        placeholder={docType === "CPF" ? "000.000.000-00" : "Número do RG"}
+                      />
+                  </div>
+              </div>
+          </div>
 
-            <div style={{ border: "2px solid #ccc", borderRadius: "8px", backgroundColor: "#fcfcfc", height: "200px", position: "relative" }}>
-              <SignatureCanvas 
-                ref={sigCanvas}
-                penColor="black"
-                canvasProps={{ className: "sigCanvas", style: { width: "100%", height: "100%", cursor: "crosshair" } }}
-              />
-            </div>
-            
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
-              <button onClick={() => sigCanvas.current?.clear()} style={{ background: "none", border: "none", color: "#dc3545", fontWeight: "bold", cursor: "pointer" }}>
-                🧹 Limpar Assinatura
-              </button>
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+              {/* ASSINATURA RECEBEDOR */}
+              <div style={{ border: "2px solid #eee", padding: "20px", borderRadius: "12px", backgroundColor: "#fafafa" }}>
+                <p style={{ fontWeight: "bold", fontSize: "1rem", marginBottom: "15px", color: "#333", borderBottom: "1px solid #ddd", paddingBottom: "10px" }}>
+                   🖋️ Assinatura do Recebedor (Obrigatória):
+                </p>
+                <div style={{ border: "2px solid #ccc", borderRadius: "8px", backgroundColor: "#fff", height: "250px", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)" }}>
+                  <SignatureCanvas 
+                    ref={sigCanvasCliente}
+                    penColor="black"
+                    canvasProps={{ style: { width: "100%", height: "100%", cursor: "crosshair" } }}
+                  />
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
+                    <button onClick={() => sigCanvasCliente.current?.clear()} style={{ background: "none", border: "none", color: "#dc3545", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}>
+                    🧹 Limpar Assinatura
+                    </button>
+                </div>
+              </div>
+
+              {/* ASSINATURA ENTREGADOR */}
+              <div style={{ border: "2px solid #e3f2fd", padding: "20px", borderRadius: "12px", backgroundColor: "#f0f7ff" }}>
+                <p style={{ fontWeight: "bold", fontSize: "1rem", marginBottom: "15px", color: "#0056b3", borderBottom: "1px solid #b3d7ff", paddingBottom: "10px" }}>
+                   🚛 Assinatura do Entregador (Obrigatória):
+                </p>
+                <div style={{ border: "2px solid #007bff", borderRadius: "8px", backgroundColor: "#fff", height: "250px", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)" }}>
+                  <SignatureCanvas 
+                    ref={sigCanvasEntregador}
+                    penColor="black"
+                    canvasProps={{ style: { width: "100%", height: "100%", cursor: "crosshair" } }}
+                  />
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
+                    <button onClick={() => sigCanvasEntregador.current?.clear()} style={{ background: "none", border: "none", color: "#dc3545", fontWeight: "bold", cursor: "pointer", fontSize: "0.9rem" }}>
+                    🧹 Limpar Assinatura
+                    </button>
+                </div>
+              </div>
           </div>
         </div>
 
@@ -224,12 +315,13 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
             onClick={handleSignContract}
             disabled={signing}
             style={{
-              width: "100%", padding: "15px", fontSize: "1.1rem", backgroundColor: "#28a745",
-              color: "white", border: "none", borderRadius: "8px", cursor: "pointer",
-              fontWeight: "bold", boxShadow: "0 4px 6px rgba(40,167,69,0.2)"
+              width: "100%", padding: "18px", fontSize: "1.2rem", backgroundColor: "#28a745",
+              color: "white", border: "none", borderRadius: "10px", cursor: "pointer",
+              fontWeight: "bold", boxShadow: "0 6px 12px rgba(40,167,69,0.2)",
+              transition: "transform 0.1s active"
             }}
           >
-            {signing ? "Salvando Documento..." : "✅ Confirmar Assinatura e Aceitar Termos"}
+            {signing ? "Salvando Protocolo..." : "✅ Confirmar Entrega e Assinar Contrato"}
           </button>
         </div>
 

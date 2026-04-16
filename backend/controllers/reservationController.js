@@ -885,15 +885,39 @@ const generateContract = async (req, res) => {
             y += 60;
         }
 
+        // --- ASSINATURA RECEBEDOR ---
+        if (y > 600) { doc.addPage(); y = 50; } else { y += 60; }
+        
         doc.moveTo(30, y).lineTo(300, y).stroke();
-        doc.text('ASSINATURA DO LOCATÁRIO:', 30, y + 5);
+        doc.text('ASSINATURA DO RECEBEDOR:', 30, y + 5);
+        if (order.nome_recebedor) {
+            doc.text(`Nome: ${order.nome_recebedor} | Doc: ${order.documento_recebedor || 'N/A'}`, 30, y + 15);
+        }
 
         if (order.assinatura_cliente) {
              try {
                 const base64Data = order.assinatura_cliente.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
                 const imgBuffer = Buffer.from(base64Data, 'base64');
                 doc.image(imgBuffer, 50, y - 45, { fit: [150, 45] });
-            } catch (err) { console.log("Erro ao carregar imagem da assinatura"); }
+            } catch (err) { console.log("Erro ao carregar imagem da assinatura cliente"); }
+        }
+
+        // --- ASSINATURA ENTREGADOR ---
+        y += 80;
+        if (y > 750) { doc.addPage(); y = 50; }
+
+        doc.moveTo(30, y).lineTo(300, y).stroke();
+        doc.text('ASSINATURA DO ENTREGADOR:', 30, y + 5);
+        if (order.nome_entregador) {
+            doc.text(`Nome: ${order.nome_entregador}`, 30, y + 15);
+        }
+
+        if (order.assinatura_entregador) {
+             try {
+                const base64Data = order.assinatura_entregador.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
+                const imgBuffer = Buffer.from(base64Data, 'base64');
+                doc.image(imgBuffer, 50, y - 45, { fit: [150, 45] });
+            } catch (err) { console.log("Erro ao carregar imagem da assinatura entregador"); }
         }
 
         doc.end();
@@ -909,7 +933,7 @@ const generateContract = async (req, res) => {
 const signContract = async (req, res) => {
     try {
         const order = await OrdemDeServico.findByPk(req.params.id);
-        const { assinatura_cliente } = req.body; 
+        const { assinatura_cliente, assinatura_entregador, nome_recebedor, documento_recebedor } = req.body; 
 
         if (!order) {
             return res.status(404).json({ error: 'Ordem de serviço não encontrada.' });
@@ -932,7 +956,11 @@ const signContract = async (req, res) => {
 
         await order.update({ 
             status: 'em_andamento',
-            assinatura_cliente: assinatura_cliente || null
+            assinatura_cliente: assinatura_cliente || null,
+            assinatura_entregador: assinatura_entregador || null,
+            nome_recebedor: nome_recebedor || null,
+            documento_recebedor: documento_recebedor || null,
+            nome_entregador: req.user.nome 
         });
 
         res.status(200).json({ message: 'Contrato assinado e reserva confirmada com sucesso.', order });

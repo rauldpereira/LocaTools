@@ -102,8 +102,8 @@ const Register: React.FC = () => {
   const formatarRG = (v: string) => {
     return v
       .toUpperCase()
-      .replace(/[^0-9X]/g, "")
-      .slice(0, 12);
+      .replace(/[^0-9A-Z]/g, "")
+      .slice(0, 15);
   };
 
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) =>

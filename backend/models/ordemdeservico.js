@@ -132,7 +132,11 @@ module.exports = (sequelize, DataTypes) => {
       motivo_cancelamento: {
         type: DataTypes.STRING,
         allowNull: true
-      }
+      },
+      nome_recebedor: DataTypes.STRING,
+      documento_recebedor: DataTypes.STRING,
+      assinatura_entregador: DataTypes.TEXT,
+      nome_entregador: DataTypes.STRING
     },
     {
       sequelize,
