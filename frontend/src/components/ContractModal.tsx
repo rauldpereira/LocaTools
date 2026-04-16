@@ -39,6 +39,7 @@ interface ContractModalProps {
 
 interface StoreConfig {
   cnpj?: string;
+  taxa_reagendamento?: string | number;
 }
 
 const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess }) => {
@@ -178,7 +179,18 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
              <p><strong>FORMA DE PAGAMENTO:</strong> A COMBINAR / PENDENTE</p>
           )}
 
-          <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>4. TERMOS E CONDIÇÕES</h4>
+          <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>4. REAGENDAMENTO E ALTERAÇÕES</h4>
+          <p>
+            O LOCATÁRIO poderá solicitar o reagendamento das datas de locação, sujeito à disponibilidade dos equipamentos. 
+            Esta solicitação deve ser realizada <strong>única e exclusivamente através do sistema da LocaTools</strong>.
+            {storeConfig?.taxa_reagendamento && Number(storeConfig.taxa_reagendamento) > 0 ? (
+              <> Será cobrada uma taxa administrativa de <strong>R$ {Number(storeConfig.taxa_reagendamento).toFixed(2)}</strong> por cada alteração solicitada após a confirmação deste contrato.</>
+            ) : (
+              <> O reagendamento está sujeito a análise e possíveis taxas administrativas vigentes no momento da solicitação.</>
+            )}
+          </p>
+
+          <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>5. TERMOS E CONDIÇÕES</h4>
           <p>4.1. O Locatário se compromete a utilizar o equipamento de forma correta e segura.</p>
           <p>4.2. O equipamento deverá ser devolvido nas mesmas condições da Vistoria de Saída.</p>
           <p>4.3. Danos, perdas, furtos ou devolução com atraso acarretarão em multas e cobranças adicionais.</p>
