@@ -1706,9 +1706,45 @@ const ReservationDetailsPage: React.FC = () => {
                   fontSize: "0.9rem",
                   fontWeight: "bold"
                 }}>
-                  ✅ Conta Integralmente Quitada
+                  ✅ Pagamento Integral Recebido. Reserva Confirmada!
                 </div>
               )
+            )}
+
+            {/* HISTÓRICO DE PAGAMENTOS */}
+            {order.Pagamentos && order.Pagamentos.length > 0 && (
+              <div style={{ marginTop: "20px", borderTop: "1px solid #eee", paddingTop: "15px" }}>
+                <h4 style={{ margin: "0 0 10px 0", color: "#2c3e50", fontSize: "1rem" }}>Histórico de Pagamentos</h4>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {order.Pagamentos.map((p: any) => (
+                    <li key={p.id} style={{ 
+                      marginBottom: "8px", padding: "10px", backgroundColor: "#f8fafc", 
+                      borderRadius: "8px", border: "1px solid #edf2f7", fontSize: "0.9rem" 
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
+                        <span>R$ {Number(p.valor).toFixed(2)}</span>
+                        <span style={{ color: p.status_pagamento === 'aprovado' ? "#28a745" : "#f59e0b" }}>
+                          {p.status_pagamento.toUpperCase()}
+                        </span>
+                      </div>
+                      <div style={{ color: "#666", marginTop: "3px", fontSize: "0.8rem" }}>
+                        {p.metodo_detalhe ? (
+                          <>
+                            <span style={{ textTransform: "uppercase" }}>{p.metodo_detalhe}</span>
+                            {p.cartao_final && <span> • final {p.cartao_final}</span>}
+                            {p.parcelas > 1 && <span> • {p.parcelas}x</span>}
+                          </>
+                        ) : (
+                          <span>{p.id_transacao_externa?.startsWith('manual_') ? 'Pagamento Manual' : 'Pagamento Online'}</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "#999" }}>
+                        {new Date(p.data_pagamento || p.createdAt).toLocaleString("pt-BR")}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         </div>

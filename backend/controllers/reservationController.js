@@ -2,12 +2,13 @@ const { Op } = require('sequelize');
 const { OrdemDeServico, ItemReserva, Equipamento, Usuario, Unidade, Vistoria, DetalhesVistoria, Pagamento, sequelize, TipoAvaria, AvariasEncontradas, Prejuizo, FreteConfig, ConfigLoja, HorarioFuncionamento } = require('../models');
 const { notificarUsuario, notificarOperacao } = require('../utils/notificacaoHelper');
 const PDFDocument = require('pdfkit');
-const Stripe = require('stripe');
-
+const { MercadoPagoConfig, Payment, PaymentRefund } = require('mercadopago');
 
 const { parseDateStringAsLocal } = require('../utils/dateUtils');
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+const mpPayment = new Payment(mpClient);
+const mpRefund = new PaymentRefund(mpClient);
 
 const formatarTelefone = (tel) => {
     if (!tel) return 'N/A';
@@ -333,13 +334,34 @@ const createOrder = async (req, res) => {
                     const startStr = item.data_inicio.split('T')[0];
                     const endStr = item.data_fim.split('T')[0];
 
+                    // Recalcula o valor unitário HISTÓRICO deste item específico
+                    const equipamento = await Equipamento.findByPk(item.id_equipamento, { transaction: t });
+                    const days = Math.ceil(Math.abs(new Date(endStr) - new Date(startStr)) / (1000 * 60 * 60 * 24)) || 1;
+                    
+                    let vUnitario = 0;
+                    if (item.tipo_locacao === 'semanal') {
+                        vUnitario = Number(equipamento.preco_semanal);
+                    } else if (item.tipo_locacao === 'quinzenal') {
+                        vUnitario = Number(equipamento.preco_quinzenal);
+                    } else if (item.tipo_locacao === 'mensal') {
+                        vUnitario = Number(equipamento.preco_mensal);
+                    } else {
+                        vUnitario = Number(equipamento.preco_diaria) * days;
+                    }
+
+                    // Se aplicou fidelidade, o valor unitário salvo também deve refletir o desconto
+                    if (aplicouFidelidade) {
+                        vUnitario = vUnitario * (1 - pctDesconto);
+                    }
+
                     for (let i = 0; i < quantidadePedida; i++) {
                         await ItemReserva.create({
                             id_ordem_servico: ordemDeServico.id,
                             id_unidade: maquinasLivres[i].id,
                             data_inicio: startStr + "T12:00:00", 
                             data_fim: endStr + "T12:00:00",      
-                            status: 'ativo'
+                            status: 'ativo',
+                            valor_unitario: parseFloat(vUnitario.toFixed(2))
                         }, { transaction: t });
                     }
                 }
@@ -587,20 +609,26 @@ const generateContract = async (req, res) => {
         const freteConfig = await FreteConfig.findOne();
         const horarios = await HorarioFuncionamento.findAll();
 
-        // --- LÓGICA: IDENTIFICAR MÉTODO DE PAGAMENTO (STRIPE) ---
+        // --- IDENTIFICAR MÉTODO DE PAGAMENTO (MERCADO PAGO) ---
         let metodoPagamentoFinal = 'A Combinar';
         if (order.Pagamentos && order.Pagamentos.length > 0) {
             const p = order.Pagamentos[0];
-            if (p.id_transacao_externa?.startsWith('ch_')) {
+            const isMP = p.id_transacao_externa && !p.id_transacao_externa.startsWith('manual_') && !p.id_transacao_externa.startsWith('recuperacao_');
+            
+            if (isMP) {
                 try {
-                    const charge = await stripe.charges.retrieve(p.id_transacao_externa);
-                    if (charge.payment_method_details?.type === 'card') {
-                        metodoPagamentoFinal = `Cartão de Crédito (Site) - Final ${charge.payment_method_details.card.last4}`;
+                    const paymentDetail = await mpPayment.get({ id: p.id_transacao_externa });
+                    if (paymentDetail.payment_method_id === 'pix') {
+                        metodoPagamentoFinal = 'PIX (Site)';
+                    } else if (paymentDetail.payment_type_id === 'credit_card' || paymentDetail.payment_type_id === 'debit_card') {
+                        const brand = paymentDetail.payment_method_id.toUpperCase();
+                        const last4 = paymentDetail.card?.last_four_digits || '';
+                        metodoPagamentoFinal = `${paymentDetail.payment_type_id === 'credit_card' ? 'Crédito' : 'Débito'} (${brand}) - Final ${last4}`;
                     } else {
-                        metodoPagamentoFinal = `Site (${charge.payment_method_details?.type?.toUpperCase() || 'Cartão'})`;
+                        metodoPagamentoFinal = `Mercado Pago (${paymentDetail.payment_method_id?.toUpperCase()})`;
                     }
                 } catch (e) {
-                    metodoPagamentoFinal = 'Cartão de Crédito (Site)';
+                    metodoPagamentoFinal = 'Online (Mercado Pago)';
                 }
             } else if (p.id_transacao_externa?.startsWith('manual_')) {
                 metodoPagamentoFinal = 'Presencial / Loja';
@@ -1032,9 +1060,11 @@ const cancelOrder = async (req, res) => {
         if (valor_reembolsado < 0) valor_reembolsado = 0;
 
         if (valor_reembolsado > 0) {
-            await stripe.refunds.create({
-                charge: pagamentoOriginal.id_transacao_externa,
-                amount: Math.round(valor_reembolsado * 100),
+            await mpRefund.create({
+                paymentId: pagamentoOriginal.id_transacao_externa,
+                body: {
+                    amount: valor_reembolsado
+                }
             });
         }
 

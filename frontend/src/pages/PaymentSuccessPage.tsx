@@ -7,9 +7,18 @@ interface Prejuizo {
     valor_prejuizo: string | number;
     resolvido: boolean;
 }
+
 interface ItemReserva {
+    id: number;
+    valor_unitario?: string | number;
+    Unidade?: {
+        Equipamento: {
+            nome: string;
+        }
+    };
     prejuizo?: Prejuizo | null;
 }
+
 interface OrderDetails {
     id: number;
     status: string;
@@ -17,7 +26,10 @@ interface OrderDetails {
     valor_sinal: string;
     tipo_entrega: string;
     endereco_entrega?: string;
-    ItemReservas?: ItemReserva[];
+    custo_frete: string;
+    data_inicio: string;
+    data_fim: string;
+    ItemReservas: ItemReserva[];
 }
 
 const PaymentSuccessPage: React.FC = () => {
@@ -25,6 +37,15 @@ const PaymentSuccessPage: React.FC = () => {
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
     const queryIds = searchParams.get('ids'); 
+    
+    const paymentId = searchParams.get('payment_id');
+    const status = searchParams.get('status');
+    const paymentType = searchParams.get('payment_type'); 
+    const installments = searchParams.get('installments');
+    const installmentAmount = searchParams.get('installment_amount');
+    const totalPaidURL = searchParams.get('total_paid');
+    const cardBrand = searchParams.get('card_brand');
+    const last4 = searchParams.get('last_4');
 
     const navigate = useNavigate();
     const [orders, setOrders] = useState<OrderDetails[]>([]);
@@ -35,6 +56,12 @@ const PaymentSuccessPage: React.FC = () => {
     const rawIds = queryIds || orderId || '';
     const idList = rawIds.split(',').filter(Boolean).map(Number);
 
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+        return date.toLocaleDateString('pt-BR');
+    };
+
     useEffect(() => {
         if (idList.length === 0 || !token) return;
 
@@ -42,154 +69,184 @@ const PaymentSuccessPage: React.FC = () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 
-                // Busca Config da Loja
+                // Busca Config da Loja para saber a % do sinal
                 const { data: storeConfig } = await axios.get(`${import.meta.env.VITE_API_URL}/api/config`);
                 setLojaConfig(storeConfig);
 
-                // Busca Detalhes das Ordens
                 const fetchedOrders = await Promise.all(
                     idList.map(id => axios.get(`${import.meta.env.VITE_API_URL}/api/reservations/${id}`, config).then(res => res.data))
                 );
                 setOrders(fetchedOrders);
             } catch (error) {
-                console.error("Erro ao buscar detalhes das ordens/config:", error);
+                console.error("Erro ao buscar detalhes das ordens:", error);
             } finally {
                 setLoading(false);
             }
         };
         fetchData();
-    }, [rawIds, token]);
+    }, [rawIds, token]); 
 
     if (loading) {
         return <div style={{ textAlign: 'center', marginTop: '100px', color: '#333' }}>Carregando recibo...</div>;
     }
 
-    const isMultiple = orders.length > 1;
+    const isFailure = status === 'failure' || status === 'rejected';
+    const isDivida = orders.some(o => o.status === 'finalizada' || o.status.toUpperCase() === 'PREJUIZO');
+    const numInstallments = Number(installments) || 1;
 
-    const isDivida = orders.some(o => o.status === 'finalizada');
-
-    let totalPagoAgora = 0;
+    let somaTotalContratos = 0;
+    let somaTotalSinais = 0;
+    let somaProdutos = 0;
+    let somaFrete = 0;
 
     const ordersDisplay = orders.map(order => {
-        let valorPagoNestaOS = 0;
-        let saldoAluguel = 0;
-        let valorPrejuizos = 0;
+        const vTotal = Number(order.valor_total);
+        const vSinal = Number(order.valor_sinal);
+        const vFrete = Number(order.custo_frete || 0);
+        
+        somaTotalContratos += vTotal;
+        somaTotalSinais += vSinal;
+        somaFrete += vFrete;
 
-        if (order.status === 'finalizada') {
-            saldoAluguel = Number(order.valor_total) - Number(order.valor_sinal);
-            
-            if (order.ItemReservas) {
-                order.ItemReservas.forEach(item => {
-                    if (item.prejuizo) {
-                        valorPrejuizos += Number(item.prejuizo.valor_prejuizo);
-                    }
-                });
+        let produtosOS = 0;
+        order.ItemReservas.forEach(item => {
+            produtosOS += Number(item.valor_unitario) || 0;
+        });
+        somaProdutos += produtosOS;
+
+        const groupedItems: { [key: string]: { qtd: number, valorUnit: number } } = {};
+        order.ItemReservas.forEach(item => {
+            const nome = item.Unidade?.Equipamento?.nome || 'Equipamento';
+            const valor = Number(item.valor_unitario) || 0;
+            if (!groupedItems[nome]) {
+                groupedItems[nome] = { qtd: 0, valorUnit: valor };
             }
-            valorPagoNestaOS = saldoAluguel + valorPrejuizos;
-        } else {
-            valorPagoNestaOS = Number(order.valor_sinal);
-        }
+            groupedItems[nome].qtd++;
+        });
 
-        totalPagoAgora += valorPagoNestaOS;
-
-        return { ...order, valorPagoNestaOS, saldoAluguel, valorPrejuizos };
+        return { ...order, vTotal, vSinal, groupedItems };
     });
 
-    return (
-        <div style={{ 
-            display: 'flex', flexDirection: 'column', alignItems: 'center', 
-            justifyContent: 'center', textAlign: 'center', minHeight: '80vh', padding: '2rem'
-        }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill={isDivida ? "#c62828" : "green"} className="bi bi-check-circle-fill" viewBox="0 0 16 16">
-                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-            </svg>
-            
-            <h1 style={{ color: isDivida ? '#c62828' : '#2e7d32', marginTop: '1rem' }}>
-                {isDivida ? 'Dívida Quitada com Sucesso!' : 'Pagamento Aprovado!'}
-            </h1>
-            <p style={{ fontSize: '1.1rem', color: '#555' }}>
-                {isDivida 
-                    ? 'Suas pendências financeiras foram regularizadas.'
-                    : (isMultiple ? `Suas ${orders.length} reservas foram confirmadas.` : 'Sua reserva foi confirmada com sucesso.')}
-            </p>
+    const isPartialPayment = lojaConfig?.sinal_porcentagem < 100 && !isDivida;
+    const saldoRestante = somaTotalContratos - somaTotalSinais;
+    
+    // O que foi cobrado no cartão agora (pode ter juros)
+    const valorBaseCobradoAgora = isDivida ? (somaTotalContratos - somaTotalSinais) : somaTotalSinais;
+    const totalFinalComJuros = Number(totalPaidURL) || valorBaseCobradoAgora;
+    const jurosParcelamento = totalFinalComJuros - valorBaseCobradoAgora;
+    const temJuros = jurosParcelamento > 0.05;
 
-            {ordersDisplay.length > 0 && (
-                <div style={{ 
-                    border: `1px solid ${isDivida ? '#ffcdd2' : '#ddd'}`, 
-                    padding: '2rem', borderRadius: '12px', 
-                    marginTop: '1.5rem', 
-                    backgroundColor: isDivida ? '#ffebee' : '#f9f9f9', 
-                    color: '#333', width: '100%', maxWidth: '500px', textAlign: 'left',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                }}>
-                    <h3 style={{ marginTop: 0, borderBottom: `2px solid ${isDivida ? '#c62828' : '#2e7d32'}`, paddingBottom: '10px', color: isDivida ? '#c62828' : '#333' }}>
-                        {isDivida ? 'Comprovante de Quitação' : (isMultiple ? 'Resumo dos Pedidos' : 'Resumo do Pedido')}
-                    </h3>
+    if (isFailure) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: '2rem' }}>
+                <h1 style={{ color: '#c62828' }}>Pagamento Não Aprovado</h1>
+                <button onClick={() => navigate(`/payment/${idList[0]}`)} style={{ marginTop: '1.5rem', padding: '12px 24px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '8px' }}>Tentar Novamente</button>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: '2rem', backgroundColor: '#f4f7f6' }}>
+            <div style={{ backgroundColor: '#fff', padding: '3rem', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '100%', maxWidth: '600px' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" fill={isDivida ? "#c62828" : "#2e7d32"} style={{ marginBottom: '1.5rem' }} viewBox="0 0 16 16">
+                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                </svg>
+                
+                <h1 style={{ color: isDivida ? '#c62828' : '#2e7d32', fontSize: '1.8rem', margin: '0 0 0.5rem 0' }}>{isDivida ? 'Dívida Quitada!' : 'Reserva Confirmada!'}</h1>
+                <p style={{ color: '#666', marginBottom: '2.5rem' }}>O comprovante foi enviado para o seu e-mail.</p>
+
+                {ordersDisplay.map((order) => (
+                    <div key={order.id} style={{ textAlign: 'left', marginBottom: '1.5rem', padding: '1.5rem', border: '1px solid #edf2f7', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #f0f0f0', paddingBottom: '10px' }}>
+                            <h4 style={{ margin: 0, color: '#2d3748' }}>Pedido #{order.id}</h4>
+                            <span style={{ fontSize: '0.8rem', color: '#718096', fontWeight: 'bold' }}>{formatDate(order.data_inicio)} — {formatDate(order.data_fim)}</span>
+                        </div>
+
+                        {Object.entries(order.groupedItems).map(([nome, info]) => (
+                            <div key={nome} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem' }}>
+                                <span style={{ color: '#4a5568' }}>{info.qtd}x {nome}</span>
+                                <span style={{ color: '#2d3748', fontWeight: '500' }}>R$ {(info.valorUnit * info.qtd).toFixed(2)}</span>
+                            </div>
+                        ))}
+                        
+                        <div style={{ borderTop: '1px dashed #e2e8f0', marginTop: '10px', paddingTop: '10px' }}>
+                             <button onClick={() => navigate(`/my-reservations/${order.id}`)} style={{ width: '100%', padding: '8px', backgroundColor: 'transparent', border: '1px solid #cbd5e0', color: '#4a5568', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' }}>Ver Detalhes</button>
+                        </div>
+                    </div>
+                ))}
+
+                <div style={{ textAlign: 'left', backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '15px', border: '1px solid #e2e8f0' }}>
                     
-                    {ordersDisplay.map((order, index) => (
-                        <div key={order.id} style={{ 
-                            marginBottom: '15px', paddingBottom: '15px', 
-                            borderBottom: index === ordersDisplay.length - 1 ? 'none' : `1px dashed ${isDivida ? '#ffcdd2' : '#ccc'}` 
-                        }}>
-                            <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', fontSize: '1.1rem' }}>Pedido #{order.id}</p>
-                            
-                            {!isDivida ? (
-                                // FLUXO NORMAL (Sinal)
-                                <>
-                                    <p style={{ margin: '0 0 5px 0', fontSize: '0.95rem' }}>
-                                        <strong>Logística:</strong> {order.tipo_entrega === 'entrega' ? `Entrega em: ${order.endereco_entrega}` : 'Retirada na Loja'}
-                                    </p>
-                                    <p style={{ margin: 0, fontSize: '1.05rem', color: '#2e7d32', fontWeight: 'bold' }}>
-                                        {lojaConfig?.sinal_porcentagem >= 100 ? 'Pagamento Integral:' : 'Sinal desta etapa:'} R$ {order.valorPagoNestaOS.toFixed(2)}
-                                    </p>
-                                </>
-                            ) : (
-                                // FLUXO Dívida Detalhada
-                                <div style={{ backgroundColor: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ffcdd2' }}>
-                                    {order.saldoAluguel > 0 && (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.95rem', color: '#555' }}>
-                                            <span>Saldo do Aluguel:</span>
-                                            <span>R$ {order.saldoAluguel.toFixed(2)}</span>
-                                        </div>
-                                    )}
-                                    
-                                    {order.valorPrejuizos > 0 && (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem', color: '#c62828' }}>
-                                            <span>Avarias / Extravios:</span>
-                                            <span>R$ {order.valorPrejuizos.toFixed(2)}</span>
-                                        </div>
-                                    )}
-                                    
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #eee', paddingTop: '8px', fontWeight: 'bold', color: '#c62828', fontSize: '1.05rem' }}>
-                                        <span>Total Quitado:</span>
-                                        <span>R$ {order.valorPagoNestaOS.toFixed(2)}</span>
-                                    </div>
+                    {/* 1. Resumo do Contrato Total (Sempre mostra se for parcial) */}
+                    {isPartialPayment && (
+                        <div style={{ marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#718096' }}>
+                                <span>Total do Aluguel + Frete:</span>
+                                <span>R$ {somaTotalContratos.toFixed(2)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#718096', marginTop: '5px' }}>
+                                <span>Sinal ({lojaConfig?.sinal_porcentagem}%):</span>
+                                <span>R$ {somaTotalSinais.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {!isPartialPayment && (
+                        <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '1rem', color: '#4a5568' }}>
+                                <span>Preço dos Produtos:</span>
+                                <span>R$ {somaProdutos.toFixed(2)}</span>
+                            </div>
+                            {somaFrete > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '1rem', color: '#4a5568' }}>
+                                    <span>Frete:</span>
+                                    <span>R$ {somaFrete.toFixed(2)}</span>
                                 </div>
                             )}
-                        </div>
-                    ))}
+                        </>
+                    )}
 
-                    {isMultiple && (
-                        <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: `2px solid ${isDivida ? '#ef9a9a' : '#ddd'}`, textAlign: 'right' }}>
-                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: isDivida ? '#c62828' : '#333' }}>
-                                Total Pago Agora: R$ {totalPagoAgora.toFixed(2)}
+                    {temJuros && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', marginTop: '15px', borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontWeight: '600', color: '#2d3748' }}>
+                            <span>Subtotal (Valor Original):</span>
+                            <span>R$ {valorBaseCobradoAgora.toFixed(2)}</span>
+                        </div>
+                    )}
+
+                    {/* Bloco de Pagamento Atual */}
+                    <div style={{ backgroundColor: '#fff', padding: '12px', borderRadius: '10px', border: '1px solid #edf2f7', marginBottom: '15px', marginTop: temJuros ? '0' : '15px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.85rem', color: '#94a3b8' }}>
+                            <span>Transação: {paymentId || 'N/A'}</span>
+                            <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>{paymentType === 'bank_transfer' ? 'Pix' : cardBrand}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#4a5568' }}>
+                            <span>{isPartialPayment ? 'Sinal Pago Agora' : 'Valor Pago Agora'}:</span>
+                            <span style={{ fontWeight: 'bold' }}>
+                                {numInstallments}x de R$ {Number(installmentAmount).toFixed(2)}
                             </span>
+                        </div>
+                        {last4 && <div style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'right' }}>final {last4}</div>}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#2d3748' }}>Total Debitado:</span>
+                        <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '1.4rem', fontWeight: '800', color: '#2d3748' }}>R$ {totalFinalComJuros.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    {/* 3. Saldo Devedor (Se for parcial) */}
+                    {isPartialPayment && saldoRestante > 0 && (
+                        <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fff7ed', borderRadius: '8px', border: '1px solid #ffedd5', color: '#9a3412', fontSize: '0.9rem', textAlign: 'center', fontWeight: '600' }}>
+                            Saldo de R$ {saldoRestante.toFixed(2)} a pagar na entrega/devolução.
                         </div>
                     )}
                 </div>
-            )}
 
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button 
-                    onClick={() => navigate('/my-reservations')} 
-                    style={{ padding: '12px 24px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    Ver Meus Pedidos
-                </button>
-                <button 
-                    onClick={() => navigate('/')} 
-                    style={{ padding: '12px 24px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    Voltar para o Início
-                </button>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '2.5rem' }}>
+                    <button onClick={() => navigate('/')} style={{ flex: 1, padding: '15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Início</button>
+                    <button onClick={() => navigate('/my-reservations')} style={{ flex: 1, padding: '15px', backgroundColor: '#fff', color: '#4a5568', border: '1px solid #e2e8f0', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>Meus Pedidos</button>
+                </div>
             </div>
         </div>
     );

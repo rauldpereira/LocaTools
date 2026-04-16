@@ -50,6 +50,10 @@ module.exports = (sequelize, DataTypes) => {
     observacao: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    valor_unitario: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true
     }
   }, {
     sequelize,

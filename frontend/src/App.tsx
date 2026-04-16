@@ -2,8 +2,6 @@ import './App.css';
 import AuthProvider from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
 
 // Importações das páginas
 import Home from './pages/Home';
@@ -24,38 +22,33 @@ import GerenciamentoCalendario from './components/Admin/GerenciamentoCalendario'
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
-const stripeKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'sua_chave_fallback_aqui';
-const stripePromise = loadStripe(stripeKey);
-
 function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <Elements stripe={stripePromise}>
-          <Router>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Home />} />
-                <Route path="auth" element={<AuthPage />} />
-                <Route path="forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="reset-password" element={<ResetPasswordPage />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="admin" element={<AdminDashboard />} />
-                <Route path="equipment/:id" element={<EquipmentDetailsPage />} />
-                <Route path="cart" element={<CartPage />} />
-                <Route path="payment/:orderId" element={<PaymentPage />} />
-                <Route path="/payment-multi" element={<PaymentPage />} />
-                <Route path="my-reservations" element={<MyReservationsPage />} />
-                <Route path="payment/success/:orderId" element={<PaymentSuccessPage />} />
-                <Route path="my-reservations/:orderId" element={<ReservationDetailsPage />} />
-                <Route path="admin/vistoria/:orderId" element={<VistoriaPage />} />
-                <Route path="admin/finalize-payment/:orderId" element={<FinalizePaymentPage />} />
-                <Route path="admin/reports" element={<AdminReportsPage />} />
-                <Route path="admin/calendario" element={<GerenciamentoCalendario />} />
-              </Route>
-            </Routes>
-          </Router>
-        </Elements>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="auth" element={<AuthPage />} />
+              <Route path="forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="reset-password" element={<ResetPasswordPage />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="admin" element={<AdminDashboard />} />
+              <Route path="equipment/:id" element={<EquipmentDetailsPage />} />
+              <Route path="cart" element={<CartPage />} />
+              <Route path="payment/:orderId" element={<PaymentPage />} />
+              <Route path="/payment-multi" element={<PaymentPage />} />
+              <Route path="my-reservations" element={<MyReservationsPage />} />
+              <Route path="payment/success/:orderId" element={<PaymentSuccessPage />} />
+              <Route path="my-reservations/:orderId" element={<ReservationDetailsPage />} />
+              <Route path="admin/vistoria/:orderId" element={<VistoriaPage />} />
+              <Route path="admin/finalize-payment/:orderId" element={<FinalizePaymentPage />} />
+              <Route path="admin/reports" element={<AdminReportsPage />} />
+              <Route path="admin/calendario" element={<GerenciamentoCalendario />} />
+            </Route>
+          </Routes>
+        </Router>
       </CartProvider>
     </AuthProvider>
   );

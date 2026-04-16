@@ -30,6 +30,12 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.NOW
     },
     id_transacao_externa: DataTypes.STRING,
+    metodo_detalhe: DataTypes.STRING,
+    cartao_final: DataTypes.STRING(4),
+    parcelas: {
+      type: DataTypes.INTEGER,
+      defaultValue: 1
+    }
   }, {
     sequelize,
     modelName: 'Pagamento',

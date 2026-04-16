@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-
 
 interface UsuarioDaOrdem {
     id: number;
@@ -26,230 +25,6 @@ interface OrderDetails {
     createdAt?: string;
 }
 
-const isCPFValido = (cpf: string) => {
-    cpf = cpf.replace(/\D/g, '');
-    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
-    let soma = 0, resto;
-    for (let i = 1; i <= 9; i++) soma = soma + parseInt(cpf.substring(i - 1, i)) * (11 - i);
-    resto = (soma * 10) % 11;
-    if ((resto === 10) || (resto === 11)) resto = 0;
-    if (resto !== parseInt(cpf.substring(9, 10))) return false;
-    soma = 0;
-    for (let i = 1; i <= 10; i++) soma = soma + parseInt(cpf.substring(i - 1, i)) * (12 - i);
-    resto = (soma * 10) % 11;
-    if ((resto === 10) || (resto === 11)) resto = 0;
-    if (resto !== parseInt(cpf.substring(10, 11))) return false;
-    return true;
-};
-
-const isCNPJValido = (cnpj: string) => {
-    cnpj = cnpj.replace(/\D/g, '');
-    if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
-    let tamanho = cnpj.length - 2;
-    let numeros = cnpj.substring(0, tamanho);
-    let digitos = cnpj.substring(tamanho);
-    let soma = 0;
-    let pos = tamanho - 7;
-    for (let i = tamanho; i >= 1; i--) {
-        soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
-        if (pos < 2) pos = 9;
-    }
-    let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
-    if (resultado !== parseInt(digitos.charAt(0))) return false;
-    tamanho = tamanho + 1;
-    numeros = cnpj.substring(0, tamanho);
-    soma = 0;
-    pos = tamanho - 7;
-    for (let i = tamanho; i >= 1; i--) {
-        soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
-        if (pos < 2) pos = 9;
-    }
-    resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
-    if (resultado !== parseInt(digitos.charAt(1))) return false;
-    return true;
-};
-
-const formatarCPF = (v: string) => {
-    v = v.replace(/\D/g, '').slice(0, 11);
-    return v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-};
-
-const formatarCNPJ = (v: string) => {
-    v = v.replace(/\D/g, '').slice(0, 14);
-    return v.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2');
-};
-
-const CheckoutForm = ({ usuario, orderIdsList }: { usuario: UsuarioDaOrdem, orderIdsList: number[] }) => {
-    const stripe = useStripe();
-    const elements = useElements();
-    const navigate = useNavigate();
-    const { token: authToken } = useAuth();
-    
-    const [error, setError] = useState<string | null>(null);
-    const [processing, setProcessing] = useState(false);
-    
-    const [tipoDoc, setTipoDoc] = useState<'cpf' | 'cnpj'>('cpf');
-    const [documento, setDocumento] = useState('');
-    const [nomeCartao, setNomeCartao] = useState(''); 
-
-    useEffect(() => {
-        if (usuario) {
-            if (tipoDoc === 'cnpj' && usuario.cnpj) {
-                setDocumento(formatarCNPJ(usuario.cnpj));
-            } else if (tipoDoc === 'cpf' && usuario.cpf) {
-                setDocumento(formatarCPF(usuario.cpf));
-            } else {
-                setDocumento(''); // Só limpa se o usuário não tiver aquele documento específico
-            }
-        }
-    }, [usuario, tipoDoc]);
-
-    const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (tipoDoc === 'cpf') {
-            setDocumento(formatarCPF(e.target.value));
-        } else {
-            setDocumento(formatarCNPJ(e.target.value));
-        }
-    };
-
-    const handleTrocarTipoDoc = (tipo: 'cpf' | 'cnpj') => {
-        setTipoDoc(tipo);
-        setDocumento('');
-    };
-
-    const handleSubmit = async (event: React.FormEvent) => {
-        event.preventDefault();
-        setProcessing(true);
-        setError(null);
-
-        if (!nomeCartao.trim()) { setError('Por favor, digite o nome impresso no cartão.'); setProcessing(false); return; }
-        const docLimpo = documento.replace(/\D/g, '');
-
-        if (tipoDoc === 'cpf' && !isCPFValido(docLimpo)) {
-            setError('Por favor, preencha um CPF válido.');
-            setProcessing(false);
-            return;
-        }
-
-        if (tipoDoc === 'cnpj' && !isCNPJValido(docLimpo)) {
-            setError('Por favor, preencha um CNPJ válido.');
-            setProcessing(false);
-            return;
-        }
-        
-        if (!stripe || !elements || !authToken) { setError('Erro ao carregar o pagamento.'); setProcessing(false); return; }
-
-        const cardElement = elements.getElement(CardElement);
-        if (!cardElement) { setError('Elemento do cartão não encontrado.'); setProcessing(false); return; }
-
-        const { error: stripeError, token: stripeToken } = await stripe.createToken(cardElement, { name: nomeCartao });
-
-        if (stripeError) { setError(stripeError.message || 'Erro ao validar o cartão.'); setProcessing(false); return; }
-
-        if (stripeToken) {
-            try {
-                const config = { headers: { Authorization: `Bearer ${authToken}` } };
-                await axios.post(`${import.meta.env.VITE_API_URL}/api/payments/process`, {
-                    orderIds: orderIdsList, 
-                    token: stripeToken.id,
-                    cpfCnpj: docLimpo 
-                }, config);
-
-                navigate(`/payment/success/${orderIdsList.join(',')}`);
-            } catch (err: any) {
-                setError(err.response?.data?.error || 'Falha ao processar o pagamento no servidor.');
-                setProcessing(false);
-            }
-        }
-    };
-
-    const cardElementOptions = {
-        style: { base: { color: '#000', fontSize: '16px', '::placeholder': { color: '#888' } }, invalid: { color: '#fa755a' } },
-        hidePostalCode: true,
-    };
-
-    return (
-        <form onSubmit={handleSubmit}>
-            <h3 style={{ marginBottom: '20px', color: '#000' }}>Dados do Pagamento</h3>
-            <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', color: '#000', fontWeight: 600 }}>
-                    Nome impresso no Cartão
-                </label>
-                <input 
-                    type="text" 
-                    value={nomeCartao}
-                    onChange={(e) => setNomeCartao(e.target.value.toUpperCase())} 
-                    placeholder="JOÃO S SILVA"
-                    required
-                    style={{
-                        width: '100%', padding: '12px', border: '1px solid #ccc',
-                        borderRadius: '5px', fontSize: '16px', boxSizing: 'border-box', color: '#000'
-                    }}
-                />
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', color: '#000', fontWeight: 600 }}>
-                    Documento do Titular do Cartão
-                </label>
-                
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                    <button
-                        type="button"
-                        onClick={() => handleTrocarTipoDoc('cpf')}
-                        style={{
-                            flex: 1, padding: '8px', border: '1px solid #ccc', borderRadius: '5px',
-                            backgroundColor: tipoDoc === 'cpf' ? '#007bff' : '#f8f9fa',
-                            color: tipoDoc === 'cpf' ? '#fff' : '#000', cursor: 'pointer', fontWeight: 'bold'
-                        }}
-                    >
-                        CPF
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => handleTrocarTipoDoc('cnpj')}
-                        style={{
-                            flex: 1, padding: '8px', border: '1px solid #ccc', borderRadius: '5px',
-                            backgroundColor: tipoDoc === 'cnpj' ? '#007bff' : '#f8f9fa',
-                            color: tipoDoc === 'cnpj' ? '#fff' : '#000', cursor: 'pointer', fontWeight: 'bold'
-                        }}
-                    >
-                        CNPJ
-                    </button>
-                </div>
-
-                <input 
-                    type="text" 
-                    value={documento}
-                    onChange={handleDocChange}
-                    placeholder={tipoDoc === 'cpf' ? "000.000.000-00" : "00.000.000/0000-00"}
-                    maxLength={18}
-                    required
-                    style={{
-                        width: '100%', padding: '12px', border: '1px solid #ccc',
-                        borderRadius: '5px', fontSize: '16px', boxSizing: 'border-box', color: '#000'
-                    }}
-                />
-            </div>
-
-            <div style={{ marginBottom: '10px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', color: '#000', fontWeight: 600 }}>
-                    Cartão de Crédito
-                </label>
-                <div style={{ padding: '12px', border: '1px solid #ccc', borderRadius: '5px', backgroundColor: 'white' }}>
-                    <CardElement options={cardElementOptions} />
-                </div>
-            </div>
-            
-            {error && <div style={{ color: '#721c24', backgroundColor: '#f8d7da', padding: '10px', borderRadius: '5px', marginTop: '15px', fontWeight: 'bold' }}>⚠️ {error}</div>}
-            
-            <button disabled={!stripe || processing} type="submit" style={{ marginTop: '20px', width: '100%', padding: '15px', fontSize: '18px', cursor: 'pointer', backgroundColor: processing ? '#ccc' : '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
-                {processing ? 'Processando...' : 'Pagar Agora'}
-            </button>
-        </form>
-    );
-}; 
-
 interface Prejuizo {
     valor_prejuizo: string | number;
     resolvido: boolean;
@@ -262,20 +37,34 @@ interface OrderDetailsExpanded extends OrderDetails {
 }
 
 const PaymentPage: React.FC = () => {
-    const { orderId } = useParams<{ orderId: string }>(); 
+    const { orderId } = useParams<{ orderId: string }>();
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
-    const queryIds = searchParams.get('ids'); 
-    
+    const queryIds = searchParams.get('ids');
+
     const [orders, setOrders] = useState<OrderDetailsExpanded[]>([]);
     const [loading, setLoading] = useState(true);
     const { token } = useAuth();
     const navigate = useNavigate();
+    const [isMpLoaded, setIsMpLoaded] = useState(false);
 
     // --- LOJA E FIDELIDADE ---
     const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number, ativo: boolean } | null>(null);
     const [lojaConfig, setLojaConfig] = useState<any>(null);
     const [completedOrders, setCompletedOrders] = useState(0);
+
+    const rawIds = queryIds || orderId || '';
+    const idList = rawIds.split(',').filter(Boolean).map(Number);
+
+    useEffect(() => {
+        const key = import.meta.env.VITE_MP_PUBLIC_KEY;
+        if (key) {
+            initMercadoPago(key, { locale: 'pt-BR' });
+            setIsMpLoaded(true);
+        } else {
+            console.error('ERRO: VITE_MP_PUBLIC_KEY não encontrada nas variáveis de ambiente.');
+        }
+    }, []);
 
     useEffect(() => {
         const fetchStoreData = async () => {
@@ -301,9 +90,6 @@ const PaymentPage: React.FC = () => {
         fetchStoreData();
     }, [token]);
 
-    const rawIds = queryIds || orderId || '';
-    const idList = rawIds.split(',').filter(Boolean).map(Number);
-
     useEffect(() => {
         if (idList.length === 0 || !token) return;
 
@@ -315,7 +101,7 @@ const PaymentPage: React.FC = () => {
                 );
                 setOrders(fetchedOrders);
             } catch (error) {
-                console.error("Erro:", error);
+                console.error("Erro ao buscar pedidos:", error);
             } finally {
                 setLoading(false);
             }
@@ -323,9 +109,162 @@ const PaymentPage: React.FC = () => {
         fetchOrders();
     }, [rawIds, token]);
 
+    // Cálculos de valores 
+    const { valorApresentado, totalSaldoAluguel, totalPrejuizos, isDivida, totalGeral, totalFrete, subtotalOriginal, valorDesconto, isLoyaltyEligible } = useMemo(() => {
+        if (orders.length === 0) return { valorApresentado: 0, totalSaldoAluguel: 0, totalPrejuizos: 0, isDivida: false, totalGeral: 0, totalFrete: 0, subtotalOriginal: 0, valorDesconto: 0, isLoyaltyEligible: false };
+
+        const isDivida = orders.some(o => o.status.toUpperCase() === 'PREJUIZO');
+        let totalSaldoAluguel = 0;
+        let totalPrejuizos = 0;
+
+        if (isDivida) {
+            orders.forEach(order => {
+                let saldoRent = Number(order.valor_total) - Number(order.valor_sinal);
+                totalSaldoAluguel += saldoRent;
+                if (order.ItemReservas) {
+                    order.ItemReservas.forEach(item => {
+                        if (item.prejuizo && !item.prejuizo.resolvido) {
+                            totalPrejuizos += Number(item.prejuizo.valor_prejuizo);
+                        }
+                    });
+                }
+            });
+        }
+
+        const valorApresentado = isDivida 
+            ? totalSaldoAluguel + totalPrejuizos 
+            : orders.reduce((acc, curr) => acc + Number(curr.valor_sinal), 0);
+
+        const totalGeral = orders.reduce((acc, curr) => acc + Number(curr.valor_total), 0);
+        const totalFrete = orders.reduce((acc, curr) => acc + Number(curr.custo_frete), 0);
+        const totalComDesconto = totalGeral - totalFrete;
+        const isLoyaltyEligible = loyaltyConfig?.ativo && (completedOrders) % (loyaltyConfig?.num || 0) === 0;
+
+        let subtotalOriginal = totalComDesconto;
+        let valorDesconto = 0;
+        if (isLoyaltyEligible && loyaltyConfig) {
+            subtotalOriginal = totalComDesconto / (1 - (loyaltyConfig.pct / 100));
+            valorDesconto = subtotalOriginal - totalComDesconto;
+        }
+
+        return { valorApresentado, totalSaldoAluguel, totalPrejuizos, isDivida, totalGeral, totalFrete, subtotalOriginal, valorDesconto, isLoyaltyEligible };
+    }, [orders, loyaltyConfig, completedOrders]);
+
+    // Configuração do Mercado Pago
+    const initialization = useMemo(() => {
+        const user = orders[0]?.Usuario;
+        const email = (user?.email || '').trim().toLowerCase();
+        
+        // Trata o nome para garantir primeiro e sobrenome
+        const nomeCompleto = (user?.nome || 'Cliente').trim();
+        const nomeParts = nomeCompleto.split(/\s+/).filter(Boolean);
+        const firstName = nomeParts[0] || 'Cliente';
+        // Se não tiver sobrenome, o MP pode travar. Usamos um sobrenome genérico se necessário.
+        const lastName = nomeParts.length > 1 ? nomeParts.slice(1).join(' ') : 'da Silva';
+
+        const docType = user?.tipo_pessoa === 'juridica' ? 'CNPJ' : 'CPF';
+        // Limpa TUDO que não for número do documento
+        const docNumber = (user?.cnpj || user?.cpf || '').replace(/\D/g, '');
+
+        const dataInit = {
+            amount: Number(valorApresentado.toFixed(2)),
+            payer: {
+                email: email,
+                firstName: firstName,
+                lastName: lastName,
+                entityType: (user?.tipo_pessoa === 'juridica' ? 'association' : 'individual') as any,
+                identification: {
+                    type: docType,
+                    number: docNumber,
+                }
+            },
+        };
+        console.log('MERCADO PAGO INITIALIZATION (LIMPO):', JSON.stringify(dataInit, null, 2));
+        return dataInit;
+    }, [valorApresentado, orders]);
+
+    const customization = useMemo(() => ({
+        visual: {
+            hidePayerInformation: true,
+            hideFormTitle: true,
+            defaultPaymentMethod: 'bank_transfer' as const,
+        },
+        paymentMethods: {
+            bankTransfer: ["pix"] as const,
+            creditCard: "all" as const,
+            debitCard: "all" as const,
+            mercadoPago: "all" as const,
+            excludePaymentMethods: ['debvisa'] as string[], 
+            // Configuração de parcelamento explícita
+            installments: "all" as const, 
+            minInstallments: 1, // Permite 1x (à vista)
+            maxInstallments: 12 // Limita em até 12x
+        },
+        payer: {
+            email: initialization.payer.email,
+            firstName: initialization.payer.firstName,
+            lastName: initialization.payer.lastName,
+            identification: {
+                type: initialization.payer.identification.type,
+                number: initialization.payer.identification.number,
+            },
+        }
+    }), [initialization]);
+
+    const onSubmit = async ({ selectedPaymentMethod, formData }: any) => {
+        
+        const extendedFormData = {
+            ...formData,
+            payer: formData.payer || {
+                email: initialization.payer.email,
+                firstName: initialization.payer.firstName,
+                lastName: initialization.payer.lastName,
+                identification: initialization.payer.identification,
+            }
+        };
+
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            
+            const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/payments/process`, {
+                formData: extendedFormData,
+                orderIds: idList,
+                paymentMethod: selectedPaymentMethod
+            }, config);
+            
+            if (data && (data.id || data.status === 'approved')) {
+                const status = data.status || 'approved';
+                const payment_id = data.id || 'ALREADY_PAID';
+                const payment_type = selectedPaymentMethod;
+                
+                const installments = Number(formData.installments) || 1;
+                const rawInstallmentAmount = data.transaction_details?.installment_amount;
+                const installment_amount = rawInstallmentAmount && rawInstallmentAmount > 0 
+                    ? rawInstallmentAmount 
+                    : (valorApresentado / installments);
+                
+                const total_paid = data.transaction_details?.total_paid_amount || (installment_amount * installments);
+
+                // Captura dos dados do cartão
+                const card_brand = data.payment_method_id || data.payment_method?.id || '';
+                const last_4 = (data.card?.last_four_digits || '').replace(/\D/g, ''); 
+
+                const primaryOrderId = idList[0];
+                navigate(`/payment/success/${primaryOrderId}?ids=${idList.join(',')}&payment_id=${payment_id}&status=${status}&payment_type=${payment_type}&installments=${installments}&installment_amount=${installment_amount}&total_paid=${total_paid}&card_brand=${card_brand}&last_4=${last_4}`, { replace: true });
+            }
+            return data;
+        } catch (error) {
+            console.error('Erro ao processar pagamento:', error);
+            throw error;
+        }
+    };
+
+    const onError = (error: any) => console.error('Erro no Mercado Pago:', error);
+    const onReady = () => console.log('Mercado Pago pronto');
+
     if (loading) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Carregando...</div>;
     if (orders.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Pedidos não encontrados.</div>;
-    
+
     if (orders.some(o => o.status === 'cancelada')) {
         return (
             <div style={{ maxWidth: '600px', margin: '100px auto', textAlign: 'center', padding: '40px', backgroundColor: '#fff', borderRadius: '12px' }}>
@@ -340,61 +279,17 @@ const PaymentPage: React.FC = () => {
     const hasMultiple = idList.length > 1;
     const textoLogistica = isEntrega ? (hasMultiple ? 'Entregas' : 'Entrega') : (hasMultiple ? 'Retiradas na Loja' : 'Retirada na Loja');
 
-    // SEPARA OS CUSTOS DA DÍVIDA
-    const isDivida = orders.some(o => o.status.toUpperCase() === 'PREJUIZO');
-    
-    let valorApresentado = 0;
-    let totalSaldoAluguel = 0;
-    let totalPrejuizos = 0;
-    
-    if (isDivida) {
-        orders.forEach(order => {
-            // Saldo restante do aluguel (Total - Sinal que ele já pagou)
-            let saldoRent = Number(order.valor_total) - Number(order.valor_sinal);
-            totalSaldoAluguel += saldoRent;
-
-            // Soma das Avarias/Perdas
-            if (order.ItemReservas) {
-                order.ItemReservas.forEach(item => {
-                    if (item.prejuizo && !item.prejuizo.resolvido) {
-                        totalPrejuizos += Number(item.prejuizo.valor_prejuizo);
-                    }
-                });
-            }
-        });
-        valorApresentado = totalSaldoAluguel + totalPrejuizos;
-    } else {
-        valorApresentado = orders.reduce((acc, curr) => acc + Number(curr.valor_sinal), 0);
-    }
-
-    // Custos do fluxo normal 
-    const totalGeral = orders.reduce((acc, curr) => acc + Number(curr.valor_total), 0);
-    const totalFrete = orders.reduce((acc, curr) => acc + Number(curr.custo_frete), 0);
-    
-    // O totalSubtotal aqui é o que já está com desconto no banco
-    const totalComDesconto = totalGeral - totalFrete;
-
-    // Se ele for elegível, descobre qual era o valor ORIGINAL para mostrar o desconto
-    const isLoyaltyEligible = loyaltyConfig && loyaltyConfig.ativo && (completedOrders) % loyaltyConfig.num === 0;
-    
-    let subtotalOriginal = totalComDesconto;
-    let valorDesconto = 0;
-
-    if (isLoyaltyEligible && loyaltyConfig) {
-        subtotalOriginal = totalComDesconto / (1 - (loyaltyConfig.pct / 100));
-        valorDesconto = subtotalOriginal - totalComDesconto;
+    if (!import.meta.env.VITE_MP_PUBLIC_KEY) {
+        console.warn('VITE_MP_PUBLIC_KEY não está definida!');
     }
 
     return (
         <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
-            
             <div className="order-summary" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#000' }}>
-                
                 <h4 style={{marginTop: 0, color: isDivida ? '#c62828' : '#000', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px'}}>
                     {isDivida ? '🚨 Acerto de Pendências' : `Resumo do Pedido (${idList.length} ${textoLogistica})`}
                 </h4>
-                
-                {/* FLUXO DO CALOTEIRO DÍVIDA DETALHADA */}
+
                 {isDivida ? (
                     <>
                         <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
@@ -410,20 +305,17 @@ const PaymentPage: React.FC = () => {
                         <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
                     </>
                 ) : (
-                /* FLUXO NORMAL CLIENTE NOVO PAGANDO SINAL */
                     <>
                         <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
                             <span style={{fontWeight: 500}}>Itens (Subtotal):</span>
                             <span style={{fontWeight: 500}}>R$ {subtotalOriginal.toFixed(2)}</span>
                         </div>
-
                         {isLoyaltyEligible && (
                             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px', color: '#28a745', fontWeight: 'bold'}}>
                                 <span>Desconto Fidelidade ({loyaltyConfig?.pct}%):</span>
                                 <span>- R$ {valorDesconto.toFixed(2)}</span>
                             </div>
                         )}
-
                         <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
                             <span style={{fontWeight: 500}}>{textoLogistica}:</span>
                             <span style={{fontWeight: 500}}>{totalFrete > 0 ? `R$ ${totalFrete.toFixed(2)}` : 'Grátis'}</span>
@@ -437,23 +329,32 @@ const PaymentPage: React.FC = () => {
                 )}
 
                 <div style={{
-                    marginTop: '15px', padding: '15px', borderRadius: '8px', textAlign: 'center', 
-                    backgroundColor: isDivida ? '#ffebee' : '#e8f5e9', 
+                    marginTop: '15px', padding: '15px', borderRadius: '8px', textAlign: 'center',
+                    backgroundColor: isDivida ? '#ffebee' : '#e8f5e9',
                     border: `1px solid ${isDivida ? '#ffcdd2' : '#c8e6c9'}`,
                     color: isDivida ? '#c62828' : '#000'
                 }}>
                     <small style={{display: 'block', marginBottom: '5px', fontWeight: 600}}>
-                        {isDivida 
-                            ? 'Valor Total Devido (A Pagar)' 
+                        {isDivida
+                            ? 'Valor Total Devido (A Pagar)'
                             : (lojaConfig?.sinal_porcentagem >= 100 ? 'Pagamento Integral da Reserva' : `Sinal para reservar o Lote (${lojaConfig?.sinal_porcentagem || 50}%)`)
                         }
                     </small>
                     <span style={{fontSize: '1.5rem', fontWeight: 'bold'}}>R$ {valorApresentado.toFixed(2)}</span>
                 </div>
             </div>
-            
+
             <div className="payment-form" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', backgroundColor: '#fff' }}>
-                <CheckoutForm usuario={orders[0].Usuario} orderIdsList={idList} />
+                {isMpLoaded && valorApresentado > 0 && initialization.payer.email && initialization.payer.identification.number && (
+                    <Payment
+                        key={`${valorApresentado}-${initialization.payer.email}-${initialization.payer.identification.number}`}
+                        initialization={initialization}
+                        customization={customization}
+                        onSubmit={onSubmit}
+                        onReady={onReady}
+                        onError={onError}
+                    />
+                )}
             </div>
         </div>
     );

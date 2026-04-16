@@ -9,7 +9,7 @@ Este projeto foi desenvolvido com as seguintes tecnologias:
 ### Backend
 - **Node.js** com **Express**
 - **Sequelize ORM** (Suporte a PostgreSQL e MySQL)
-- **Stripe** para processamento de pagamentos
+- **Mercado Pago** para processamento de pagamentos
 - **Socket.io** para notificações em tempo real
 - **PDFKit** para geração de documentos
 - **Node-cron** para automação de tarefas (lembretes e cancelamentos)
