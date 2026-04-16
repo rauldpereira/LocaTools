@@ -611,27 +611,53 @@ const generateContract = async (req, res) => {
 
         // --- IDENTIFICAR MÉTODO DE PAGAMENTO (MERCADO PAGO) ---
         let metodoPagamentoFinal = 'A Combinar';
+        let totalDesembolsadoPeloCliente = 0;
+        let totalBaseRecebidoPelaLoja = 0;
+
         if (order.Pagamentos && order.Pagamentos.length > 0) {
-            const p = order.Pagamentos[0];
-            const isMP = p.id_transacao_externa && !p.id_transacao_externa.startsWith('manual_') && !p.id_transacao_externa.startsWith('recuperacao_');
-            
-            if (isMP) {
-                try {
-                    const paymentDetail = await mpPayment.get({ id: p.id_transacao_externa });
-                    if (paymentDetail.payment_method_id === 'pix') {
-                        metodoPagamentoFinal = 'PIX (Site)';
-                    } else if (paymentDetail.payment_type_id === 'credit_card' || paymentDetail.payment_type_id === 'debit_card') {
-                        const brand = paymentDetail.payment_method_id.toUpperCase();
-                        const last4 = paymentDetail.card?.last_four_digits || '';
-                        metodoPagamentoFinal = `${paymentDetail.payment_type_id === 'credit_card' ? 'Crédito' : 'Débito'} (${brand}) - Final ${last4}`;
-                    } else {
-                        metodoPagamentoFinal = `Mercado Pago (${paymentDetail.payment_method_id?.toUpperCase()})`;
+            const approvedPayments = order.Pagamentos.filter(pay => pay.status_pagamento === 'aprovado');
+            if (approvedPayments.length > 0) {
+                const results = [];
+                for (const p of approvedPayments) {
+                    const isMP = p.id_transacao_externa && !p.id_transacao_externa.startsWith('manual_') && !p.id_transacao_externa.startsWith('recuperacao_');
+                    
+                    let metodo = p.metodo_detalhe ? p.metodo_detalhe.toUpperCase() : 'Não informado';
+                    let valorPagoNestaTransacao = Number(p.valor);
+                    totalBaseRecebidoPelaLoja += valorPagoNestaTransacao;
+
+                    if (isMP) {
+                        try {
+                            const paymentDetail = await mpPayment.get({ id: p.id_transacao_externa });
+                            const type = paymentDetail.payment_type_id;
+                            const method = paymentDetail.payment_method_id;
+
+                            if (method === 'pix') {
+                                metodo = 'PIX';
+                            } else if (type === 'credit_card') {
+                                metodo = `Cartão de Crédito`;
+                            } else if (type === 'debit_card') {
+                                metodo = 'Cartão de Débito';
+                            } else {
+                                metodo = method.toUpperCase();
+                            }
+                            
+                            valorPagoNestaTransacao = paymentDetail.transaction_details?.total_paid_amount || paymentDetail.transaction_amount;
+                        } catch (e) {
+                             if (p.parcelas > 1) metodo = `Cartão de Crédito`;
+                        }
                     }
-                } catch (e) {
-                    metodoPagamentoFinal = 'Online (Mercado Pago)';
+                    totalDesembolsadoPeloCliente += Number(valorPagoNestaTransacao);
+                    
+                    let infoPagamento = `${metodo}`;
+                    if (p.parcelas > 1) {
+                        const valorParcela = Number(valorPagoNestaTransacao) / p.parcelas;
+                        infoPagamento += ` ${p.parcelas}x de R$ ${valorParcela.toFixed(2)}`;
+                    } else {
+                        infoPagamento += ` R$ ${Number(valorPagoNestaTransacao).toFixed(2)}`;
+                    }
+                    results.push(infoPagamento);
                 }
-            } else if (p.id_transacao_externa?.startsWith('manual_')) {
-                metodoPagamentoFinal = 'Presencial / Loja';
+                metodoPagamentoFinal = results.join(' | ');
             }
         }
 
@@ -805,8 +831,10 @@ const generateContract = async (req, res) => {
 
         y += Math.max(15, metodoPagamentoHeight) + 10;
         doc.rect(30, y, 535, 20).stroke();
-        const saldoDevedor = valorFinal - totalPago;
-        const textoResumo = `Total do Contrato: R$ ${valorFinal.toFixed(2)}` + (saldoDevedor > 0.01 ? ` | Saldo Devedor: R$ ${saldoDevedor.toFixed(2)}` : "");
+        const saldoRestante = valorFinal - totalBaseRecebidoPelaLoja;
+        const textoResumo = `Valor da Locação: R$ ${valorFinal.toFixed(2)}` + 
+                            (totalBaseRecebidoPelaLoja > 0 ? ` | Total Pago: R$ ${totalBaseRecebidoPelaLoja.toFixed(2)}` : "") +
+                            (saldoRestante > 0.01 ? ` | Restante a Pagar: R$ ${saldoRestante.toFixed(2)}` : "");
         doc.font('Helvetica-Bold').fontSize(10).text(textoResumo, 35, y + 5);
         
         y += 40;

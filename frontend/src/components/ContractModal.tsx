@@ -3,16 +3,48 @@ import SignatureCanvas from "react-signature-canvas";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext"; 
 
+interface Pagamento {
+  id: number;
+  valor: string | number;
+  status_pagamento: string;
+  metodo_detalhe?: string;
+  cartao_final?: string;
+  parcelas: number;
+}
+
 interface ContractModalProps {
-  order: any;
+  order: {
+    id: number;
+    valor_total: string | number;
+    data_inicio: string;
+    data_fim: string;
+    Usuario?: {
+      nome: string;
+      email: string;
+    };
+    ItemReservas: Array<{
+      id: number;
+      Unidade: {
+        id: number;
+        Equipamento: {
+          nome: string;
+        };
+      };
+    }>;
+    Pagamentos?: Pagamento[];
+  };
   onClose: () => void;
   onSuccess: () => void;
+}
+
+interface StoreConfig {
+  cnpj?: string;
 }
 
 const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess }) => {
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [signing, setSigning] = useState(false);
-  const [storeConfig, setStoreConfig] = useState<any>(null);
+  const [storeConfig, setStoreConfig] = useState<StoreConfig | null>(null);
   const backendUrl = import.meta.env.VITE_API_URL;
   
   const { token } = useAuth();
@@ -51,8 +83,8 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
 
       alert("Contrato assinado com sucesso! A retirada está liberada.");
       onSuccess(); 
-    } catch (error: any) {
-      console.error("Erro no servidor:", error.response || error);
+    } catch (error) {
+      console.error("Erro no servidor:", error);
       alert("Erro ao salvar assinatura. Verifique o console.");
     } finally {
       setSigning(false);
@@ -91,13 +123,60 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
           <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>2. OBJETO DO CONTRATO</h4>
           <p>O presente contrato tem como objeto a locação do(s) equipamento(s) listado(s) abaixo:</p>
           <ul style={{ paddingLeft: "20px" }}>
-            {order.ItemReservas.map((item: any) => (
+            {order.ItemReservas.map((item) => (
               <li key={item.id}><strong>{item.Unidade.Equipamento.nome}</strong> (Patrimônio #{item.Unidade.id})</li>
             ))}
           </ul>
 
           <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>3. VALORES E VIGÊNCIA</h4>
-          <p>O valor total deste contrato é de <strong>R$ {Number(order.valor_total).toFixed(2)}</strong>. A locação tem início em <strong>{new Date(order.data_inicio).toLocaleDateString()}</strong> e término em <strong>{new Date(order.data_fim).toLocaleDateString()}</strong>.</p>
+          <p>Valor da Locação: <strong>R$ {Number(order.valor_total).toFixed(2)}</strong>. A locação tem início em <strong>{new Date(order.data_inicio).toLocaleDateString()}</strong> e término em <strong>{new Date(order.data_fim).toLocaleDateString()}</strong>.</p>
+          
+          {order.Pagamentos && order.Pagamentos.length > 0 && (
+            <div style={{ marginTop: "10px", padding: "10px", border: "1px solid #eee", borderRadius: "8px", backgroundColor: "#fafafa" }}>
+              <p style={{ margin: "0 0 10px 0" }}><strong>HISTÓRICO DE PAGAMENTOS:</strong></p>
+              {order.Pagamentos.filter((p) => p.status_pagamento === 'aprovado').map((p) => {
+                let metodo = p.metodo_detalhe ? p.metodo_detalhe.toUpperCase() : 'NÃO INFORMADO';
+                
+                // Normaliza o método para evitar duplicação 
+                if (p.parcelas > 1) {
+                  metodo = `CARTÃO DE CRÉDITO`;
+                } else if (p.cartao_final || metodo.includes('CARD')) {
+                  metodo = `CARTÃO (À VISTA)`;
+                } else if (metodo.includes('PIX')) {
+                  metodo = 'PIX';
+                }
+
+                const valorTotalPagoMP = Number(p.valor); // valor base do BD
+                const valorParcela = valorTotalPagoMP / (p.parcelas || 1);
+
+                return (
+                  <p key={p.id} style={{ margin: "5px 0", fontSize: "0.95rem" }}>
+                    • {metodo} 
+                    {p.parcelas > 1 ? (
+                       <strong> {p.parcelas}x de R$ {valorParcela.toFixed(2)}</strong>
+                    ) : (
+                       <strong> R$ {valorTotalPagoMP.toFixed(2)}</strong>
+                    )}
+                  </p>
+                );
+              })}
+
+              <div style={{ borderTop: "1px solid #ddd", marginTop: "10px", paddingTop: "10px" }}>
+                 <p style={{ margin: "5px 0" }}>
+                   Total Pago: <strong>R$ {order.Pagamentos.filter(p => p.status_pagamento === 'aprovado').reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2)}</strong>
+                 </p>
+                 {Number(order.valor_total) - order.Pagamentos.filter(p => p.status_pagamento === 'aprovado').reduce((acc, p) => acc + Number(p.valor), 0) > 0.01 && (
+                   <p style={{ margin: "5px 0", color: "#d9534f" }}>
+                     Restante a Pagar: <strong>R$ {(Number(order.valor_total) - order.Pagamentos.filter(p => p.status_pagamento === 'aprovado').reduce((acc, p) => acc + Number(p.valor), 0)).toFixed(2)}</strong>
+                   </p>
+                 )}
+              </div>
+            </div>
+          )}
+          
+          {(!order.Pagamentos || order.Pagamentos.every((p) => p.status_pagamento !== 'aprovado')) && (
+             <p><strong>FORMA DE PAGAMENTO:</strong> A COMBINAR / PENDENTE</p>
+          )}
 
           <h4 style={{ backgroundColor: "#f0f0f0", padding: "8px", borderRadius: "4px", marginTop: "20px" }}>4. TERMOS E CONDIÇÕES</h4>
           <p>4.1. O Locatário se compromete a utilizar o equipamento de forma correta e segura.</p>
