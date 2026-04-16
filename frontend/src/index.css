@@ -1,168 +1,44 @@
-/* ===============================
-   VARIÁVEIS DE TEMA
-================================= */
-
 :root {
-  --cor-fundo: #ffffff;
-  --cor-texto-principal: #213547;
-  --cor-fundo-modal: #ffffff;
-  --cor-borda: #dddddd;
-  --cor-destaque: #007bff;
-  --cor-dia-reservado-fundo: #ff4136;
-  --cor-dia-reservado-texto: #ffffff;
-  --cor-fundo-botao: #f0f0f0;
-  --cor-texto-botao: #213547;
-  --cor-dia-indisponivel: #ff0000;
+  /* Paleta de Cores */
+  --primary-blue: #0056b3;
+  --primary-hover: #004494;
+  --bg-light: #f8f9fa;
+  --text-main: #2c3e50;
+  --text-muted: #6c757d;
+  --border-color: #dee2e6;
+  --white: #ffffff;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --border-radius: 8px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --cor-fundo: #242424;
-    --cor-texto-principal: rgba(255, 255, 255, 0.87);
-    --cor-fundo-modal: #2e2e2e;
-    --cor-borda: #555555;
-    --cor-destaque: #58a6ff;
-    --cor-dia-reservado-fundo: #a11a1a;
-    --cor-dia-reservado-texto: #ffffff;
-    --cor-fundo-botao: #444444;
-    --cor-texto-botao: rgba(255, 255, 255, 0.87);
-    --cor-dia-indisponivel: #cc0000;
-  }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
-
-/* ===============================
-   BASE GERAL
-================================= */
 
 body {
-  color: var(--cor-texto-principal);
-  background-color: var(--cor-fundo);
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-light);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
-
-/* ===============================
-   CALENDÁRIO
-================================= */
-
-.react-calendar {
-  background: var(--cor-fundo-modal) !important;
-  border: 1px solid var(--cor-borda) !important;
-  border-radius: 8px;
-  color: var(--cor-texto-principal) !important;
-}
-
-/* Navegação */
-.react-calendar__navigation button {
-  color: var(--cor-texto-principal) !important;
-  background: none !important;
-  border-radius: 6px;
-}
-.react-calendar__navigation button:hover {
-  background-color: var(--cor-borda) !important;
-}
-
-/* Dias da semana */
-.react-calendar__month-view__weekdays__weekday abbr {
-  text-decoration: none;
-  color: var(--cor-texto-principal) !important;
-}
-
-/* Dias padrão */
-.react-calendar__tile {
-  background: none !important;
-  color: var(--cor-texto-principal) !important;
-  border-radius: 6px;
-  transition: filter 0.2s ease;
-}
-
-/* Hover */
-.react-calendar__tile:enabled:hover {
-  filter: brightness(1.2);
-}
-
-/* Dias desabilitados (Passado) */
-.react-calendar__tile:disabled:not(.day-red):not(.day-yellow):not(.day-green) {
-  background-color: #f0f0f0 !important;
-  color: #ccc !important;
-  cursor: not-allowed !important;
-}
-
-/* REMOVE fundo cinza de foco */
-.react-calendar__tile:enabled:focus {
-  background-color: transparent !important;
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-/* Remove estilo interno ativo */
-.react-calendar__tile--active {
-  background-color: #339cff !important;
-  color: #fff !important;
-}
-
-/* Dia atual */
-.react-calendar__tile--now {
-  background: #3a4a60 !important;
-  color: white !important;
-}
-
-/* ===============================
-   DISPONIBILIDADE
-================================= */
-
-.day-green {
-  background-color: #02ff3d !important;
-  color: #000 !important;
-}
-
-.day-yellow {
-  background-color: #ffc400 !important;
-  color: #000 !important;
-}
-
-.day-red {
-  background-color: var(--cor-dia-indisponivel) !important;
-  color: #fff !important;
-  text-decoration: line-through;
-  pointer-events: none;
-}
-
-.day-closed {
-  background-color: #6c757d !important; /* Cinza para indicar fechado, mas não proibido se atravessar */
-  color: white !important;
-  position: relative;
-}
-
-.day-blue {
-  background-color: #339cff !important;
-  color: #fff !important;
-}
-
-/* Intervalo */
-.react-calendar__tile--active,
-.react-calendar__tile--hasActive,
-.react-calendar__tile:enabled:focus {
-  background-color: #339cff !important;
-  color: #fff !important;
-  outline: none !important;
-  box-shadow: none !important;
-  filter: none !important;
-}
-
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: var(--cor-fundo-botao);
-  color: var(--cor-texto-botao);
   cursor: pointer;
-  transition: border-color 0.25s;
+  font-family: inherit;
+  transition: all 0.2s ease-in-out;
 }
 
-button:hover {
-  border-color: var(--cor-destaque);
+input, select {
+  font-family: inherit;
+  outline: none;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
 }

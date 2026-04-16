@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import { useSearch } from '../context/SearchContext';
 
 interface Categoria {
   id: number;
@@ -18,116 +18,138 @@ interface Equipment {
 }
 
 const truncateText = (text: string, maxLength: number) => {
-  if (text.length <= maxLength) {
-    return text;
-  }
+  if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + '...';
 };
 
 const Home: React.FC = () => {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [categories, setCategories] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Filtros Locais
+  const [selectedCategory, setSelectedCategory] = useState<number | string>("all");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "none">("asc");
+
+  // Busca Global da Navbar
+  const { searchTerm, setSearchTerm } = useSearch();
+
   useEffect(() => {
-    const fetchEquipment = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get<any[]>(`${import.meta.env.VITE_API_URL}/api/equipment`);
-        const formattedEquipment: Equipment[] = response.data.map(item => ({
+        const [eqRes, catRes] = await Promise.all([
+          axios.get<any[]>(`${import.meta.env.VITE_API_URL}/api/equipment`),
+          axios.get<Categoria[]>(`${import.meta.env.VITE_API_URL}/api/categories`)
+        ]);
+
+        const formattedEquipment: Equipment[] = eqRes.data.map(item => ({
           ...item,
           preco_diaria: parseFloat(item.preco_diaria)
         }));
+
         setEquipment(formattedEquipment);
+        setCategories(catRes.data);
         setLoading(false);
       } catch (err) {
-        setError('Falha ao carregar os equipamentos.');
+        setError('Falha ao carregar os dados.');
         setLoading(false);
-        console.error(err);
       }
     };
-
-    fetchEquipment();
+    fetchData();
   }, []);
-
-  if (loading) {
-    return (
-      <div style={{ paddingTop: '60px' }}>
-        <Navbar />
-        <div style={{ textAlign: 'center', marginTop: '2rem' }}>Carregando equipamentos...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ paddingTop: '60px' }}>
-        <Navbar />
-        <div style={{ textAlign: 'center', marginTop: '2rem', color: 'red' }}>{error}</div>
-      </div>
-    );
-  }
 
   const processarImagemParaExibicao = (urlImagem: string | null) => {
     if (!urlImagem) return 'https://via.placeholder.com/150';
-
     try {
       const parsed = JSON.parse(urlImagem);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Retorna a primeira foto + URL do backend
-        return `${import.meta.env.VITE_API_URL}${parsed[0]}`;
-      }
+      if (Array.isArray(parsed) && parsed.length > 0) return `${import.meta.env.VITE_API_URL}${parsed[0]}`;
     } catch (e) {
       if (urlImagem.startsWith('http')) return urlImagem;
       return `${import.meta.env.VITE_API_URL}${urlImagem}`;
     }
-
     return 'https://via.placeholder.com/150';
   };
 
+  // Filtragem e Ordenação
+  const filteredEquipment = equipment
+    .filter(item => {
+      const matchesSearch = item.nome.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === "all" || item.Categoria?.id === Number(selectedCategory);
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => {
+      if (sortOrder === "asc") return a.preco_diaria - b.preco_diaria;
+      if (sortOrder === "desc") return b.preco_diaria - a.preco_diaria;
+      return 0;
+    });
+
+  if (loading) return <div className="home-container" style={{ textAlign: 'center' }}>Carregando equipamentos...</div>;
+
   return (
-    <div style={{ paddingTop: '60px' }}>
-      <Navbar />
-      <div style={{ padding: '2rem' }}>
-        <h1 style={{ textAlign: 'center' }}>Nossos Equipamentos</h1>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem' }}>
-          {equipment.map((item) => (
-            <div key={item.id} style={{
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              padding: '1rem',
-              textAlign: 'center',
-              backgroundColor: '#333',
-              color: '#f8f9fa',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between'
-            }}>
-              {item.url_imagem && (
-                <img 
-                src={processarImagemParaExibicao(item.url_imagem)} 
-                alt={item.nome} 
-                style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '4px' }} 
-              />
-              )}
-              <h3>{item.nome}</h3>
-              <p style={{ fontSize: '0.9rem', flexGrow: 1 }}>{truncateText(item.descricao, 100)}</p>
-              <p><strong>Categoria:</strong> {item.Categoria?.nome || 'N/A'}</p>
-              <p><strong>R$ {item.preco_diaria.toFixed(2)}</strong></p>
-              <Link to={`/equipment/${item.id}`} style={{
-                marginTop: '0.5rem',
-                textDecoration: 'none',
-                color: '#fff',
-                backgroundColor: '#007bff',
-                padding: '0.5rem 1rem',
-                borderRadius: '5px',
-                display: 'inline-block'
-              }}>
-                Ver Detalhes
-              </Link>
-            </div>
-          ))}
+    <div className="home-container">
+      <header className="home-header">
+        <h1>Nossos Equipamentos</h1>
+        <p>Soluções profissionais para sua obra ou projeto</p>
+      </header>
+
+      {/* BARRA DE FILTROS REFINADA */}
+      <div className="filter-bar">
+        <div className="filter-group">
+          <label className="filter-label">Filtrar por Categoria</label>
+          <select 
+            value={selectedCategory} 
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="filter-select"
+          >
+            <option value="all">Todas as Categorias</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.nome}</option>
+            ))}
+          </select>
         </div>
+
+        <div className="filter-group">
+          <label className="filter-label">Ordenar por Preço</label>
+          <select 
+            value={sortOrder} 
+            onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+            className="filter-select"
+          >
+            <option value="asc">Menor Preço</option>
+            <option value="desc">Maior Preço</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="equipment-grid">
+        {filteredEquipment.length > 0 ? (
+          filteredEquipment.map((item) => (
+            <div key={item.id} className="equipment-card">
+              <div className="card-image">
+                <img src={processarImagemParaExibicao(item.url_imagem || null)} alt={item.nome} />
+                <span className="category-badge">{item.Categoria?.nome || 'Geral'}</span>
+              </div>
+              <div className="card-content">
+                <h3>{item.nome}</h3>
+                <p className="description">{truncateText(item.descricao, 80)}</p>
+                <div className="card-footer">
+                  <div className="price-tag">
+                    <span className="currency">R$</span>
+                    <span className="value">{item.preco_diaria.toFixed(2)}</span>
+                    <span className="period">/dia</span>
+                  </div>
+                  <Link to={`/equipment/${item.id}`} className="btn-details">Alugar</Link>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="no-results">
+            <p>Nenhum equipamento encontrado para esta busca.</p>
+            <button onClick={() => { setSearchTerm(""); setSelectedCategory("all"); }} className="btn-clear">Limpar Filtros</button>
+          </div>
+        )}
       </div>
     </div>
   );

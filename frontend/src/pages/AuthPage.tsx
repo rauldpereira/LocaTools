@@ -3,6 +3,7 @@ import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import Login from '../components/Login';
 import Register from '../components/Register';
 import { useAuth } from '../context/AuthContext';
+import '../styles/Auth.css';
 
 const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -18,153 +19,44 @@ const AuthPage: React.FC = () => {
   }, [isLoggedIn, navigate]);
 
   return (
-    <div style={pageContainerStyle}>
+    <div className="auth-page">
       
       {isExpired && (
-        <div style={alertBannerStyle}>
+        <div className="auth-alert">
           Sua sessão expirou por segurança. Por favor, faça login novamente.
         </div>
       )}
 
-      <div style={{ 
-          ...cardStyle, 
-          maxWidth: mode === 'register' ? '900px' : '420px',
-          transition: 'max-width 0.3s ease' 
-      }}>
-        {/* Cabeçalho do Card */}
-        <div style={headerStyle}>
-          <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#2c3e50' }}>LocaTools</h1>
-          <p style={{ margin: '5px 0 0', color: '#888', fontSize: '0.9rem' }}>
-            {mode === 'login' ? 'Bem-vindo de volta!' : 'Crie sua conta para começar'}
-          </p>
+      <div className={`auth-card ${mode}`}>
+        <div className="auth-header">
+          <h1>LocaTools</h1>
         </div>
 
-        {/* Abas de Navegação (Login / Registrar) */}
-        <div style={tabsContainerStyle}>
+        <div className="auth-tabs">
           <Link 
             to="/auth?mode=login" 
-            style={mode === 'login' ? activeTabStyle : inactiveTabStyle}
+            className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
           >
-            Entrar
+            Acessar Conta
           </Link>
           <Link 
             to="/auth?mode=register" 
-            style={mode === 'register' ? activeTabStyle : inactiveTabStyle}
+            className={`auth-tab ${mode === 'register' ? 'active' : ''}`}
           >
-            Criar Conta
+            Criar Cadastro
           </Link>
         </div>
         
-        {/* Área do Formulário */}
-        <div style={formContainerStyle}>
-          {mode === 'login' ? (
-            <>
-              <Login />
-              
-              {/* BOTÃO DE ESQUECEU A SENHA */}
-              <div style={{ textAlign: 'center', marginTop: '15px' }}>
-                <Link 
-                  to="/forgot-password" 
-                  style={{ 
-                    fontSize: '0.9rem', 
-                    color: '#007bff', 
-                    fontWeight: 'bold', 
-                    textDecoration: 'none' 
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                  onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                >
-                  🔒 Esqueceu sua senha? Clique aqui
-                </Link>
-              </div>
-            </>
-          ) : (
-            <Register />
-          )}
+        <div className="auth-form-container">
+          {mode === 'login' ? <Login /> : <Register />}
         </div>
       </div>
 
-      {/* Rodapé */}
-      <div style={{ marginTop: '1rem', color: '#999', fontSize: '0.8rem' }}>
-        © 2026 LocaTools System
+      <div className="copyright" style={{ marginTop: '20px', color: '#94a3b8', fontSize: '0.75rem' }}>
+        © 2026 LocaTools
       </div>
     </div>
   );
-};
-
-const pageContainerStyle: React.CSSProperties = {
-  minHeight: '100vh',
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: '#f4f6f8',
-  padding: '1rem'
-};
-
-const alertBannerStyle: React.CSSProperties = {
-  backgroundColor: '#f8d7da',
-  color: '#721c24',
-  padding: '12px 20px',
-  borderRadius: '8px',
-  border: '1px solid #f5c6cb',
-  marginBottom: '1rem',
-  maxWidth: '420px',
-  width: '100%',
-  textAlign: 'center',
-  fontWeight: 'bold',
-  boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
-};
-
-const cardStyle: React.CSSProperties = {
-  backgroundColor: '#ffffff',
-  borderRadius: '12px',
-  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
-  width: '100%',
-  overflow: 'hidden',
-  display: 'flex',
-  flexDirection: 'column'
-};
-
-const headerStyle: React.CSSProperties = {
-  padding: '2rem 2rem 1rem',
-  textAlign: 'center',
-  backgroundColor: '#fff'
-};
-
-const tabsContainerStyle: React.CSSProperties = {
-  display: 'flex',
-  borderBottom: '1px solid #eee',
-  marginBottom: '1.5rem'
-};
-
-const baseTabStyle: React.CSSProperties = {
-  flex: 1,
-  textAlign: 'center',
-  padding: '1rem',
-  textDecoration: 'none',
-  fontSize: '1rem',
-  fontWeight: '500',
-  transition: 'all 0.3s ease',
-  cursor: 'pointer'
-};
-
-const activeTabStyle: React.CSSProperties = {
-  ...baseTabStyle,
-  color: '#007bff',
-  borderBottom: '2px solid #007bff',
-  backgroundColor: '#fbfbfb'
-};
-
-const inactiveTabStyle: React.CSSProperties = {
-  ...baseTabStyle,
-  color: '#888',
-  borderBottom: '2px solid transparent',
-  backgroundColor: '#fff'
-};
-
-const formContainerStyle: React.CSSProperties = {
-  padding: '0 2rem 2rem',
 };
 
 export default AuthPage;

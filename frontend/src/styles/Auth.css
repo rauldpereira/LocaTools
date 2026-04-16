@@ -1,0 +1,179 @@
+/* Container Principal */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #f8fafc;
+  padding: 100px 20px 40px;
+}
+
+/* Card Principal */
+.auth-card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 450px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  transition: max-width 0.3s ease;
+}
+
+.auth-card.register {
+    max-width: 500px;
+}
+
+.auth-header {
+  padding: 40px 40px 10px;
+  text-align: center;
+}
+
+.auth-header h1 {
+  font-size: 2rem;
+  color: #0f172a;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -1px;
+}
+
+/* Abas de Navegação */
+.auth-tabs {
+  display: flex;
+  padding: 10px 40px;
+  gap: 10px;
+}
+
+.auth-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  text-decoration: none !important;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #64748b;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.auth-tab.active {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+/* Seletor Segmentado (Pílula) */
+.segmented-control {
+  display: flex;
+  background-color: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  margin: 15px 40px 25px;
+}
+
+.segment-option {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.segment-option.active {
+  background-color: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* Formulário */
+.auth-form-container {
+  padding: 0 40px 40px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: #475569;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  color: #1e293b;
+}
+
+.form-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  outline: none;
+}
+
+.form-input.error { border-color: #ef4444; }
+
+/* Força da Senha */
+.password-meter {
+  height: 4px;
+  background-color: #e2e8f0;
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.meter-fill { height: 100%; transition: width 0.3s ease; }
+.meter-text { font-size: 0.65rem; font-weight: 800; margin-top: 4px; text-transform: uppercase; }
+
+/* Erros */
+.error-msg { color: #ef4444; font-size: 0.75rem; font-weight: 600; margin-top: 4px; }
+.auth-message-box { padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 0.85rem; font-weight: 600; text-align: center; }
+.auth-message-box.error { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
+
+/* Botão Submit */
+.btn-primary-auth {
+  width: 100%;
+  background-color: #2563eb;
+  color: #ffffff;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary-auth:hover:not(:disabled) { background-color: #1d4ed8; }
+.btn-primary-auth:disabled { background-color: #94a3b8; cursor: not-allowed; }
+
+.auth-footer { text-align: center; margin-top: 25px; font-size: 0.85rem; color: #64748b; }
+.auth-footer a { color: #2563eb; font-weight: 700; text-decoration: none !important; }
+
+.security-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 20px;
+  color: #10b981;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}

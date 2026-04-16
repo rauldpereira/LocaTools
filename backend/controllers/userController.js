@@ -13,7 +13,7 @@ const registerUser = async (req, res) => {
     }
 
     // Validação de Força da Senha no Cadastro 
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(senha)) {
       return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres, contendo letras e números.' });
     }
@@ -156,7 +156,7 @@ const changePassword = async (req, res) => {
     }
 
     // Requisitos: Mínimo 8 caracteres, pelo menos uma letra e um número.
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(new_senha)) {
       return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres, contendo pelo menos letras e números.' });
     }
@@ -245,7 +245,7 @@ const createFuncionario = async (req, res) => {
       return res.status(400).json({ error: 'Preencha todos os campos obrigatórios (Nome, Email, CPF e Senha).' });
     }
 
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(senha)) {
       return res.status(400).json({ error: 'A senha do funcionário deve ter no mínimo 8 caracteres, contendo letras e números.' });
     }
@@ -426,7 +426,7 @@ const resetPasswordFromLink = async (req, res) => {
     const user = await Usuario.findByPk(decoded.id);
     if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
 
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(novaSenha)) {
         return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres, contendo letras e números.' });
     }
