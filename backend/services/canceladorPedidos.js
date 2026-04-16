@@ -20,7 +20,10 @@ const iniciarCronJobs = () => {
             if (pedidosExpirados.length === 0) return;
 
             for (const pedido of pedidosExpirados) {
-                await pedido.update({ status: 'cancelada' });
+                await pedido.update({ 
+                    status: 'cancelada',
+                    motivo_cancelamento: 'Falta de pagamento (Tempo limite de 1h excedido)'
+                });
 
                 if (pedido.ItemReservas && pedido.ItemReservas.length > 0) {
                     for (const item of pedido.ItemReservas) {

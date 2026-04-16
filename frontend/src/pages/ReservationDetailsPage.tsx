@@ -96,6 +96,7 @@ interface OrderDetails {
   data_assinatura_devolucao?: string;
   solicitou_devolucao?: boolean;
   coleta_confirmada?: boolean;
+  motivo_cancelamento?: string;
 }
 
 const parseDateStringAsLocal = (dateString: string) => {
@@ -814,6 +815,33 @@ const ReservationDetailsPage: React.FC = () => {
       </div>
 
       <h1 style={{ marginTop: 0, color: "#2c3e50" }}>Pedido #{order.id}</h1>
+
+      {order.status === "cancelada" && (
+        <div style={{
+          backgroundColor: "#fff5f5",
+          border: "1px solid #feb2b2",
+          borderRadius: "8px",
+          padding: "20px",
+          marginBottom: "20px",
+          color: "#c53030"
+        }}>
+          <h3 style={{ margin: "0 0 10px 0" }}>Reserva Cancelada</h3>
+          <p style={{ margin: 0 }}>
+            <strong>Motivo:</strong> {order.motivo_cancelamento || "Não informado"}
+          </p>
+          {Number(order.taxa_cancelamento) > 0 && (
+            <p style={{ margin: "10px 0 0 0" }}>
+              <strong>Taxa aplicada:</strong> R$ {Number(order.taxa_cancelamento).toFixed(2)}
+            </p>
+          )}
+          {Number(order.valor_reembolsado) > 0 && (
+            <p style={{ margin: "5px 0 0 0", color: "#2f855a" }}>
+              <strong>Valor Reembolsado:</strong> R$ {Number(order.valor_reembolsado).toFixed(2)}
+            </p>
+          )}
+        </div>
+      )}
+
       <HorarioFuncionamento />
 
       {/* LINHA DO TEMPO (TIMELINE) */}

@@ -1117,7 +1117,8 @@ const cancelOrder = async (req, res) => {
         await order.update({
             status: 'cancelada',
             taxa_cancelamento,
-            valor_reembolsado
+            valor_reembolsado,
+            motivo_cancelamento: 'Cancelado pelo usuário'
         });
 
         res.status(200).json({ message: mensagem });

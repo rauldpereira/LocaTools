@@ -128,6 +128,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
         allowNull: false
+      },
+      motivo_cancelamento: {
+        type: DataTypes.STRING,
+        allowNull: true
       }
     },
     {
