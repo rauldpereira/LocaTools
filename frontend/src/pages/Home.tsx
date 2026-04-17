@@ -26,7 +26,6 @@ const Home: React.FC = () => {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Filtros Locais
   const [selectedCategory, setSelectedCategory] = useState<number | string>("all");

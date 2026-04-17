@@ -243,20 +243,6 @@ const MyReservationsPage: React.FC = () => {
         )}
       </div>
 
-      {message && (
-        <p
-          style={{
-            padding: "1rem",
-            backgroundColor: "#f0f0f0",
-            border: "1px solid #ccc",
-            color: "#333",
-            borderRadius: "4px",
-          }}
-        >
-          {message}
-        </p>
-      )}
-
       {/* CARD DE FIDELIDADE */}
       {loyaltyConfig && loyaltyConfig.ativo && orders.length > 0 && (
         <div style={{
