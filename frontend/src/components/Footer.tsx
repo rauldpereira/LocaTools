@@ -82,7 +82,7 @@ const Footer: React.FC = () => {
               </div>
             </div>
 
-            <div className="footer__payment" style={{ marginTop: '12px' }}>
+            <div className="footer__payment">
               <p className="footer__payment-title">Pix</p>
               <div className="footer__payment-icons icon-pix">
                 <svg width="22" height="22" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">

@@ -23,7 +23,11 @@ const AuthPage: React.FC = () => {
       
       {isExpired && (
         <div className="auth-alert">
-          Sua sessão expirou por segurança. Por favor, faça login novamente.
+          <div className="auth-alert-icon">⚠️</div>
+          <div className="auth-alert-content">
+            <strong>Sessão Expirada</strong>
+            <p>Por segurança, você foi desconectado. Por favor, faça login novamente para continuar.</p>
+          </div>
         </div>
       )}
 

@@ -125,7 +125,7 @@ const Home: React.FC = () => {
       <div className="equipment-grid">
         {filteredEquipment.length > 0 ? (
           filteredEquipment.map((item) => (
-            <div key={item.id} className="equipment-card">
+            <Link key={item.id} to={`/equipment/${item.id}`} className="equipment-card">
               <div className="card-image">
                 <img src={processarImagemParaExibicao(item.url_imagem || null)} alt={item.nome} />
                 <span className="category-badge">{item.Categoria?.nome || 'Geral'}</span>
@@ -139,10 +139,10 @@ const Home: React.FC = () => {
                     <span className="value">{item.preco_diaria.toFixed(2)}</span>
                     <span className="period">/dia</span>
                   </div>
-                  <Link to={`/equipment/${item.id}`} className="btn-details">Alugar</Link>
+                  <span className="btn-details">Alugar</span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))
         ) : (
           <div className="no-results">

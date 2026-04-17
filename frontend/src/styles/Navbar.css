@@ -25,14 +25,14 @@
 .navbar-search {
     position: relative;
     width: 100%;
-    max-width: 320px;
+    max-width: 450px;
     margin-left: 40px; /* Espaço curto do logo */
     margin-right: auto; /* Empurra os links para o final da direita */
 }
 
 .navbar-search-input {
     width: 100%;
-    padding: 10px 15px 10px 40px;
+    padding: 10px 45px 10px 15px;
     border-radius: 10px;
     border: 1.5px solid #e2e8f0;
     background-color: #f8fafc;

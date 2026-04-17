@@ -33,8 +33,9 @@
 /* Payment Block Styles */
 .footer__payment-block {
     display: flex;
-    flex-direction: column;
-    gap: 15px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 20px;
 }
 
 .footer__payment-title {
@@ -93,6 +94,11 @@
     text-align: center;
   }
   .footer-about p { margin: 0 auto; }
+  .footer__payment-block {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
   .footer__payment-icons { justify-content: center; }
   .trust-item-v2 { justify-content: center; text-align: left; }
 }
