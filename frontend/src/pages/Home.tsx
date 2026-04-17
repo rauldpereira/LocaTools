@@ -52,7 +52,6 @@ const Home: React.FC = () => {
         setCategories(catRes.data);
         setLoading(false);
       } catch (err) {
-        setError('Falha ao carregar os dados.');
         setLoading(false);
       }
     };

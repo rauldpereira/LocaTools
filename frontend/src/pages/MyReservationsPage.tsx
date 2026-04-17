@@ -30,7 +30,6 @@ const MyReservationsPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { token } = useAuth();
-  const [message, setMessage] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("updated_desc");
