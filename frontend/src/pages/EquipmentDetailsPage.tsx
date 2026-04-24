@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import AvailabilityCalendarModal from '../components/AvailabilityCalendarModal';
+import '../styles/EquipmentDetailsPage.css';
 
 interface Categoria {
   id: number;
@@ -24,6 +25,7 @@ interface EquipmentDetails {
 
 const EquipmentDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [equipment, setEquipment] = useState<EquipmentDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,26 @@ const EquipmentDetailsPage: React.FC = () => {
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
+  };
+
+  const handleCategoryClick = () => {
+    if (equipment?.Categoria) {
+      navigate(`/?category=${equipment.Categoria.id}`);
+    }
+  };
+
+  const handleNextImage = () => {
+    if (gallery.length <= 1) return;
+    const currentIndex = gallery.indexOf(mainImage);
+    const nextIndex = (currentIndex + 1) % gallery.length;
+    setMainImage(gallery[nextIndex]);
+  };
+
+  const handlePrevImage = () => {
+    if (gallery.length <= 1) return;
+    const currentIndex = gallery.indexOf(mainImage);
+    const prevIndex = (currentIndex - 1 + gallery.length) % gallery.length;
+    setMainImage(gallery[prevIndex]);
   };
 
   useEffect(() => {
@@ -49,30 +71,28 @@ const EquipmentDetailsPage: React.FC = () => {
         setEquipment({
           ...data,
           preco_diaria: parseFloat(data.preco_diaria),
+          preco_semanal: data.preco_semanal ? parseFloat(data.preco_semanal) : undefined,
+          preco_quinzenal: data.preco_quinzenal ? parseFloat(data.preco_quinzenal) : undefined,
+          preco_mensal: data.preco_mensal ? parseFloat(data.preco_mensal) : undefined,
           total_quantidade: parseInt(data.total_quantidade)
         });
 
-        // --- Lógica para processar as imagens ---
         if (data.url_imagem) {
           try {
             const parsed = JSON.parse(data.url_imagem);
-            
             if (Array.isArray(parsed) && parsed.length > 0) {
-              // Adiciona o domínio do backend em cada URL
               const fullUrls = parsed.map((url: string) => `${import.meta.env.VITE_API_URL}${url}`);
               setGallery(fullUrls);
-              setMainImage(fullUrls[0]); // Define a primeira como capa
+              setMainImage(fullUrls[0]);
             }
           } catch (e) {
             const singleUrl = data.url_imagem.startsWith('http') 
               ? data.url_imagem 
               : `${import.meta.env.VITE_API_URL}${data.url_imagem}`;
-            
             setGallery([singleUrl]);
             setMainImage(singleUrl);
           }
         }
-
       } catch (err) {
         setError('Falha ao carregar os detalhes do equipamento.');
         console.error(err);
@@ -89,108 +109,124 @@ const EquipmentDetailsPage: React.FC = () => {
 
   return (
     <>
-      <div style={{ padding: '2rem', marginTop: '60px', display: 'flex', justifyContent: 'center' }}>
-        <div style={{ maxWidth: '1200px', width: '100%' }}>
-          <h1 style={{ marginBottom: '2rem' }}>{equipment.nome}</h1>
+      <div className="equipment-details-container">
+        <div className="equipment-details-content">
           
-          <div style={{ display: 'flex', gap: '3rem', flexWrap: 'wrap' }}>
-            
-            {/* --- COLUNA DA ESQUERDA: GALERIA --- */}
-            <div style={{ flex: '1 1 400px', maxWidth: '600px' }}>
-              
-              {/* Foto Grande Principal */}
-              <div style={{ 
-                width: '100%', 
-                height: '400px', 
-                backgroundColor: '#f8f9fa', 
-                border: '1px solid #ddd',
-                borderRadius: '8px', 
-                overflow: 'hidden', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center'
-              }}>
-                <img
-                  src={mainImage}
-                  alt={equipment.nome}
-                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                />
-              </div>
+          {/* Breadcrumb: Equipamentos > Categoria */}
+          <div className="breadcrumb">
+            <span className="breadcrumb-link" onClick={() => navigate('/')}>Equipamentos</span>
+            {' > '}
+            <span className="breadcrumb-link" onClick={handleCategoryClick}>{equipment.Categoria?.nome}</span>
+          </div>
 
-              {/* Tira de Miniaturas (Só vai aparecer se tiver + de 1 foto) */}
+          <div className="details-main-grid">
+            
+            {/* --- COLUNA DA ESQUERDA: GALERIA (THUMBS + MAIN) --- */}
+            <div className="gallery-column">
+              
               {gallery.length > 1 && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '15px', overflowX: 'auto', paddingBottom: '5px' }}>
+                <div className="thumbnails-container">
                   {gallery.map((img, index) => (
                     <img
                       key={index}
                       src={img}
                       alt={`Miniatura ${index}`}
-                      onClick={() => setMainImage(img)} // Ao clicar, troca a foto principal
-                      style={{ 
-                        width: '80px', 
-                        height: '80px', 
-                        objectFit: 'cover', 
-                        borderRadius: '4px', 
-                        cursor: 'pointer',
-                        border: mainImage === img ? '2px solid #007bff' : '1px solid #ddd', // Destaca a selecionada
-                        opacity: mainImage === img ? 1 : 0.7
-                      }}
+                      onClick={() => setMainImage(img)}
+                      className={`thumbnail-img ${mainImage === img ? 'active' : ''}`}
                     />
                   ))}
                 </div>
               )}
+
+              <div className="main-image-container">
+                {gallery.length > 1 && (
+                  <button className="nav-arrow prev" onClick={handlePrevImage}>
+                    <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                  </button>
+                )}
+                
+                <img
+                  src={mainImage}
+                  alt={equipment.nome}
+                  className="main-image"
+                />
+
+                {gallery.length > 1 && (
+                  <button className="nav-arrow next" onClick={handleNextImage}>
+                    <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* --- COLUNA DA DIREITA: DETALHES --- */}
-            <div style={{ flex: '1 1 300px' }}>
-              <div style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                <p style={{ fontSize: '1.1rem', lineHeight: '1.6', color: '#555', marginBottom: '1.5rem' }}>
+            {/* --- COLUNA DA DIREITA: DETALHES E PREÇOS --- */}
+            <div className="details-column">
+              <div className="price-card-container">
+                <div>
+                  <h1 className="equipment-title">{equipment.nome}</h1>
+                  
+                  <div className="badge-container">
+                    <span className="info-badge">
+                      {equipment.Categoria?.nome}
+                    </span>
+                    <span className="info-badge">
+                      Estoque: {equipment.total_quantidade} unidades
+                    </span>
+                  </div>
+                  
+                  <h3 className="section-subtitle">Planos de Locação</h3>
+                  
+                  <div className="price-grid">
+                    <div className="price-item">
+                      <span className="price-label">Diária</span>
+                      <span className="price-value">R$ {equipment.preco_diaria.toFixed(2)}</span>
+                    </div>
+
+                    {equipment.preco_semanal && (
+                      <div className="price-item promo">
+                        <span className="price-label">
+                          Semanal <span className="discount">-{Math.round((1 - (equipment.preco_semanal / 7 / equipment.preco_diaria)) * 100)}%</span>
+                        </span>
+                        <span className="price-value">R$ {equipment.preco_semanal.toFixed(2)}</span>
+                        <span className="daily-equivalent">R$ {(equipment.preco_semanal / 7).toFixed(2)} / dia</span>
+                      </div>
+                    )}
+
+                    {equipment.preco_quinzenal && (
+                      <div className="price-item promo">
+                        <span className="price-label">
+                          15 Dias <span className="discount">-{Math.round((1 - (equipment.preco_quinzenal / 15 / equipment.preco_diaria)) * 100)}%</span>
+                        </span>
+                        <span className="price-value">R$ {equipment.preco_quinzenal.toFixed(2)}</span>
+                        <span className="daily-equivalent">R$ {(equipment.preco_quinzenal / 15).toFixed(2)} / dia</span>
+                      </div>
+                    )}
+
+                    {equipment.preco_mensal && (
+                      <div className="price-item promo">
+                        <span className="price-label">
+                          Mensal <span className="discount">-{Math.round((1 - (equipment.preco_mensal / 30 / equipment.preco_diaria)) * 100)}%</span>
+                        </span>
+                        <span className="price-value">R$ {equipment.preco_mensal.toFixed(2)}</span>
+                        <span className="daily-equivalent">R$ {(equipment.preco_mensal / 30).toFixed(2)} / dia</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button className="btn-schedule" onClick={handleOpenModal}>
+                  Ver Disponibilidade e Agendar
+                </button>
+              </div>
+            </div>
+
+            {/* --- DESCRIÇÃO ABAIXO --- */}
+            <div className="full-description-section">
+              <h3 className="description-title">Descrição Completa</h3>
+              <div className="description-card">
+                <p className="description-text">
                   {equipment.descricao}
                 </p>
-                
-                <hr style={{ border: '0', borderTop: '1px solid #eee', margin: '1.5rem 0' }} />
-
-                <p style={{ marginBottom: '10px', color: "#000" }}><strong>Categoria:</strong> {equipment.Categoria?.nome}</p>
-                <p style={{ marginBottom: '10px', color: "#000" }}><strong>Total em Estoque:</strong> {equipment.total_quantidade}</p>
-                
-                <p style={{ marginTop: '1.5rem', fontSize: '1.5rem', color: '#28a745', fontWeight: 'bold' }}>
-                  R$ {equipment.preco_diaria.toFixed(2)} <span style={{ fontSize: '1rem', color: '#666', fontWeight: 'normal' }}>/ dia</span>
-                </p>
-
-                {equipment.preco_semanal && (
-                  <p style={{ marginTop: '0.5rem', fontSize: '1.2rem', color: '#28a745' }}>
-                    R$ {Number(equipment.preco_semanal).toFixed(2)} <span style={{ fontSize: '0.9rem', color: '#666' }}>/ semana (7 dias)</span>
-                  </p>
-                )}
-                {equipment.preco_quinzenal && (
-                  <p style={{ marginTop: '0.5rem', fontSize: '1.2rem', color: '#28a745' }}>
-                    R$ {Number(equipment.preco_quinzenal).toFixed(2)} <span style={{ fontSize: '0.9rem', color: '#666' }}>/ quinzena (15 dias)</span>
-                  </p>
-                )}
-                {equipment.preco_mensal && (
-                  <p style={{ marginTop: '0.5rem', fontSize: '1.2rem', color: '#28a745' }}>
-                    R$ {Number(equipment.preco_mensal).toFixed(2)} <span style={{ fontSize: '0.9rem', color: '#666' }}>/ mês (30 dias)</span>
-                  </p>
-                )}
-
-                <button
-                  onClick={handleOpenModal}
-                  style={{ 
-                    marginTop: '2rem', 
-                    padding: '1rem', 
-                    fontSize: '1.1rem', 
-                    width: '100%',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  Ver Agendamento e Disponibilidade
-                </button>
               </div>
             </div>
 

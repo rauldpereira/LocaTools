@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useSearch } from '../context/SearchContext';
 
 interface Categoria {
@@ -26,6 +26,7 @@ const Home: React.FC = () => {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const location = useLocation();
 
   // Filtros Locais
   const [selectedCategory, setSelectedCategory] = useState<number | string>("all");
@@ -33,6 +34,14 @@ const Home: React.FC = () => {
 
   // Busca Global da Navbar
   const { searchTerm, setSearchTerm } = useSearch();
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const catId = queryParams.get('category');
+    if (catId) {
+      setSelectedCategory(catId);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const fetchData = async () => {
