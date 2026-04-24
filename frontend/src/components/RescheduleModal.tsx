@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import './Admin/GerenciamentoCalendario.css';
+import '../styles/CalendarCommon.css';
 import { parseDateStringAsLocal } from '../utils/dateUtils';
 import { useAuth } from '../context/AuthContext';
 
@@ -322,7 +322,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
 
   return (
     <div style={modalOverlayStyle} onClick={onClose}>
-      <div style={modalContentStyle} onClick={handleContentClick}>
+      <div className="availability-calendar-container" style={modalContentStyle} onClick={handleContentClick}>
         <button onClick={onClose} style={closeButtonStyle}>&times;</button>
         
         <div style={{ marginBottom: '20px' }}>
@@ -374,6 +374,8 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
                         tileDisabled={tileDisabled}
                         minDetail="month"
                         maxDetail="month"
+                        prev2Label={null}
+                        next2Label={null}
                     />
                 </>
             )}
@@ -445,11 +447,6 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-        .react-calendar {
-            width: 100% !important;
-            border: none !important;
-            font-family: inherit !important;
         }
         @media (max-width: 480px) {
             h2 { fontSize: 1.2rem !important; }

@@ -1,0 +1,263 @@
+/* Estilos para o Modal de Disponibilidade */
+
+.availability-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.availability-modal-content {
+    background-color: #fff;
+    color: #333;
+    padding: 2rem 2.5rem 2.5rem;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 650px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+}
+
+.availability-modal-close {
+    position: absolute;
+    top: 25px;
+    right: 25px;
+    background: transparent;
+    border: none;
+    font-size: 1.8rem;
+    color: #999;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    line-height: 1;
+    padding: 0;
+    z-index: 10;
+}
+
+.availability-modal-close:hover {
+    color: #333;
+    transform: scale(1.1);
+}
+
+.availability-modal-subtitle {
+    text-align: center;
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 0 40px;
+}
+
+.availability-modal-legend {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid #eee;
+}
+
+.availability-modal-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #666;
+    font-weight: 600;
+}
+
+.availability-modal-legend-circle {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.availability-modal-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 12px 15px;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    border: 1px solid #ffeeba;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.availability-modal-select-container {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.availability-modal-label {
+    font-weight: bold;
+    font-size: 0.85rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.availability-modal-select {
+    padding: 12px 15px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    color: #333;
+    font-size: 1rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.availability-modal-select:focus {
+    border-color: #007bff;
+}
+
+.availability-modal-calendar-wrapper {
+    margin-bottom: 2rem;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 12px;
+    border: 1px solid #eee;
+}
+
+.availability-modal-selection-details {
+    margin-top: 1rem;
+    padding: 1.5rem;
+    background-color: #f1f4f9;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.availability-modal-section-title {
+    font-size: 0.85rem;
+    color: #888;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 8px 0;
+}
+
+.availability-modal-quantity-container {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.availability-modal-quantity-input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+    outline: none;
+}
+
+.availability-modal-quantity-input:focus {
+    border-color: #007bff;
+}
+
+.availability-modal-btn-cart {
+    flex: 2 1 200px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+    transition: all 0.2s;
+}
+
+.availability-modal-btn-cart:hover {
+    background-color: #0069d9;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,123,255,0.4);
+}
+
+/* Horário de Funcionamento Toggle */
+.hours-toggle-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.btn-hours-toggle {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    color: #555;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-hours-toggle:hover {
+    background-color: #e9ecef;
+    border-color: #ccc;
+    color: #333;
+}
+
+.hours-bubble {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    z-index: 100;
+    width: 280px;
+    animation: fadeInDown 0.2s ease-out;
+}
+
+.hours-bubble::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-top: 1px solid #ddd;
+    border-left: 1px solid #ddd;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -10px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}

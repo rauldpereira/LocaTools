@@ -1,0 +1,175 @@
+
+.availability-calendar-container .react-calendar {
+    width: 100% !important;
+    border: none !important;
+    font-family: inherit !important;
+    background: transparent !important;
+}
+
+.availability-calendar-container .react-calendar__tile {
+    padding: 12px 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    transition: all 0.2s ease !important;
+    border: 0.5px solid rgba(0, 0, 0, 0.08) !important;
+    box-sizing: border-box !important;
+}
+
+.availability-calendar-container .react-calendar__tile--active,
+.availability-calendar-container .react-calendar__tile--range,
+.availability-calendar-container .day-blue,
+.availability-calendar-container .day-green,
+.availability-calendar-container .day-yellow,
+.availability-calendar-container .day-red {
+    z-index: 2 !important;
+    position: relative !important;
+    border-radius: 4px !important;
+    outline: 1px solid transparent; 
+}
+
+
+/* Cores de Status */
+.availability-calendar-container .day-green {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.availability-calendar-container .day-yellow {
+    background-color: #ffc107 !important;
+    color: #333 !important;
+}
+
+.availability-calendar-container .day-red {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+.availability-calendar-container .day-closed {
+    background-color: #6c757d !important;
+    color: white !important;
+    opacity: 0.6;
+}
+
+/* Estilo da Seleção (Azul) */
+.availability-calendar-container .day-blue,
+.availability-calendar-container .react-calendar__tile--active,
+.availability-calendar-container .react-calendar__tile--range,
+.availability-calendar-container .react-calendar__tile--rangeStart,
+.availability-calendar-container .react-calendar__tile--rangeEnd,
+.availability-calendar-container .react-calendar__tile--rangeBoth {
+    background-color: #007bff !important;
+    color: white !important;
+    opacity: 1 !important;
+}
+
+/* Garante que o tile ativo em visualizações de também seja azul */
+.availability-calendar-container .react-calendar__year-view .react-calendar__tile--active,
+.availability-calendar-container .react-calendar__decade-view .react-calendar__tile--active {
+    background-color: #007bff !important;
+    color: white !important;
+}
+
+.availability-calendar-container .day-neighboring-month {
+    color: #ccc !important;
+    background: none !important;
+}
+
+/* Cores para o Calendário de Unidades */
+.alugado-cliente {
+    background-color: #cc0000 !important;
+    color: white !important;
+    border-radius: 4px;
+}
+
+.bloqueio-manutencao {
+    background-color: #ffc800 !important;
+    color: #333 !important;
+    border-radius: 4px;
+}
+
+/* Estilo para o Reagendamento */
+.availability-calendar-container .day-selected-reschedule {
+    background-color: #3498db !important;
+    color: white !important;
+    border-radius: 8px !important;
+}
+
+/* Hover effects */
+.availability-calendar-container .react-calendar__tile:enabled:hover,
+.availability-calendar-container .react-calendar__tile:enabled:focus {
+    filter: brightness(0.9);
+}
+
+/* Navegação do Calendário */
+.availability-calendar-container .react-calendar__navigation {
+    display: flex;
+    height: 44px;
+    margin-bottom: 10px;
+}
+
+.availability-calendar-container .react-calendar__navigation button {
+    min-width: 44px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #007bff;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 8px;
+}
+
+.availability-calendar-container .react-calendar__navigation button:enabled:hover {
+    background-color: #f1f4f9;
+}
+
+.availability-calendar-container .react-calendar__navigation button:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Estilo do Título do Mês  */
+.availability-calendar-container .react-calendar__navigation__label {
+    flex-grow: 1;
+    font-size: 1.1rem !important;
+    text-transform: capitalize;
+    color: #333 !important;
+}
+
+.day-green {
+    background-color: #28a745 !important;
+    color: white !important;
+    border-radius: 4px;
+}
+
+.day-yellow {
+    background-color: #ffc107 !important;
+    color: #333 !important;
+    border-radius: 4px;
+}
+
+.day-red {
+    background-color: #dc3545 !important;
+    color: white !important;
+    border-radius: 4px;
+}
+
+.day-closed {
+    background-color: #6c757d !important;
+    color: white !important;
+    opacity: 0.6;
+    border-radius: 4px;
+}
+
+.day-blue {
+    background-color: #007bff !important;
+    color: white !important;
+    border-radius: 4px;
+}
+
+.day-neighboring-month {
+    color: #ccc !important;
+    background: none !important;
+}

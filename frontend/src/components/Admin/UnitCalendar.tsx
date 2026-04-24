@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Calendar from 'react-calendar';
 import axios from 'axios';
 import 'react-calendar/dist/Calendar.css';
+import '../../styles/CalendarCommon.css';
 
 interface Reservation {
     id: number;
@@ -151,7 +152,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
     today.setHours(0, 0, 0, 0);
 
     return (
-        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className="availability-calendar-container" style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             
             <Calendar
                 tileClassName={getTileClassName}
@@ -159,6 +160,10 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                 onChange={handleDateChange}
                 value={isPicker ? pickerSelection : undefined} 
                 minDate={today}
+                minDetail="month"
+                maxDetail="month"
+                prev2Label={null}
+                next2Label={null}
             />
             
             <div style={{ fontSize: '0.8rem', marginTop: '5px', display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '15px' }}>

@@ -72,16 +72,45 @@ const HorarioFuncionamentoDisplay: React.FC = () => {
   if (linhas.length === 0) return null;
 
   return (
-    <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #eee', marginTop: '20px' }}>
-      <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '1rem' }}>Horários de Retirada e Devolução</h4>
-      <div style={{ fontSize: '0.9rem', color: '#555' }}>
+    <div className="horario-display-container">
+      <h4 className="horario-display-title">Horários de Funcionamento</h4>
+      <div className="horario-display-list">
         {linhas.map((linha, index) => (
-          <div key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', borderBottom: '1px dotted #ccc', paddingBottom: '2px' }}>
-            <span style={{ fontWeight: 'bold' }}>{linha.dias}:</span>
-            <span>{linha.horas}</span>
+          <div key={index} className="horario-display-row">
+            <span className="horario-display-day">{linha.dias}:</span>
+            <span className="horario-display-hours">{linha.horas}</span>
           </div>
         ))}
       </div>
+      <style>{`
+        .horario-display-container {
+            width: 100%;
+        }
+        .horario-display-title {
+            margin: 0 0 12px 0;
+            color: #333;
+            font-size: 0.95rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        .horario-display-list {
+            font-size: 0.85rem;
+            color: #555;
+        }
+        .horario-display-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            border-bottom: 1px dotted #ddd;
+            padding-bottom: 4px;
+        }
+        .horario-display-day {
+            font-weight: 600;
+        }
+        .horario-display-hours {
+            color: #666;
+        }
+      `}</style>
     </div>
   );
 };

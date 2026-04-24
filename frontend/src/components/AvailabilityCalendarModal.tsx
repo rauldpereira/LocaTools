@@ -4,6 +4,8 @@ import Calendar from 'react-calendar';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import HorarioFuncionamento from './HorarioFuncionamentoDisplay';
+import '../styles/CalendarCommon.css';
+import '../styles/AvailabilityCalendarModal.css';
 
 interface IDiaStatus {
     data: string;
@@ -40,6 +42,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
 
     const [loading, setLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [showHours, setShowHours] = useState(false);
 
     // Ajusta o range automaticamente se o período mudar
     useEffect(() => {
@@ -211,9 +214,10 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
             return 'day-neighboring-month';
         }
 
-        // Seleção do usuário (Azul)
-        if (selectedRange && selectedRange.length === 2) {
-            const [start, end] = selectedRange;
+        // Seleção do usuário
+        if (selectedRange && selectedRange.length >= 1) {
+            const start = selectedRange[0];
+            const end = selectedRange[1] || start;
             if (date >= start && date <= end) {
                 return 'day-blue';
             }
@@ -330,140 +334,160 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
     const handleContentClick = (e: React.MouseEvent) => e.stopPropagation();
 
     return (
-        <div style={modalOverlayStyle} onClick={onClose}>
-            <div style={modalContentStyle} onClick={handleContentClick}>
-                <button onClick={onClose} style={{ position: 'absolute', top: 15, right: 15, background: 'none', border: 'none', fontSize: '1.5rem', color: 'var(--cor-texto-principal)', cursor: 'pointer' }}>&times;</button>
-                <h2>Disponibilidade para {equipment.nome}</h2>
-                <p>Selecione o período desejado no calendário.</p>
-                <p style={{ textAlign: 'center', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                    Disponibilidade
+        <div className="availability-modal-overlay" onClick={onClose}>
+            <div className="availability-modal-content availability-calendar-container" onClick={handleContentClick}>
+                <button onClick={onClose} className="availability-modal-close">&times;</button>
+                
+                <p className="availability-modal-subtitle" style={{ marginTop: '10px' }}>
+                    {equipment.nome}
                 </p>
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div className="day-green" style={{ width: 15, height: 15, marginRight: 5 }}></div> Alta
+
+                <div className="availability-modal-legend">
+                    <div className="availability-modal-legend-item">
+                        <div className="day-green availability-modal-legend-circle"></div> <span>Alta</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div className="day-yellow" style={{ width: 15, height: 15, marginRight: 5 }}></div> Baixa
+                    <div className="availability-modal-legend-item">
+                        <div className="day-yellow availability-modal-legend-circle"></div> <span>Baixa</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div className="day-red" style={{ width: 15, height: 15, marginRight: 5 }}></div> Indisponível
+                    <div className="availability-modal-legend-item">
+                        <div className="day-red availability-modal-legend-circle"></div> <span>Indisponível</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div className="day-closed" style={{ width: 15, height: 15, marginRight: 5 }}></div> Loja Fechada
+                    <div className="availability-modal-legend-item">
+                        <div className="day-closed availability-modal-legend-circle"></div> <span>Loja Fechada</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div className="day-blue" style={{ width: 15, height: 15, marginRight: 5 }}></div> Selecionado
+                    <div className="availability-modal-legend-item">
+                        <div className="day-blue availability-modal-legend-circle"></div> <span>Selecionado</span>
+                    </div>
+                    
+                    <div className="hours-toggle-container" style={{ margin: 0 }}>
+                        <button 
+                            className="btn-hours-toggle"
+                            onClick={() => setShowHours(!showHours)}
+                            style={{ padding: '4px 10px', borderRadius: '8px' }}
+                        >
+                            Horário de Funcionamento {showHours ? '▲' : '▼'}
+                        </button>
+                        {showHours && (
+                            <div className="hours-bubble">
+                                <HorarioFuncionamento />
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {storeConfig?.horario_limite_hoje && isTodayPastLimit() && (
-                    <div style={{
-                        backgroundColor: '#fff3cd',
-                        color: '#856404',
-                        padding: '10px',
-                        borderRadius: '8px',
-                        marginBottom: '1rem',
-                        fontSize: '0.9rem',
-                        border: '1px solid #ffeeba',
-                        textAlign: 'center'
-                    }}>
+                    <div className="availability-modal-warning">
                         ⚠️ <strong>Atenção:</strong> O horário limite para locações para hoje ({storeConfig.horario_limite_hoje}) já passou. O dia de hoje está indisponível para novas reservas.
                     </div>
                 )}
 
-                <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <label style={{ fontWeight: 'bold' }}>Tipo de Locação:</label>
+                <div className="availability-modal-select-container">
+                    <label className="availability-modal-label">
+                        Plano de Locação:
+                    </label>
                     <select 
                         value={rentalPeriod} 
                         onChange={(e) => setRentalPeriod(e.target.value as any)}
-                        style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc', background: '#fff', color: '#333' }}
+                        className="availability-modal-select"
                     >
-                        <option value="diaria">Diária (Livre)</option>
-                        {equipment.preco_semanal && <option value="semanal">Semanal (7 dias)</option>}
-                        {equipment.preco_quinzenal && <option value="quinzenal">Quinzena (15 dias)</option>}
-                        {equipment.preco_mensal && <option value="mensal">Mensal (30 dias)</option>}
+                        <option value="diaria">Diária (Livre) - {Number(equipment.preco_diaria).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/dia</option>
+                        {equipment.preco_semanal && <option value="semanal">Semanal (7 dias) - {Number(equipment.preco_semanal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>}
+                        {equipment.preco_quinzenal && <option value="quinzenal">Quinzena (15 dias) - {Number(equipment.preco_quinzenal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>}
+                        {equipment.preco_mensal && <option value="mensal">Mensal (30 dias) - {Number(equipment.preco_mensal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>}
                     </select>
                 </div>
 
-                {loading ? <p>Carregando calendário...</p> :
-                    errorMessage ? <p style={{ color: 'red' }}>{errorMessage}</p> : (
-                        <Calendar
-                            onChange={(value) => {
-                                if (rentalPeriod === 'diaria') {
-                                    // No modo diária, value é um array de [start, end] se selectRange={true}
-                                    setSelectedRange(value as Date[]);
-                                } else {
-                                    // No modo fixo (semanal/mensal/etc), value costuma vir como uma única Date
-                                    const selectedDate = Array.isArray(value) ? value[0] : (value as Date);
-                                    if (!selectedDate) return;
+                <div className="availability-modal-calendar-wrapper">
+                    {loading ? (
+                        <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>Carregando calendário...</div>
+                    ) : errorMessage ? (
+                        <p style={{ color: '#dc3545', textAlign: 'center', padding: '20px' }}>{errorMessage}</p>
+                    ) : (
+                            <Calendar
+                                onChange={(value) => {
+                                    if (rentalPeriod === 'diaria') {
+                                        // Armazena como array no nosso estado para consistência
+                                        const range = Array.isArray(value) ? value : [value as Date];
+                                        setSelectedRange(range);
+                                    } else {
+                                        const selectedDate = Array.isArray(value) ? value[0] : (value as Date);
+                                        if (!selectedDate) return;
 
-                                    const start = selectedDate;
-                                    let end = new Date(start);
-                                    if (rentalPeriod === 'semanal') end.setDate(start.getDate() + 6);
-                                    else if (rentalPeriod === 'quinzenal') end.setDate(start.getDate() + 14);
-                                    else if (rentalPeriod === 'mensal') end.setDate(start.getDate() + 29);
-                                    setSelectedRange([start, end]);
+                                        const start = selectedDate;
+                                        let end = new Date(start);
+                                        if (rentalPeriod === 'semanal') end.setDate(start.getDate() + 6);
+                                        else if (rentalPeriod === 'quinzenal') end.setDate(start.getDate() + 14);
+                                        else if (rentalPeriod === 'mensal') end.setDate(start.getDate() + 29);
+                                        setSelectedRange([start, end]);
+                                    }
+                                }}
+                                
+                                value={
+                                    rentalPeriod === 'diaria' 
+                                        ? (selectedRange && selectedRange.length === 1 ? selectedRange[0] : selectedRange)
+                                        : (selectedRange ? selectedRange[0] : null)
                                 }
-                            }}
-                            selectRange={rentalPeriod === 'diaria'}
-                            minDate={minDate}
-                            maxDate={maxDate}
-                            activeStartDate={currentMonthView}
-                            onActiveStartDateChange={({ activeStartDate }) =>
-                                setCurrentMonthView(activeStartDate || new Date())
-                            }
-                            tileClassName={getTileClassName}
-                            tileDisabled={tileDisabled}
-                            minDetail="month"
-                            maxDetail="month"
-                        />
-                    )}
+                                selectRange={rentalPeriod === 'diaria'}
+                                minDate={minDate}
+                                maxDate={maxDate}
+                                activeStartDate={currentMonthView}
+                                onActiveStartDateChange={({ activeStartDate }) =>
+                                    setCurrentMonthView(activeStartDate || new Date())
+                                }
+                                tileClassName={getTileClassName}
+                                tileDisabled={tileDisabled}
+                                minDetail="year"
+                                maxDetail="month"
+                                prev2Label={null}
+                                next2Label={null}
+                            />
 
-                {availableForRange !== null && (
-                    <div style={{ marginTop: '1rem', borderTop: '1px solid var(--cor-borda)', paddingTop: '1rem' }}>
-                        <h3>Período Selecionado</h3>
-                        <p>De: {selectedRange![0].toLocaleDateString()} a {selectedRange![1].toLocaleDateString()}</p>
-                        <p style={{ fontWeight: 'bold' }}>Unidades disponíveis para todo o período: {availableForRange}</p>
+                    )}
+                </div>
+
+                {availableForRange !== null && selectedRange && selectedRange.length >= 1 && (
+                    <div className="availability-modal-selection-details">
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <h4 className="availability-modal-section-title">Período Selecionado</h4>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#333' }}>
+                                {selectedRange[0].toLocaleDateString()} {selectedRange[1] ? ` a ${selectedRange[1].toLocaleDateString()}` : ''}
+                            </div>
+                            <p style={{ margin: '5px 0 0', color: availableForRange > 0 ? '#28a745' : '#dc3545', fontWeight: '600' }}>
+                                {availableForRange > 0 
+                                    ? `✓ Temos ${availableForRange} unidades disponíveis para este período` 
+                                    : '✗ Nenhuma unidade disponível para este período'}
+                            </p>
+                        </div>
+
                         {availableForRange > 0 && (
-                            <div>
-                                <label>Quantidade: </label>
-                                <input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value))} min="1" max={availableForRange} />
-                                <button onClick={handleAddToCart} style={{ marginLeft: '1rem' }}>Adicionar ao Carrinho</button>
+                            <div className="availability-modal-quantity-container">
+                                <div style={{ flex: '1 1 120px' }}>
+                                    <label className="availability-modal-section-title" style={{ display: 'block', marginBottom: '8px' }}>Quantidade:</label>
+                                    <input 
+                                        type="number" 
+                                        value={quantity} 
+                                        onChange={e => {
+                                            const val = parseInt(e.target.value);
+                                            if (isNaN(val)) setQuantity(1);
+                                            else if (val > availableForRange) setQuantity(availableForRange);
+                                            else if (val < 1) setQuantity(1);
+                                            else setQuantity(val);
+                                        }} 
+                                        min="1" 
+                                        max={availableForRange}
+                                        className="availability-modal-quantity-input"
+                                    />
+                                </div>
+                                <button onClick={handleAddToCart} className="availability-modal-btn-cart">
+                                    Adicionar ao Carrinho
+                                </button>
                             </div>
                         )}
                     </div>
                 )}
-
-                <HorarioFuncionamento />
             </div>
         </div>
     );
-};
-
-const modalOverlayStyle: React.CSSProperties = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-};
-
-const modalContentStyle: React.CSSProperties = {
-    backgroundColor: 'var(--cor-fundo-modal, #2a2a2a)',
-    color: 'var(--cor-texto-principal, #fff)',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    width: '100%',
-    maxWidth: '700px',
-    maxHeight: '80vh',
-    overflowY: 'auto',
-    position: 'relative',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
 };
 
 export default AvailabilityCalendarModal;
