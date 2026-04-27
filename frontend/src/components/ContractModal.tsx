@@ -49,36 +49,24 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
   const [signing, setSigning] = useState(false);
   const [storeConfig, setStoreConfig] = useState<StoreConfig | null>(null);
   
-  const [docType, setDocType] = useState<"CPF" | "RG">("CPF");
   const [nomeRecebedor, setNomeRecebedor] = useState("");
   const [docRecebedor, setDocRecebedor] = useState("");
 
   const backendUrl = import.meta.env.VITE_API_URL;
   const { token } = useAuth();
 
-  const formatDocumento = (value: string, type: "CPF" | "RG") => {
-    let v = value.toUpperCase().replace(/[^0-9Xx]/g, "");
-    
-    if (type === "CPF") {
-      v = v.replace(/\D/g, "").substring(0, 11);
-      return v
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-    } 
-    
-    return v.substring(0, 15);
+  const formatCPF = (value: string) => {
+    let v = value.replace(/\D/g, "").substring(0, 11);
+    return v
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
   };
 
   const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatDocumento(e.target.value, docType);
+    const formatted = formatCPF(e.target.value);
     setDocRecebedor(formatted);
   };
-
-  // Quando troca o tipo (CPF/RG), reformata o valor atual
-  React.useEffect(() => {
-    setDocRecebedor(prev => formatDocumento(prev, docType));
-  }, [docType]);
 
   React.useEffect(() => {
     // Tenta preencher nome do recebedor com o nome do cliente por padrão
@@ -243,26 +231,15 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
                   />
               </div>
               
-              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "15px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "15px" }}>
                   <div>
-                      <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "5px" }}>Tipo:</label>
-                      <select 
-                        value={docType} 
-                        onChange={(e) => setDocType(e.target.value as "CPF" | "RG")}
-                        style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "2px solid #ddd", fontSize: "1rem", backgroundColor: "#fff" }}
-                      >
-                          <option value="CPF">CPF</option>
-                          <option value="RG">RG</option>
-                      </select>
-                  </div>
-                  <div>
-                      <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "5px" }}>Documento:</label>
+                      <label style={{ fontSize: "0.85rem", fontWeight: "bold", display: "block", marginBottom: "5px" }}>CPF do Recebedor:</label>
                       <input 
                         type="text" 
                         value={docRecebedor} 
                         onChange={handleDocChange}
                         style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "2px solid #ddd", fontSize: "1rem" }}
-                        placeholder={docType === "CPF" ? "000.000.000-00" : "Número do RG"}
+                        placeholder="000.000.000-00"
                       />
                   </div>
               </div>

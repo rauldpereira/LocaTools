@@ -6,7 +6,6 @@ interface UserData {
     nome: string;
     email: string;
     telefone?: string;
-    rg?: string;
     razao_social?: string;
     cpf?: string;
     cnpj?: string;

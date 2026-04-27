@@ -40,10 +40,6 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       unique: true
     },
-    rg: {
-      type: DataTypes.STRING,
-      allowNull: true
-    },
     cnpj: {
       type: DataTypes.STRING,
       allowNull: true,

@@ -7,7 +7,6 @@ const Profile: React.FC = () => {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [rg, setRg] = useState('');
   const [razaoSocial, setRazaoSocial] = useState('');
   
   const [oldPassword, setOldPassword] = useState('');
@@ -26,20 +25,11 @@ const Profile: React.FC = () => {
     return num.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
   };
 
-  const maskRG = (value: string) => {
-    const clean = value.replace(/[^\dX]/gi, '').toUpperCase().substring(0, 9);
-    return clean
-      .replace(/(\d{2})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})([\dX])/, '$1-$2');
-  };
-
   useEffect(() => {
     if (user) {
       setNome(user.nome || '');
       setEmail(user.email || '');
       setTelefone(maskPhone(user.telefone || ''));
-      setRg(maskRG(user.rg || ''));
       setRazaoSocial(user.razao_social || '');
     }
   }, [user]);
@@ -57,7 +47,6 @@ const Profile: React.FC = () => {
         nome, 
         email, 
         telefone, 
-        rg: user?.tipo_pessoa === 'fisica' ? rg : undefined,
         razao_social: user?.tipo_pessoa === 'juridica' ? razaoSocial : undefined
       };
 
@@ -176,32 +165,19 @@ const Profile: React.FC = () => {
         </div>
 
         {user.tipo_pessoa === 'fisica' ? (
-          <>
-            <div style={fieldContainerStyle}>
-              <label style={labelStyle}>CPF (Não alterável)</label>
-              <input
-                type="text"
-                style={{ ...inputStyle, backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
-                value={user.cpf || ''}
-                readOnly
-              />
-            </div>
-            <div style={fieldContainerStyle}>
-              <label style={labelStyle}>RG</label>
-              <input
-                type="text"
-                style={inputStyle}
-                value={rg}
-                onChange={(e) => setRg(maskRG(e.target.value))}
-                placeholder="00.000.000-0"
-                maxLength={12}
-              />
-            </div>
-          </>
+          <div style={fieldContainerStyle}>
+            <label style={labelStyle}>CPF</label>
+            <input
+              type="text"
+              style={{ ...inputStyle, backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
+              value={user.cpf || ''}
+              readOnly
+            />
+          </div>
         ) : (
           <>
             <div style={fieldContainerStyle}>
-              <label style={labelStyle}>CNPJ (Não alterável)</label>
+              <label style={labelStyle}>CNPJ</label>
               <input
                 type="text"
                 style={{ ...inputStyle, backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
@@ -241,8 +217,8 @@ const Profile: React.FC = () => {
       <hr style={{ margin: '3rem 0', border: 'none', borderTop: '1px solid #ddd' }} />
 
       <h3 style={{ marginBottom: '1.5rem' }}>Segurança - Alterar Senha</h3>
-      <form onSubmit={handleChangePassword} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-        <div style={fieldContainerStyle}>
+      <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ ...fieldContainerStyle, maxWidth: '400px' }}>
           <label style={labelStyle}>Senha Antiga</label>
           <input
             type="password"
@@ -253,32 +229,34 @@ const Profile: React.FC = () => {
           />
         </div>
 
-        <div style={fieldContainerStyle}>
-          <label style={labelStyle}>Nova Senha</label>
-          <input
-            type="password"
-            style={inputStyle}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-          />
-          <small style={{ color: '#666', fontSize: '0.75rem', marginTop: '4px' }}>
-            Mínimo de 8 caracteres, com letras e números.
-          </small>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+          <div style={fieldContainerStyle}>
+            <label style={labelStyle}>Nova Senha</label>
+            <input
+              type="password"
+              style={inputStyle}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+            <small style={{ color: '#666', fontSize: '0.75rem', marginTop: '4px' }}>
+              Mínimo de 8 caracteres, com letras e números.
+            </small>
+          </div>
+
+          <div style={fieldContainerStyle}>
+            <label style={labelStyle}>Confirmar Nova Senha</label>
+            <input
+              type="password"
+              style={inputStyle}
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              required
+            />
+          </div>
         </div>
 
-        <div style={fieldContainerStyle}>
-          <label style={labelStyle}>Confirmar Nova Senha</label>
-          <input
-            type="password"
-            style={inputStyle}
-            value={confirmNewPassword}
-            onChange={(e) => setConfirmNewPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        <div style={{ gridColumn: '1 / -1' }}>
+        <div>
           <button type="submit" style={{ ...buttonStyle, backgroundColor: '#6c757d' }}>Alterar Senha</button>
           {mensagemSenha && (
             <div style={{ 

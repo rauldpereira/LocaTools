@@ -5,7 +5,7 @@ const nodemailer = require('nodemailer');
 
 
 const registerUser = async (req, res) => {
-  const { nome, email, senha, telefone, tipo_pessoa, cpf, rg, cnpj, razao_social } = req.body;
+  const { nome, email, senha, telefone, tipo_pessoa, cpf, cnpj, razao_social } = req.body;
 
   try {
     if (!nome || !email || !senha || !tipo_pessoa) {
@@ -24,8 +24,8 @@ const registerUser = async (req, res) => {
     }
 
     if (tipo_pessoa === 'fisica') {
-      if (!cpf || !rg) {
-        return res.status(400).json({ error: 'CPF e RG são obrigatórios para Pessoa Física.' });
+      if (!cpf) {
+        return res.status(400).json({ error: 'CPF é obrigatório para Pessoa Física.' });
       }
       const cpfExists = await Usuario.findOne({ where: { cpf } });
       if (cpfExists) return res.status(400).json({ error: 'CPF já cadastrado.' });
@@ -50,7 +50,6 @@ const registerUser = async (req, res) => {
       tipo_usuario: 'cliente',
       tipo_pessoa,
       cpf: tipo_pessoa === 'fisica' ? cpf : null,
-      rg: tipo_pessoa === 'fisica' ? rg : null,
       cnpj: tipo_pessoa === 'juridica' ? cnpj : null,
       razao_social: tipo_pessoa === 'juridica' ? razao_social : null
     });
@@ -98,7 +97,7 @@ const getProfile = (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-  const { nome, email, telefone, rg, razao_social } = req.body;
+  const { nome, email, telefone, razao_social } = req.body;
   const { id } = req.user;
   try {
     const user = await Usuario.findByPk(id);
@@ -111,7 +110,6 @@ const updateProfile = async (req, res) => {
       nome, 
       email, 
       telefone, 
-      rg, 
       razao_social 
     });
 
@@ -122,7 +120,6 @@ const updateProfile = async (req, res) => {
         nome: user.nome, 
         email: user.email, 
         telefone: user.telefone, 
-        rg: user.rg, 
         razao_social: user.razao_social,
         cpf: user.cpf,
         cnpj: user.cnpj,
