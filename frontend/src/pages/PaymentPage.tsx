@@ -36,6 +36,37 @@ interface OrderDetailsExpanded extends OrderDetails {
     ItemReservas?: ItemReserva[];
 }
 
+const FullPageSkeleton = () => (
+    <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
+        {/* Skeleton do Resumo */}
+        <div style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <div className="skeleton" style={{ height: '24px', width: '60%', marginBottom: '20px', borderRadius: '4px' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div className="skeleton" style={{ height: '16px', width: '30%' }} />
+                <div className="skeleton" style={{ height: '16px', width: '20%' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div className="skeleton" style={{ height: '16px', width: '35%' }} />
+                <div className="skeleton" style={{ height: '16px', width: '15%' }} />
+            </div>
+            <hr style={{ border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0' }} />
+            <div className="skeleton" style={{ height: '70px', width: '100%', borderRadius: '8px' }} />
+        </div>
+
+        {/* Skeleton do Formulário */}
+        <div style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', backgroundColor: '#fff' }}>
+            <div className="skeleton" style={{ height: '20px', width: '40%', marginBottom: '25px', borderRadius: '4px' }} />
+            {[1, 2, 3].map((i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '15px', border: '1px solid #eee', borderRadius: '8px', marginBottom: '12px' }}>
+                    <div className="skeleton" style={{ width: '24px', height: '24px', borderRadius: '50%', marginRight: '15px' }} />
+                    <div className="skeleton" style={{ flex: 1, height: '16px', borderRadius: '4px' }} />
+                </div>
+            ))}
+            <div className="skeleton" style={{ height: '48px', width: '100%', marginTop: '20px', borderRadius: '8px' }} />
+        </div>
+    </div>
+);
+
 const PaymentPage: React.FC = () => {
     const { orderId } = useParams<{ orderId: string }>();
     const location = useLocation();
@@ -47,6 +78,7 @@ const PaymentPage: React.FC = () => {
     const { token } = useAuth();
     const navigate = useNavigate();
     const [isMpLoaded, setIsMpLoaded] = useState(false);
+    const [isMpReady, setIsMpReady] = useState(false);
 
     // --- LOJA E FIDELIDADE ---
     const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number, ativo: boolean } | null>(null);
@@ -259,11 +291,37 @@ const PaymentPage: React.FC = () => {
         }
     };
 
-    const onError = (error: any) => console.error('Erro no Mercado Pago:', error);
-    const onReady = () => console.log('Mercado Pago pronto');
+    const onError = (error: any) => {
+        console.error('Erro no Mercado Pago:', error);
+    };
+    
+    const onReady = () => {
+        setIsMpReady(true);
+    };
 
-    if (loading) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Carregando...</div>;
-    if (orders.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Pedidos não encontrados.</div>;
+    const isAllDataReady = orders.length > 0 && lojaConfig !== null;
+    const isPageReady = isAllDataReady && isMpReady;
+
+    if (loading || !isPageReady) {
+        if (!loading && orders.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Pedidos não encontrados.</div>;
+        
+        return (
+            <>
+                <FullPageSkeleton />
+                {isMpLoaded && isAllDataReady && valorApresentado > 0 && initialization.payer.email && (
+                    <div style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 }}>
+                        <Payment
+                            initialization={initialization}
+                            customization={customization}
+                            onSubmit={onSubmit}
+                            onReady={onReady}
+                            onError={onError}
+                        />
+                    </div>
+                )}
+            </>
+        );
+    }
 
     if (orders.some(o => o.status === 'cancelada')) {
         return (
@@ -279,12 +337,15 @@ const PaymentPage: React.FC = () => {
     const hasMultiple = idList.length > 1;
     const textoLogistica = isEntrega ? (hasMultiple ? 'Entregas' : 'Entrega') : (hasMultiple ? 'Retiradas na Loja' : 'Retirada na Loja');
 
-    if (!import.meta.env.VITE_MP_PUBLIC_KEY) {
-        console.warn('VITE_MP_PUBLIC_KEY não está definida!');
-    }
-
     return (
-        <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
+        <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px', animation: 'fadeInPayment 0.6s ease-out' }}>
+            <style>{`
+                @keyframes fadeInPayment {
+                    from { opacity: 0; transform: translateY(8px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
+            
             <div className="order-summary" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#000' }}>
                 <h4 style={{marginTop: 0, color: isDivida ? '#c62828' : '#000', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px'}}>
                     {isDivida ? '🚨 Acerto de Pendências' : `Resumo do Pedido (${idList.length} ${textoLogistica})`}
@@ -344,17 +405,14 @@ const PaymentPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="payment-form" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', backgroundColor: '#fff' }}>
-                {isMpLoaded && valorApresentado > 0 && initialization.payer.email && initialization.payer.identification.number && (
-                    <Payment
-                        key={`${valorApresentado}-${initialization.payer.email}-${initialization.payer.identification.number}`}
-                        initialization={initialization}
-                        customization={customization}
-                        onSubmit={onSubmit}
-                        onReady={onReady}
-                        onError={onError}
-                    />
-                )}
+            <div className="payment-form" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', backgroundColor: '#fff', minHeight: '350px' }}>
+                <Payment
+                    initialization={initialization}
+                    customization={customization}
+                    onSubmit={onSubmit}
+                    onReady={onReady}
+                    onError={onError}
+                />
             </div>
         </div>
     );
