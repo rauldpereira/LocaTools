@@ -187,7 +187,7 @@ const NotificationBell: React.FC = () => {
                 cursor: 'pointer'
               }}
             >
-              Lidas ({lidas.length})
+              Lidas
             </button>
           </div>
 

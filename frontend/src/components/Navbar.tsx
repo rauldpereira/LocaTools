@@ -48,14 +48,6 @@ const Navbar: React.FC = () => {
 
             <div className="navbar-links-container">
                 <ul className="navbar-links">
-                    <li>
-                        <Link to="/">Equipamentos</Link>
-                    </li>
-                    
-                    <li>
-                        <Link to="/cart">Carrinho ({totalItems})</Link>
-                    </li>
-
                     {isLoggedIn ? (
                         <>
                             <li>
@@ -64,15 +56,37 @@ const Navbar: React.FC = () => {
                             <li>
                                 <Link to="/my-reservations">Minhas Reservas</Link>
                             </li>
+                            <li>
+                                <Link to="/cart" style={{ display: 'flex', alignItems: 'center', position: 'relative', padding: '5px' }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#2c3e50', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = '#0056b3'} onMouseOut={(e) => e.currentTarget.style.color = '#2c3e50'}>
+                                        <circle cx="9" cy="21" r="1"></circle>
+                                        <circle cx="20" cy="21" r="1"></circle>
+                                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                    </svg>
+                                    {totalItems > 0 && (
+                                        <span style={{
+                                            position: 'absolute', top: '0px', right: '-5px',
+                                            backgroundColor: '#e03131', color: 'white',
+                                            borderRadius: '12px', padding: '2px 5px',
+                                            fontSize: '0.7rem', fontWeight: 'bold',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                            minWidth: '18px', textAlign: 'center', lineHeight: '12px',
+                                            border: '2px solid #fff'
+                                        }}>
+                                            {totalItems > 99 ? '99+' : totalItems}
+                                        </span>
+                                    )}
+                                </Link>
+                            </li>
+                            <li style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>
+                                <NotificationBell />
+                            </li>
                             
                             {(user?.tipo_usuario === 'admin' || user?.tipo_usuario === 'funcionario') && (
                                 <li>
                                     <Link to="/admin">Painel Interno</Link>
                                 </li>
                             )}
-                            <li style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>
-                                <NotificationBell />
-                            </li>
                             <li>
                                 <button onClick={handleLogout} className="navbar-button">Sair</button>
                             </li>
@@ -80,6 +94,28 @@ const Navbar: React.FC = () => {
                     ) : (
                         showAuthLinks && (
                             <>
+                                <li>
+                                    <Link to="/cart" style={{ display: 'flex', alignItems: 'center', position: 'relative', padding: '5px' }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#2c3e50', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = '#0056b3'} onMouseOut={(e) => e.currentTarget.style.color = '#2c3e50'}>
+                                            <circle cx="9" cy="21" r="1"></circle>
+                                            <circle cx="20" cy="21" r="1"></circle>
+                                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                        </svg>
+                                        {totalItems > 0 && (
+                                            <span style={{
+                                                position: 'absolute', top: '0px', right: '-5px',
+                                                backgroundColor: '#e03131', color: 'white',
+                                                borderRadius: '12px', padding: '2px 5px',
+                                                fontSize: '0.7rem', fontWeight: 'bold',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                                minWidth: '18px', textAlign: 'center', lineHeight: '12px',
+                                                border: '2px solid #fff'
+                                            }}>
+                                                {totalItems > 99 ? '99+' : totalItems}
+                                            </span>
+                                        )}
+                                    </Link>
+                                </li>
                                 <li>
                                     <Link to="/auth?mode=login">Entrar</Link>
                                 </li>
