@@ -59,7 +59,7 @@ const Navbar: React.FC = () => {
                     {isLoggedIn ? (
                         <>
                             <li>
-                                <Link to="/profile">Olá, {user?.nome}</Link>
+                                <Link to="/profile">Olá, {user?.nome?.split(' ')[0]}</Link>
                             </li>
                             <li>
                                 <Link to="/my-reservations">Minhas Reservas</Link>

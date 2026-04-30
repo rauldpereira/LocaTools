@@ -56,7 +56,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           &times;
         </button>
 
-        <h2 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>Falta pouco! 🚀</h2>
+        <h2 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>Falta pouco!</h2>
         <p style={{ color: '#666', textAlign: 'center', marginBottom: '20px', fontSize: '0.95rem' }}>
           Identifique-se para finalizar sua reserva.
         </p>

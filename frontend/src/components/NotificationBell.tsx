@@ -120,18 +120,23 @@ const NotificationBell: React.FC = () => {
       {/* ÍCONE DO SINO */}
       <div 
         onClick={() => setIsOpen(!isOpen)} 
-        style={{ cursor: 'pointer', position: 'relative', padding: '5px' }}
+        style={{ cursor: 'pointer', position: 'relative', padding: '6px', display: 'flex', alignItems: 'center' }}
       >
-        <span style={{ fontSize: '1.5rem' }}>🔔</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#2c3e50', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = '#0056b3'} onMouseOut={(e) => e.currentTarget.style.color = '#2c3e50'}>
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
         {unreadCount > 0 && (
           <span style={{
-            position: 'absolute', top: 0, right: 0,
-            backgroundColor: '#dc3545', color: 'white',
-            borderRadius: '50%', padding: '2px 6px',
-            fontSize: '0.75rem', fontWeight: 'bold',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            position: 'absolute', top: '0px', right: '-2px',
+            backgroundColor: '#e03131', color: 'white',
+            borderRadius: '12px', padding: '2px 5px',
+            fontSize: '0.7rem', fontWeight: 'bold',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            minWidth: '18px', textAlign: 'center', lineHeight: '12px',
+            border: '2px solid #fff'
           }}>
-            {unreadCount}
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </div>

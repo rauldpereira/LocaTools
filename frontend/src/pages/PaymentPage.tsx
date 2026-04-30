@@ -38,7 +38,6 @@ interface OrderDetailsExpanded extends OrderDetails {
 
 const FullPageSkeleton = () => (
     <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
-        {/* Skeleton do Resumo */}
         <div style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
             <div className="skeleton" style={{ height: '24px', width: '60%', marginBottom: '20px', borderRadius: '4px' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -53,7 +52,6 @@ const FullPageSkeleton = () => (
             <div className="skeleton" style={{ height: '70px', width: '100%', borderRadius: '8px' }} />
         </div>
 
-        {/* Skeleton do Formulário */}
         <div style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', backgroundColor: '#fff' }}>
             <div className="skeleton" style={{ height: '20px', width: '40%', marginBottom: '25px', borderRadius: '4px' }} />
             {[1, 2, 3].map((i) => (
@@ -79,6 +77,8 @@ const PaymentPage: React.FC = () => {
     const navigate = useNavigate();
     const [isMpLoaded, setIsMpLoaded] = useState(false);
     const [isMpReady, setIsMpReady] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // --- LOJA E FIDELIDADE ---
     const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number, ativo: boolean } | null>(null);
@@ -222,14 +222,9 @@ const PaymentPage: React.FC = () => {
             defaultPaymentMethod: 'bank_transfer' as const,
         },
         paymentMethods: {
-            bankTransfer: ["pix"] as const,
+            bankTransfer: "all" as const,
             creditCard: "all" as const,
             debitCard: "all" as const,
-            mercadoPago: "all" as const,
-            excludePaymentMethods: ['debvisa'] as string[], 
-            // Configuração de parcelamento explícita
-            installments: "all" as const, 
-            minInstallments: 1, // Permite 1x (à vista)
             maxInstallments: 12 // Limita em até 12x
         },
         payer: {
@@ -256,6 +251,7 @@ const PaymentPage: React.FC = () => {
         };
 
         try {
+            setErrorMessage(null);
             const config = { headers: { Authorization: `Bearer ${token}` } };
             
             const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/payments/process`, {
@@ -282,46 +278,41 @@ const PaymentPage: React.FC = () => {
                 const last_4 = (data.card?.last_four_digits || '').replace(/\D/g, ''); 
 
                 const primaryOrderId = idList[0];
-                navigate(`/payment/success/${primaryOrderId}?ids=${idList.join(',')}&payment_id=${payment_id}&status=${status}&payment_type=${payment_type}&installments=${installments}&installment_amount=${installment_amount}&total_paid=${total_paid}&card_brand=${card_brand}&last_4=${last_4}`, { replace: true });
+
+                setIsSuccess(true);
+                setTimeout(() => {
+                    navigate(`/payment/success/${primaryOrderId}?ids=${idList.join(',')}&payment_id=${payment_id}&status=${status}&payment_type=${payment_type}&installments=${installments}&installment_amount=${installment_amount}&total_paid=${total_paid}&card_brand=${card_brand}&last_4=${last_4}`, { replace: true });
+                }, 2000);
             }
             return data;
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao processar pagamento:', error);
+            let userMsg = 'Ocorreu um erro ao processar o pagamento. Verifique os dados do cartão.';
+            if (error.response?.data?.details) {
+                const detail = error.response.data.details;
+                if (detail.includes('bin_not_found')) {
+                    userMsg = 'Cartão inválido ou não suportado (BIN não encontrado). Tente outro cartão.';
+                } else if (detail.includes('invalid_token')) {
+                    userMsg = 'Sessão de pagamento expirada. Por favor, recarregue a página.';
+                } else {
+                    userMsg = `Erro: ${detail}`;
+                }
+            } else if (error.response?.data?.error) {
+                userMsg = error.response.data.error;
+            }
+            setErrorMessage(userMsg);
             throw error;
         }
     };
 
-    const onError = (error: any) => {
-        console.error('Erro no Mercado Pago:', error);
-    };
-    
-    const onReady = () => {
-        setIsMpReady(true);
-    };
+    const onError = (error: any) => console.error('Erro no Mercado Pago:', error);
+    const onReady = () => setIsMpReady(true);
 
     const isAllDataReady = orders.length > 0 && lojaConfig !== null;
     const isPageReady = isAllDataReady && isMpReady;
 
-    if (loading || !isPageReady) {
-        if (!loading && orders.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Pedidos não encontrados.</div>;
-        
-        return (
-            <>
-                <FullPageSkeleton />
-                {isMpLoaded && isAllDataReady && valorApresentado > 0 && initialization.payer.email && (
-                    <div style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 }}>
-                        <Payment
-                            initialization={initialization}
-                            customization={customization}
-                            onSubmit={onSubmit}
-                            onReady={onReady}
-                            onError={onError}
-                        />
-                    </div>
-                )}
-            </>
-        );
-    }
+    if (loading) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Carregando...</div>;
+    if (orders.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Pedidos não encontrados.</div>;
 
     if (orders.some(o => o.status === 'cancelada')) {
         return (
@@ -337,82 +328,140 @@ const PaymentPage: React.FC = () => {
     const hasMultiple = idList.length > 1;
     const textoLogistica = isEntrega ? (hasMultiple ? 'Entregas' : 'Entrega') : (hasMultiple ? 'Retiradas na Loja' : 'Retirada na Loja');
 
+    if (!import.meta.env.VITE_MP_PUBLIC_KEY) {
+        console.warn('VITE_MP_PUBLIC_KEY não está definida!');
+    }
+
     return (
-        <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px', animation: 'fadeInPayment 0.6s ease-out' }}>
-            <style>{`
-                @keyframes fadeInPayment {
-                    from { opacity: 0; transform: translateY(8px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-            `}</style>
+        <div style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', padding: '0 20px', position: 'relative' }}>
             
-            <div className="order-summary" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#000' }}>
-                <h4 style={{marginTop: 0, color: isDivida ? '#c62828' : '#000', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                    {isDivida ? '🚨 Acerto de Pendências' : `Resumo do Pedido (${idList.length} ${textoLogistica})`}
-                </h4>
-
-                {isDivida ? (
-                    <>
-                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
-                            <span style={{fontWeight: 500, color: '#555'}}>Saldo Restante do Aluguel:</span>
-                            <span style={{fontWeight: 500, color: '#555'}}>R$ {totalSaldoAluguel.toFixed(2)}</span>
-                        </div>
-                        {totalPrejuizos > 0 && (
-                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
-                                <span style={{fontWeight: 500, color: '#c62828'}}>Avarias / Extravios (B.O.):</span>
-                                <span style={{fontWeight: 500, color: '#c62828'}}>R$ {totalPrejuizos.toFixed(2)}</span>
-                            </div>
-                        )}
-                        <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
-                    </>
-                ) : (
-                    <>
-                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
-                            <span style={{fontWeight: 500}}>Itens (Subtotal):</span>
-                            <span style={{fontWeight: 500}}>R$ {subtotalOriginal.toFixed(2)}</span>
-                        </div>
-                        {isLoyaltyEligible && (
-                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px', color: '#28a745', fontWeight: 'bold'}}>
-                                <span>Desconto Fidelidade ({loyaltyConfig?.pct}%):</span>
-                                <span>- R$ {valorDesconto.toFixed(2)}</span>
-                            </div>
-                        )}
-                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
-                            <span style={{fontWeight: 500}}>{textoLogistica}:</span>
-                            <span style={{fontWeight: 500}}>{totalFrete > 0 ? `R$ ${totalFrete.toFixed(2)}` : 'Grátis'}</span>
-                        </div>
-                        <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
-                        <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 'bold', color: '#000'}}>
-                            <span>Total Geral:</span>
-                            <span>R$ {totalGeral.toFixed(2)}</span>
-                        </div>
-                    </>
-                )}
-
+            {/* Overlay de Sucesso */}
+            {isSuccess && (
                 <div style={{
-                    marginTop: '15px', padding: '15px', borderRadius: '8px', textAlign: 'center',
-                    backgroundColor: isDivida ? '#ffebee' : '#e8f5e9',
-                    border: `1px solid ${isDivida ? '#ffcdd2' : '#c8e6c9'}`,
-                    color: isDivida ? '#c62828' : '#000'
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 9999, animation: 'fadeInOverlay 0.4s ease'
                 }}>
-                    <small style={{display: 'block', marginBottom: '5px', fontWeight: 600}}>
-                        {isDivida
-                            ? 'Valor Total Devido (A Pagar)'
-                            : (lojaConfig?.sinal_porcentagem >= 100 ? 'Pagamento Integral da Reserva' : `Sinal para reservar o Lote (${lojaConfig?.sinal_porcentagem || 50}%)`)
-                        }
-                    </small>
-                    <span style={{fontSize: '1.5rem', fontWeight: 'bold'}}>R$ {valorApresentado.toFixed(2)}</span>
+                    <style>{`
+                        @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+                        .checkmark { width: 80px; height: 80px; border-radius: 50%; display: block; stroke-width: 2; stroke: #4bb543; stroke-miterlimit: 10; box-shadow: inset 0px 0px 0px #4bb543; animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both; }
+                        .checkmark__circle { stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 2; stroke-miterlimit: 10; stroke: #4bb543; fill: none; animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards; }
+                        .checkmark__check { transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48; animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards; }
+                        @keyframes stroke { 100% { stroke-dashoffset: 0; } }
+                        @keyframes scale { 0%, 100% { transform: none; } 50% { transform: scale3d(1.1, 1.1, 1); } }
+                        @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 40px #fff; } }
+                    `}</style>
+                    <svg className="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                        <circle className="checkmark__circle" cx="26" cy="26" r="25" fill="none" />
+                        <path className="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+                    </svg>
+                    <h2 style={{ color: '#2c3e50', marginTop: '20px' }}>Pagamento Aprovado!</h2>
+                    <p style={{ color: '#666' }}>Redirecionando para os detalhes do pedido...</p>
                 </div>
-            </div>
+            )}
 
-            <div className="payment-form" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', backgroundColor: '#fff', minHeight: '350px' }}>
-                <Payment
-                    initialization={initialization}
-                    customization={customization}
-                    onSubmit={onSubmit}
-                    onReady={onReady}
-                    onError={onError}
-                />
+            {!isPageReady && (
+                <div style={{ position: 'absolute', top: 0, left: 20, right: 20, zIndex: 50, backgroundColor: '#f8f9fa' }}>
+                   <FullPageSkeleton />
+                </div>
+            )}
+            
+            <div style={{ visibility: isPageReady ? 'visible' : 'hidden', opacity: isPageReady ? 1 : 0, transition: 'opacity 0.3s ease-in', animation: 'fadeInPayment 0.6s ease-out' }}>
+                <style>{`
+                    @keyframes fadeInPayment {
+                        from { opacity: 0; transform: translateY(8px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                `}</style>
+                <div className="order-summary" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#000' }}>
+                    <h4 style={{marginTop: 0, color: isDivida ? '#c62828' : '#000', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        {isDivida ? '🚨 Acerto de Pendências' : `Resumo do Pedido (${idList.length} ${textoLogistica})`}
+                    </h4>
+
+                    {isDivida ? (
+                        <>
+                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
+                                <span style={{fontWeight: 500, color: '#555'}}>Saldo Restante do Aluguel:</span>
+                                <span style={{fontWeight: 500, color: '#555'}}>R$ {totalSaldoAluguel.toFixed(2)}</span>
+                            </div>
+                            {totalPrejuizos > 0 && (
+                                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
+                                    <span style={{fontWeight: 500, color: '#c62828'}}>Avarias / Extravios (B.O.):</span>
+                                    <span style={{fontWeight: 500, color: '#c62828'}}>R$ {totalPrejuizos.toFixed(2)}</span>
+                                </div>
+                            )}
+                            <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
+                        </>
+                    ) : (
+                        <>
+                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
+                                <span style={{fontWeight: 500}}>Itens (Subtotal):</span>
+                                <span style={{fontWeight: 500}}>R$ {subtotalOriginal.toFixed(2)}</span>
+                            </div>
+                            {isLoyaltyEligible && (
+                                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px', color: '#28a745', fontWeight: 'bold'}}>
+                                    <span>Desconto Fidelidade ({loyaltyConfig?.pct}%):</span>
+                                    <span>- R$ {valorDesconto.toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
+                                <span style={{fontWeight: 500}}>{textoLogistica}:</span>
+                                <span style={{fontWeight: 500}}>{totalFrete > 0 ? `R$ ${totalFrete.toFixed(2)}` : 'Grátis'}</span>
+                            </div>
+                            <hr style={{border: 'none', borderTop: '1px dashed #ddd', margin: '15px 0'}} />
+                            <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 'bold', color: '#000'}}>
+                                <span>Total Geral:</span>
+                                <span>R$ {totalGeral.toFixed(2)}</span>
+                            </div>
+                        </>
+                    )}
+
+                    <div style={{
+                        marginTop: '15px', padding: '15px', borderRadius: '8px', textAlign: 'center',
+                        backgroundColor: isDivida ? '#ffebee' : '#e8f5e9',
+                        border: `1px solid ${isDivida ? '#ffcdd2' : '#c8e6c9'}`,
+                        color: isDivida ? '#c62828' : '#000'
+                    }}>
+                        <small style={{display: 'block', marginBottom: '5px', fontWeight: 600}}>
+                            {isDivida
+                                ? 'Valor Total Devido (A Pagar)'
+                                : (lojaConfig?.sinal_porcentagem >= 100 ? 'Pagamento Integral da Reserva' : `Sinal para reservar o Lote (${lojaConfig?.sinal_porcentagem || 50}%)`)
+                            }
+                        </small>
+                        <span style={{fontSize: '1.5rem', fontWeight: 'bold'}}>R$ {valorApresentado.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                <div className="payment-form" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', backgroundColor: '#fff', minHeight: '350px' }}>
+                    {errorMessage && (
+                        <div style={{ 
+                            backgroundColor: '#fff5f5', 
+                            color: '#c53030', 
+                            padding: '12px', 
+                            borderRadius: '8px', 
+                            marginBottom: '20px', 
+                            border: '1px solid #feb2b2',
+                            fontSize: '0.9rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            <span>⚠️</span> {errorMessage}
+                        </div>
+                    )}
+
+                    {isMpLoaded && valorApresentado > 0 && initialization.payer.email && initialization.payer.identification.number && (
+                        <Payment
+                            key={`${valorApresentado}-${initialization.payer.email}-${initialization.payer.identification.number}`}
+                            initialization={initialization}
+                            customization={customization}
+                            onSubmit={onSubmit}
+                            onReady={onReady}
+                            onError={onError}
+                        />
+                    )}
+                </div>
             </div>
         </div>
     );
