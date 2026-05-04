@@ -11,6 +11,7 @@ import AdminStoreConfig from "../pages/AdminStoreConfig";
 import AdminCalendarPage from "../components/Admin/GerenciamentoCalendario";
 import AdminTeamPage from "../components/Admin/AdminTeamPage";
 import EquipamentosEmLocacao from "../components/Admin/EquipamentosEmLocacao";
+import "../styles/AdminDashboard.css";
 
 const Icons = {
   dashboard: "📊",
@@ -28,8 +29,8 @@ const Icons = {
 const AdminDashboard: React.FC = () => {
   const { isLoggedIn, user, hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState("vazio");
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-  // Ajusta a aba inicial dependendo do que o cara tem permissão de ver
   useEffect(() => {
     if (
       hasPermission("gerenciar_reservas") || 
@@ -42,20 +43,12 @@ const AdminDashboard: React.FC = () => {
     else if (hasPermission("ver_financeiro")) setActiveTab("relatorios"); 
   }, [user]);
 
-  // Se não tá logado, ou não é nem admin, nem funcionário
   if (
     !isLoggedIn ||
     (user?.tipo_usuario !== "admin" && user?.tipo_usuario !== "funcionario")
   ) {
     return (
-      <div
-        style={{
-          padding: "2rem",
-          marginTop: "60px",
-          textAlign: "center",
-          color: "#333",
-        }}
-      >
+      <div style={{ padding: "2rem", marginTop: "60px", textAlign: "center", color: "#333" }}>
         <h2>Acesso Negado</h2>
         <p>Esta área é restrita a colaboradores da empresa.</p>
       </div>
@@ -68,30 +61,16 @@ const AdminDashboard: React.FC = () => {
         return hasPermission("gerenciar_reservas") ||
           hasPermission("fazer_vistoria") ||
           hasPermission("receber_pagamentos") ? (
-          <div style={contentContainerStyle}>
-            <h2 style={headerStyle}>Gerenciamento de Reservas e Vistorias</h2>
+          <div className="admin-content-container">
+            <h2 className="admin-header">Gerenciamento de Reservas e Vistorias</h2>
             <AdminReservationsList />
           </div>
         ) : null;
       case "equipamentos":
         return hasPermission("gerenciar_estoque") ? (
-          <div style={contentContainerStyle}>
-            <div
-              style={{
-                marginBottom: "25px",
-                borderBottom: "1px solid #eee",
-                paddingBottom: "15px",
-              }}
-            >
-              <h2
-                style={{
-                  ...headerStyle,
-                  margin: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                }}
-              >
+          <div className="admin-content-container">
+            <div style={{ marginBottom: "25px", borderBottom: "1px solid #eee", paddingBottom: "15px" }}>
+              <h2 className="admin-header admin-header-flex" style={{ margin: 0 }}>
                 Gestão de Equipamentos
               </h2>
             </div>
@@ -100,95 +79,26 @@ const AdminDashboard: React.FC = () => {
               <MaintenanceDashboard />
             </div>
 
-            {/* EQUIPAMENTOS EM LOCAÇÃO */}
-            <div
-              style={{
-                marginBottom: "30px",
-                padding: "25px",
-                backgroundColor: "#fff",
-                borderRadius: "12px",
-                boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
-                border: "1px solid #f0f0f0",
-              }}
-            >
-              <h4
-                style={{
-                  marginTop: 0,
-                  marginBottom: "20px",
-                  color: "#0d47a1",
-                  borderBottom: "2px solid #e3f2fd",
-                  paddingBottom: "10px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px"
-                }}
-              >
-                🚜 Equipamentos Atualmente em Locação
+            <div style={{ marginBottom: "30px", padding: "25px", backgroundColor: "#fff", borderRadius: "12px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", border: "1px solid #f0f0f0" }}>
+              <h4 style={{ marginTop: 0, marginBottom: "20px", color: "#0d47a1", borderBottom: "2px solid #e3f2fd", paddingBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+                🚜 Equipamentos em Locação
               </h4>
               <EquipamentosEmLocacao />
             </div>
 
-            <div
-              style={{
-                marginBottom: "30px",
-                padding: "25px",
-                backgroundColor: "#fff",
-                borderRadius: "12px",
-                boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
-                border: "1px solid #f0f0f0",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "20px",
-                }}
-              >
-                <h4
-                  style={{
-                    margin: 0,
-                    color: "#007bff",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
+            <div style={{ marginBottom: "30px", padding: "25px", backgroundColor: "#fff", borderRadius: "12px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", border: "1px solid #f0f0f0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h4 style={{ margin: 0, color: "#007bff", display: "flex", alignItems: "center", gap: "8px" }}>
                   Cadastrar Novo Equipamento
                 </h4>
               </div>
-
-              <div
-                style={{
-                  backgroundColor: "#f8f9fa",
-                  padding: "20px",
-                  borderRadius: "8px",
-                  border: "1px dashed #dee2e6",
-                }}
-              >
+              <div style={{ backgroundColor: "#f8f9fa", padding: "20px", borderRadius: "8px", border: "1px dashed #dee2e6" }}>
                 <EquipmentForm />
               </div>
             </div>
 
-            <div
-              style={{
-                padding: "25px",
-                backgroundColor: "#fff",
-                borderRadius: "12px",
-                boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
-                border: "1px solid #f0f0f0",
-              }}
-            >
-              <h4
-                style={{
-                  marginTop: 0,
-                  marginBottom: "20px",
-                  color: "#333",
-                  borderBottom: "2px solid #eee",
-                  paddingBottom: "10px",
-                }}
-              >
+            <div style={{ padding: "25px", backgroundColor: "#fff", borderRadius: "12px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", border: "1px solid #f0f0f0" }}>
+              <h4 style={{ marginTop: 0, marginBottom: "20px", color: "#333", borderBottom: "2px solid #eee", paddingBottom: "10px" }}>
                 Inventário Completo
               </h4>
               <EquipmentList />
@@ -197,45 +107,32 @@ const AdminDashboard: React.FC = () => {
         ) : null;
       case "equipe":
         return user?.tipo_usuario === "admin" ? (
-          <div style={contentContainerStyle}>
+          <div className="admin-content-container">
             <AdminTeamPage />
           </div>
         ) : null;
       case "categorias":
         return hasPermission("gerenciar_estoque") ? (
-          <div style={contentContainerStyle}>
-            <h2 style={headerStyle}>Categorias do Sistema</h2>
-            <div
-              style={{
-                marginBottom: "2rem",
-                padding: "1.5rem",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "8px",
-              }}
-            >
+          <div className="admin-content-container">
+            <h2 className="admin-header">Categorias do Sistema</h2>
+            <div style={{ marginBottom: "2rem", padding: "1.5rem", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
               <AddCategoryForm />
             </div>
           </div>
         ) : null;
       case "horarios":
         return hasPermission("configuracoes") ? (
-          <div style={contentContainerStyle}>
-            <h2 style={headerStyle}>Horários de Funcionamento</h2>
-            <div
-              style={{
-                padding: "1.5rem",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "8px",
-              }}
-            >
+          <div className="admin-content-container">
+            <h2 className="admin-header">Horários de Funcionamento</h2>
+            <div style={{ padding: "1.5rem", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
               <AdminHorariosPage />
             </div>
           </div>
         ) : null;
       case "calendario":
         return hasPermission("configuracoes") ? (
-          <div style={contentContainerStyle}>
-            <h2 style={headerStyle}>Calendário e Feriados</h2>
+          <div className="admin-content-container">
+            <h2 className="admin-header">Calendário e Feriados</h2>
             <AdminCalendarPage />
           </div>
         ) : null;
@@ -243,7 +140,7 @@ const AdminDashboard: React.FC = () => {
         return hasPermission("ver_financeiro") ? <AdminReportsPage /> : null;
       case "config":
         return hasPermission("configuracoes") ? (
-          <div style={contentContainerStyle}>
+          <div className="admin-content-container">
             <AdminStoreConfig />
           </div>
         ) : null;
@@ -258,21 +155,28 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div style={layoutStyle}>
-      <aside style={sidebarStyle}>
-        <div style={{ padding: "20px", borderBottom: "1px solid #f0f0f0" }}>
-          <h3 style={{ color: "#333", margin: 0, fontSize: "1.2rem" }}>
-            Painel Interno
-          </h3>
-          <p
-            style={{ color: "#888", fontSize: "0.85rem", margin: "5px 0 0 0" }}
+    <div className="admin-layout">
+      <aside className={`admin-sidebar ${!isSidebarExpanded ? 'collapsed' : ''}`}>
+        <div className={`admin-sidebar-header ${!isSidebarExpanded ? 'collapsed' : ''}`}>
+          <button 
+            onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+            className="admin-toggle-btn"
+            title={isSidebarExpanded ? "Recolher menu" : "Expandir menu"}
           >
-            Olá, {user?.nome}
-          </p>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+          </button>
+
+          {isSidebarExpanded && (
+            <h3 style={{ color: "#333", margin: 0, fontSize: "1.15rem", whiteSpace: "nowrap" }}>
+              Painel Interno
+            </h3>
+          )}
         </div>
 
-        <nav style={{ marginTop: "10px", padding: "10px" }}>
-          
+        <nav className="admin-sidebar-nav">
           {(hasPermission("gerenciar_reservas") ||
             hasPermission("fazer_vistoria") ||
             hasPermission("receber_pagamentos")) && (
@@ -281,6 +185,7 @@ const AdminDashboard: React.FC = () => {
               icon={Icons.reservas}
               isActive={activeTab === "reservas"}
               onClick={() => setActiveTab("reservas")}
+              isExpanded={isSidebarExpanded}
             />
           )}
 
@@ -291,22 +196,25 @@ const AdminDashboard: React.FC = () => {
                 icon={Icons.equipamentos}
                 isActive={activeTab === "equipamentos"}
                 onClick={() => setActiveTab("equipamentos")}
+                isExpanded={isSidebarExpanded}
               />
               <MenuItem
                 label="Categorias"
                 icon={Icons.categorias}
                 isActive={activeTab === "categorias"}
                 onClick={() => setActiveTab("categorias")}
+                isExpanded={isSidebarExpanded}
               />
             </>
           )}
 
           {user?.tipo_usuario === "admin" && (
             <MenuItem
-              label="Funcionários"
+              label="Equipe"
               icon={Icons.equipe}
               isActive={activeTab === "equipe"}
               onClick={() => setActiveTab("equipe")}
+              isExpanded={isSidebarExpanded}
             />
           )}
 
@@ -317,122 +225,56 @@ const AdminDashboard: React.FC = () => {
                 icon={Icons.horarios}
                 isActive={activeTab === "horarios"}
                 onClick={() => setActiveTab("horarios")}
+                isExpanded={isSidebarExpanded}
               />
               <MenuItem
                 label="Calendário"
                 icon={Icons.calendario}
                 isActive={activeTab === "calendario"}
                 onClick={() => setActiveTab("calendario")}
+                isExpanded={isSidebarExpanded}
               />
               <MenuItem
                 label="Configurações"
                 icon={Icons.config}
                 isActive={activeTab === "config"}
                 onClick={() => setActiveTab("config")}
+                isExpanded={isSidebarExpanded}
               />
             </>
           )}
 
           {hasPermission("ver_financeiro") && (
             <>
-              <div
-                style={{ margin: "10px 0", borderTop: "1px solid #f0f0f0" }}
-              ></div>
+              <div className="admin-section-divider"></div>
               <MenuItem
                 label="Relatórios & B.O."
                 icon={Icons.relatorios}
                 isActive={activeTab === "relatorios"}
                 onClick={() => setActiveTab("relatorios")}
+                isExpanded={isSidebarExpanded}
               />
             </>
           )}
         </nav>
       </aside>
 
-      <main style={mainContentStyle}>{renderContent()}</main>
+      <main className={`admin-main-content ${!isSidebarExpanded ? 'collapsed' : ''}`}>
+        {renderContent()}
+      </main>
     </div>
   );
 };
 
-const MenuItem = ({ label, icon, isActive, onClick }: any) => (
+const MenuItem = ({ label, icon, isActive, onClick, isExpanded }: any) => (
   <button
     onClick={onClick}
-    style={{
-      ...menuItemStyle,
-      backgroundColor: isActive ? "#e6f7ff" : "transparent",
-      color: isActive ? "#007bff" : "#555",
-      fontWeight: isActive ? "bold" : "normal",
-    }}
+    title={!isExpanded ? label : undefined}
+    className={`admin-menu-item ${isActive ? 'active' : ''} ${!isExpanded ? 'collapsed' : ''}`}
   >
-    <span style={{ marginRight: "12px", fontSize: "1.2rem" }}>{icon}</span>
-    {label}
+    <span className="admin-menu-icon">{icon}</span>
+    {isExpanded && <span>{label}</span>}
   </button>
 );
-
-const layoutStyle: React.CSSProperties = {
-  display: "flex",
-  minHeight: "100vh",
-  backgroundColor: "#f4f6f8",
-  position: "absolute",
-  top: 0,
-  left: 0,
-  width: "100%",
-  paddingTop: "60px",
-  boxSizing: "border-box",
-};
-
-const sidebarStyle: React.CSSProperties = {
-  width: "260px",
-  backgroundColor: "#ffffff",
-  borderRight: "1px solid #e0e0e0",
-  display: "flex",
-  flexDirection: "column",
-  position: "fixed",
-  height: "100%",
-  left: 0,
-  top: 0,
-  paddingTop: "80px",
-
-  overflowY: "auto",
-  zIndex: 10,
-};
-
-const mainContentStyle: React.CSSProperties = {
-  flex: 1,
-  marginLeft: "260px",
-  padding: "2rem",
-  overflowY: "auto",
-};
-
-const contentContainerStyle: React.CSSProperties = {
-  backgroundColor: "#ffffff",
-  padding: "2rem",
-  borderRadius: "12px",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-  minHeight: "80vh",
-};
-
-const headerStyle: React.CSSProperties = {
-  marginTop: 0,
-  marginBottom: "1.5rem",
-  color: "#2c3e50",
-  borderBottom: "2px solid #f4f6f8",
-  paddingBottom: "10px",
-  fontSize: "1.5rem",
-};
-
-const menuItemStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  width: "100%",
-  padding: "12px 15px",
-  border: "none",
-  borderRadius: "8px",
-  fontSize: "0.95rem",
-  cursor: "pointer",
-  textAlign: "left",
-  marginBottom: "5px",
-  transition: "all 0.2s",
-};
 
 export default AdminDashboard;

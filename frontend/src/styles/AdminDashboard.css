@@ -1,0 +1,152 @@
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f4f6f8;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding-top: 60px;
+  box-sizing: border-box;
+}
+
+.admin-sidebar {
+  background-color: #ffffff;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100%;
+  left: 0;
+  top: 0;
+  padding-top: 60px;
+  overflow-y: auto;
+  z-index: 10;
+  width: 260px;
+  transition: width 0.3s ease;
+}
+
+.admin-sidebar.collapsed {
+  width: 80px;
+}
+
+.admin-main-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  margin-left: 260px;
+  transition: margin-left 0.3s ease;
+}
+
+.admin-main-content.collapsed {
+  margin-left: 80px;
+}
+
+.admin-content-container {
+  background-color: #ffffff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  min-height: 80vh;
+}
+
+.admin-header {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #2c3e50;
+  border-bottom: 2px solid #f4f6f8;
+  padding-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.admin-header-flex {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-sidebar-header {
+  padding: 20px 15px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.admin-sidebar-header.collapsed {
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.admin-toggle-btn {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #555;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.admin-toggle-btn:hover {
+  background-color: #f0f0f0;
+  color: #0056b3;
+}
+
+.admin-sidebar-nav {
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.admin-sidebar.collapsed .admin-sidebar-nav {
+  padding: 10px 5px;
+}
+
+.admin-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-bottom: 5px;
+  transition: all 0.2s;
+  background-color: transparent;
+  color: #555;
+  font-weight: normal;
+  padding: 12px 15px;
+  justify-content: flex-start;
+}
+
+.admin-menu-item.collapsed {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.admin-menu-item:hover {
+  background-color: #f8f9fa;
+}
+
+.admin-menu-item.active {
+  background-color: #e6f7ff;
+  color: #007bff;
+  font-weight: bold;
+}
+
+.admin-menu-icon {
+  margin-right: 12px;
+  font-size: 1.2rem;
+}
+
+.admin-menu-item.collapsed .admin-menu-icon {
+  margin-right: 0;
+}
+
+.admin-section-divider {
+  margin: 10px 0;
+  border-top: 1px solid #f0f0f0;
+}
