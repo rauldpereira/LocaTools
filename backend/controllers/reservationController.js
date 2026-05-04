@@ -1129,17 +1129,22 @@ const cancelOrder = async (req, res) => {
                             amount: valor_reembolsado
                         }
                     });
+                    
+                    mensagem = "Sua reserva foi cancelada com sucesso!";
+                    if (taxa_cancelamento > 0) {
+                        mensagem += ` Foi retida uma taxa de R$ ${taxa_cancelamento.toFixed(2)} referente à política de cancelamento tardio.`;
+                    }
+                    mensagem += ` O reembolso de R$ ${valor_reembolsado.toFixed(2)} já foi enviado para a administradora do seu cartão. O valor aparecerá na sua fatura em breve, dependendo exclusivamente dos prazos do seu banco.`;
+
                 } catch (mpError) {
-                    // Silenciamos o erro técnico no console para não assustar
-                    // E apenas avisamos na mensagem final que o estorno será manual
                     mensagem = `Sua reserva foi cancelada com sucesso!`;
                     if (taxa_cancelamento > 0) {
-                        mensagem += ` Foi aplicada uma taxa de R$ ${taxa_cancelamento.toFixed(2)}.`;
+                        mensagem += ` Foi retida uma taxa de R$ ${taxa_cancelamento.toFixed(2)} referente à política de cancelamento tardio.`;
                     }
-                    mensagem += ` O reembolso de R$ ${valor_reembolsado.toFixed(2)} será processado manualmente pela nossa equipe em breve.`;
+                    mensagem += ` O reembolso de R$ ${valor_reembolsado.toFixed(2)} será estornado manualmente pela nossa equipe em até 48 horas.`;
                 }
             } else {
-                mensagem += " O estorno de R$ " + valor_reembolsado.toFixed(2) + " deve ser solicitado/feito manualmente com a loja.";
+                mensagem += ` O estorno de R$ ${valor_reembolsado.toFixed(2)} deve ser alinhado diretamente no balcão da loja, pois foi pago presencialmente.`;
             }
         }
 

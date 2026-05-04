@@ -26,6 +26,28 @@ interface Order {
   tipo_entrega?: string;
 }
 
+const SkeletonCard = () => (
+  <div style={{
+    border: "1px solid #edf2f7",
+    padding: "1.5rem",
+    marginBottom: "1rem",
+    borderRadius: "12px",
+    backgroundColor: "#fff",
+  }}>
+    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
+      <div className="skeleton" style={{ height: "24px", width: "120px", borderRadius: "4px" }}></div>
+      <div className="skeleton" style={{ height: "24px", width: "150px", borderRadius: "12px" }}></div>
+    </div>
+    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
+      <div>
+        <div className="skeleton" style={{ height: "16px", width: "100px", marginBottom: "8px", borderRadius: "4px" }}></div>
+        <div className="skeleton" style={{ height: "16px", width: "100px", borderRadius: "4px" }}></div>
+      </div>
+      <div className="skeleton" style={{ height: "24px", width: "80px", borderRadius: "4px", alignSelf: "flex-end" }}></div>
+    </div>
+  </div>
+);
+
 const MyReservationsPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +71,7 @@ const MyReservationsPage: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error("Erro ao buscar config de fidelidade:", error);
+        // Ignorar o log de erro no console
       }
     };
     fetchLoyaltyConfig();
@@ -80,7 +102,7 @@ const MyReservationsPage: React.FC = () => {
       );
       setOrders(data);
     } catch (error) {
-      console.error("Erro ao buscar as reservas:", error);
+      // Falha silenciosa
     } finally {
       setLoading(false);
     }
@@ -91,34 +113,31 @@ const MyReservationsPage: React.FC = () => {
   }, [token]);
 
   const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
+  const [cancelResult, setCancelResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
-  const handleCancelOrder = async (orderId: number, e: React.MouseEvent) => {
+  const requestCancelOrder = (orderId: number, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setOrderToCancel(orderId);
+  };
 
-    if (
-      !window.confirm(
-        "Você tem certeza que deseja cancelar esta reserva? Pode haver taxas de cancelamento dependendo da data.",
-      )
-    ) {
-      return;
-    }
-
-    setCancellingId(orderId);
+  const confirmCancelOrder = async () => {
+    if (orderToCancel === null) return;
+    
+    setCancellingId(orderToCancel);
+    setOrderToCancel(null);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const { data } = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/reservations/${orderId}/cancel`,
+        `${import.meta.env.VITE_API_URL}/api/reservations/${orderToCancel}/cancel`,
         {},
         config,
       );
-      alert(data.message || "Reserva cancelada com sucesso!");
+      setCancelResult({ type: 'success', message: data.message || "Reserva cancelada com sucesso!" });
       fetchOrders();
     } catch (error: any) {
-      alert(
-        error.response?.data?.error || "Não foi possível cancelar a reserva.",
-      );
-      console.error("Erro ao cancelar reserva:", error);
+      setCancelResult({ type: 'error', message: error.response?.data?.error || "Não foi possível cancelar a reserva." });
     } finally {
       setCancellingId(null);
     }
@@ -177,8 +196,16 @@ const MyReservationsPage: React.FC = () => {
 
   if (loading)
     return (
-      <div style={{ textAlign: "center", marginTop: "100px" }}>
-        Carregando suas reservas...
+      <div
+        style={{
+          padding: "2rem",
+          marginTop: "60px",
+          maxWidth: "800px",
+          margin: "80px auto",
+        }}
+      >
+        <h1 style={{ marginBottom: "20px" }}>Minhas Reservas</h1>
+        {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
       </div>
     );
 
@@ -208,36 +235,37 @@ const MyReservationsPage: React.FC = () => {
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <input
               type="text"
-              placeholder="Buscar por ID ou Data..."
+              placeholder="Nº do Pedido ou Data"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
-                padding: "8px 12px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                minWidth: "200px",
+                padding: "10px 15px",
+                border: "1px solid #d1d5db",
+                borderRadius: "8px",
+                minWidth: "220px",
+                outline: "none",
+                fontSize: "0.95rem"
               }}
             />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               style={{
-                padding: "8px 12px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
+                padding: "10px 15px",
+                border: "1px solid #d1d5db",
+                borderRadius: "8px",
                 backgroundColor: "white",
+                outline: "none",
+                fontSize: "0.95rem",
+                cursor: "pointer"
               }}
             >
-              <option value="updated_desc">
-                Últimas Atualizações (Mais recentes)
-              </option>
-              <option value="updated_asc">
-                Últimas Atualizações (Mais antigas)
-              </option>
+              <option value="updated_desc">Mais recentes primeiro</option>
+              <option value="updated_asc">Mais antigas primeiro</option>
               <option value="date_asc">Data da Locação Crescente</option>
               <option value="date_desc">Data da Locação Decrescente</option>
-              <option value="id_desc">Pedidos Mais Recentes (Por ID)</option>
-              <option value="id_asc">Pedidos Mais Antigos (Por ID)</option>
+              <option value="id_desc">Maior ID</option>
+              <option value="id_asc">Menor ID</option>
             </select>
           </div>
         )}
@@ -300,55 +328,62 @@ const MyReservationsPage: React.FC = () => {
           style={{
             padding: "3rem",
             textAlign: "center",
-            backgroundColor: "#f9f9f9",
-            borderRadius: "8px",
-            border: "1px dashed #ccc",
+            backgroundColor: "#f8fafc",
+            borderRadius: "12px",
+            border: "1px dashed #cbd5e1",
           }}
         >
-          <p style={{ fontSize: "1.2rem", color: "#666" }}>
+          <p style={{ fontSize: "1.2rem", color: "#64748b", marginBottom: "15px" }}>
             Você ainda não fez nenhuma reserva.
           </p>
           <Link
             to="/"
             style={{
               display: "inline-block",
-              marginTop: "10px",
-              padding: "10px 20px",
-              backgroundColor: "#007bff",
+              padding: "12px 24px",
+              backgroundColor: "#0056b3",
               color: "white",
               textDecoration: "none",
-              borderRadius: "4px",
+              borderRadius: "8px",
               fontWeight: "bold",
+              transition: "background-color 0.2s"
             }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#004494"}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#0056b3"}
           >
             🚜 Alugar Equipamentos
           </Link>
         </div>
       ) : processedOrders.length === 0 ? (
-        <p style={{ textAlign: "center", color: "#888", marginTop: "2rem" }}>
-          Nenhuma reserva encontrada para a sua busca.
-        </p>
+        <div style={{ textAlign: "center", padding: "3rem", backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #edf2f7" }}>
+          <p style={{ color: "#718096", fontSize: "1.1rem", margin: 0 }}>
+            Nenhuma reserva encontrada para a sua busca.
+          </p>
+        </div>
       ) : (
         <ul style={{ listStyle: "none", padding: 0 }}>
           {processedOrders.map((order) => (
             <li
               key={order.id}
               style={{
-                border: "1px solid #ddd",
+                border: "1px solid #edf2f7",
                 padding: "1.5rem",
-                marginBottom: "1rem",
-                borderRadius: "8px",
+                marginBottom: "1.2rem",
+                borderRadius: "16px",
                 backgroundColor: "#fff",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-                transition: "transform 0.2s",
-                cursor: "pointer",
+                boxShadow: "0 4px 6px rgba(0,0,0,0.02)",
+                transition: "box-shadow 0.2s, transform 0.2s",
+                display: "flex",
+                flexDirection: "column"
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.transform = "translateY(-2px)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.transform = "translateY(0)")
-              }
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 15px rgba(0,0,0,0.05)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 6px rgba(0,0,0,0.02)";
+              }}
             >
               <Link
                 to={`/my-reservations/${order.id}`}
@@ -356,6 +391,7 @@ const MyReservationsPage: React.FC = () => {
                   textDecoration: "none",
                   color: "inherit",
                   display: "block",
+                  flex: 1
                 }}
               >
 
@@ -369,17 +405,17 @@ const MyReservationsPage: React.FC = () => {
                     badgeBg = "#fef3c7";
                     badgeText =
                       order.tipo_entrega === "entrega"
-                        ? "⏳ AGENDADA PARA ENTREGA"
-                        : "🏪 AGENDADA PARA RETIRADA";
+                        ? "AGENDADA PARA ENTREGA"
+                        : "AGENDADA PARA RETIRADA";
                   } else if (order.status === "saiu_para_entrega") {
                     if (order.tipo_entrega === "entrega") {
-                      badgeColor = "#007bff";
+                      badgeColor = "#0056b3";
                       badgeBg = "#e7f1ff";
-                      badgeText = "🚚 EM TRÂNSITO";
+                      badgeText = "EM TRÂNSITO";
                     } else {
-                      badgeColor = "#28a745"; 
-                      badgeBg = "#e8f5e9";
-                      badgeText = "✅ PRONTO PARA RETIRADA";
+                      badgeColor = "#2b8a3e"; 
+                      badgeBg = "#ebfbee";
+                      badgeText = "PRONTO PARA RETIRADA";
                     }
                   }
 
@@ -388,23 +424,24 @@ const MyReservationsPage: React.FC = () => {
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        borderBottom: "1px solid #eee",
-                        paddingBottom: "10px",
-                        marginBottom: "10px",
+                        alignItems: "center",
+                        borderBottom: "1px solid #f1f5f9",
+                        paddingBottom: "12px",
+                        marginBottom: "15px",
                       }}
                     >
-                      <h3 style={{ margin: 0, color: "#333" }}>
+                      <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.3rem" }}>
                         Pedido #{order.id}
                       </h3>
                       <span
                         style={{
                           color: badgeColor,
                           backgroundColor: badgeBg,
-                          padding: "6px 12px",
+                          padding: "6px 14px",
                           borderRadius: "20px",
-                          fontSize: "0.85rem",
+                          fontSize: "0.75rem",
                           fontWeight: "bold",
+                          letterSpacing: "0.5px",
                           border: `1px solid ${badgeColor}33`,
                         }}
                       >
@@ -418,33 +455,36 @@ const MyReservationsPage: React.FC = () => {
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    color: "#555",
+                    color: "#475569",
                     fontSize: "0.95rem",
+                    marginBottom: "15px"
                   }}
                 >
                   <div>
-                    <p style={{ margin: "5px 0" }}>
-                      <strong>Saída:</strong>{" "}
-                      {parseDateStringAsLocal(
-                        order.data_inicio,
-                      ).toLocaleDateString()}
-                    </p>
-                    <p style={{ margin: "5px 0" }}>
-                      <strong>Retorno:</strong>{" "}
-                      {parseDateStringAsLocal(
-                        order.data_fim,
-                      ).toLocaleDateString()}
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <span>
+                        <strong>Saída:</strong>{" "}
+                        {parseDateStringAsLocal(order.data_inicio).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span>
+                        <strong>Retorno:</strong>{" "}
+                        {parseDateStringAsLocal(order.data_fim).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
+                  <div style={{ textAlign: "right", alignSelf: "center" }}>
+                    <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>Valor Total</p>
                     <p
                       style={{
-                        margin: "5px 0",
-                        fontSize: "1.1rem",
-                        color: "#2c3e50",
+                        margin: 0,
+                        fontSize: "1.4rem",
+                        color: "#0f172a",
+                        fontWeight: "800"
                       }}
                     >
-                      <strong>R$ {Number(order.valor_total).toFixed(2)}</strong>
+                      R$ {Number(order.valor_total).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -453,62 +493,207 @@ const MyReservationsPage: React.FC = () => {
               {order.status === "cancelada" && (
                 <div
                   style={{
-                    marginTop: "15px",
-                    paddingTop: "15px",
-                    borderTop: "1px dashed #ccc",
-                    backgroundColor: "#fafafa",
-                    padding: "10px",
-                    borderRadius: "4px",
+                    marginTop: "10px",
+                    backgroundColor: "#fef2f2",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid #fee2e2",
+                    fontSize: "0.9rem"
                   }}
                 >
                   {Number(order.taxa_cancelamento) > 0 && (
-                    <p style={{ color: "#dc3545", margin: "5px 0" }}>
-                      <strong>Taxa de Cancelamento:</strong> R${" "}
-                      {Number(order.taxa_cancelamento).toFixed(2)}
-                    </p>
+                    <div style={{ color: "#991b1b", display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                      <strong>Taxa de Cancelamento:</strong> 
+                      <span>R$ {Number(order.taxa_cancelamento).toFixed(2)}</span>
+                    </div>
                   )}
-                  <p style={{ color: "#28a745", margin: "5px 0" }}>
-                    <strong>Valor Reembolsado:</strong> R${" "}
-                    {Number(order.valor_reembolsado).toFixed(2)}
-                  </p>
+                  <div style={{ color: "#166534", display: "flex", justifyContent: "space-between" }}>
+                    <strong>Valor Reembolsado:</strong> 
+                    <span>R$ {Number(order.valor_reembolsado).toFixed(2)}</span>
+                  </div>
                 </div>
               )}
 
-              {cancellableStatuses.includes(order.status) && (
-                <button
-                  onClick={(e) => handleCancelOrder(order.id, e)}
-                  disabled={cancellingId === order.id}
+              <div style={{ display: "flex", gap: "10px", marginTop: "15px", paddingTop: "15px", borderTop: "1px solid #f1f5f9" }}>
+                <Link
+                  to={`/my-reservations/${order.id}`}
                   style={{
-                    marginTop: "15px",
-                    width: "100%",
-                    backgroundColor: cancellingId === order.id ? "#f8f9fa" : "#fff",
-                    color: cancellingId === order.id ? "#999" : "#dc3545",
-                    border: `1px solid ${cancellingId === order.id ? "#ccc" : "#dc3545"}`,
-                    padding: "8px 15px",
-                    borderRadius: "4px",
-                    cursor: cancellingId === order.id ? "wait" : "pointer",
-                    fontWeight: "bold",
-                    transition: "all 0.2s",
+                    flex: 1,
+                    textAlign: "center",
+                    backgroundColor: "#f8fafc",
+                    color: "#334155",
+                    border: "1px solid #e2e8f0",
+                    padding: "10px 15px",
+                    borderRadius: "8px",
+                    textDecoration: "none",
+                    fontWeight: "600",
+                    fontSize: "0.9rem",
+                    transition: "all 0.2s"
                   }}
-                  onMouseEnter={(e) => {
-                    if (cancellingId !== order.id) {
-                      e.currentTarget.style.backgroundColor = "#dc3545";
-                      e.currentTarget.style.color = "#fff";
-                    }
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f1f5f9";
+                    e.currentTarget.style.color = "#0f172a";
                   }}
-                  onMouseLeave={(e) => {
-                    if (cancellingId !== order.id) {
-                      e.currentTarget.style.backgroundColor = "#fff";
-                      e.currentTarget.style.color = "#dc3545";
-                    }
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f8fafc";
+                    e.currentTarget.style.color = "#334155";
                   }}
                 >
-                  {cancellingId === order.id ? "Cancelando..." : "Cancelar Reserva"}
-                </button>
-              )}
+                  Ver Detalhes do Pedido
+                </Link>
+
+                {cancellableStatuses.includes(order.status) && (
+                  <button
+                    onClick={(e) => requestCancelOrder(order.id, e)}
+                    disabled={cancellingId === order.id}
+                    style={{
+                      flex: 1,
+                      backgroundColor: cancellingId === order.id ? "#f1f5f9" : "#fff",
+                      color: cancellingId === order.id ? "#94a3b8" : "#ef4444",
+                      border: `1px solid ${cancellingId === order.id ? "#e2e8f0" : "#fca5a5"}`,
+                      padding: "10px 15px",
+                      borderRadius: "8px",
+                      cursor: cancellingId === order.id ? "wait" : "pointer",
+                      fontWeight: "600",
+                      fontSize: "0.9rem",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (cancellingId !== order.id) {
+                        e.currentTarget.style.backgroundColor = "#fef2f2";
+                        e.currentTarget.style.borderColor = "#ef4444";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (cancellingId !== order.id) {
+                        e.currentTarget.style.backgroundColor = "#fff";
+                        e.currentTarget.style.borderColor = "#fca5a5";
+                      }
+                    }}
+                  >
+                    {cancellingId === order.id ? "Aguarde..." : "Cancelar Reserva"}
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE CANCELAMENTO */}
+      {orderToCancel !== null && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            backgroundColor: '#fff', padding: '30px', borderRadius: '16px',
+            width: '90%', maxWidth: '450px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            textAlign: 'center', animation: 'slideUp 0.3s ease-out'
+          }}>
+            <style>{`
+              @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+              @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+            `}</style>
+            
+            <div style={{ backgroundColor: '#fee2e2', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+
+            <h2 style={{ color: '#1e293b', margin: '0 0 15px 0', fontSize: '1.4rem' }}>Deseja mesmo cancelar?</h2>
+            
+            <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '15px' }}>
+              Ao confirmar, o seu pedido <strong>#{orderToCancel}</strong> será cancelado permanentemente.
+            </p>
+
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '15px', borderRadius: '8px', marginBottom: '25px', textAlign: 'left', fontSize: '0.85rem', color: '#64748b' }}>
+              <strong style={{ color: '#475569', display: 'block', marginBottom: '5px' }}>Sobre o Reembolso:</strong>
+              Caso o pagamento já tenha sido aprovado, o estorno do valor (descontando eventuais taxas da política de cancelamento) dependerá exclusivamente da administradora do seu cartão de crédito para aparecer na fatura.
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => setOrderToCancel(null)}
+                style={{ flex: 1, padding: '12px', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Não, voltar
+              </button>
+              <button 
+                onClick={confirmCancelOrder}
+                style={{ flex: 1, padding: '12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Sim, cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CARREGAMENTO (SPINNER) */}
+      {cancellingId !== null && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div className="spinner" style={{ width: '50px', height: '50px', borderLeftColor: '#ef4444', marginBottom: '20px' }}></div>
+          <p style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 'bold' }}>Cancelando reserva...</p>
+        </div>
+      )}
+
+      {/* MODAL DE RESULTADO DO CANCELAMENTO */}
+      {cancelResult !== null && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            backgroundColor: '#fff', padding: '30px', borderRadius: '16px',
+            width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            textAlign: 'center', animation: 'slideUp 0.3s ease-out'
+          }}>
+            <div style={{ 
+              backgroundColor: cancelResult.type === 'success' ? '#dcfce7' : '#fee2e2', 
+              width: '60px', height: '60px', borderRadius: '50%', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' 
+            }}>
+              {cancelResult.type === 'success' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#dc3545" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              )}
+            </div>
+
+            <h2 style={{ color: '#1e293b', margin: '0 0 15px 0', fontSize: '1.4rem' }}>
+              {cancelResult.type === 'success' ? 'Cancelamento Concluído' : 'Erro no Cancelamento'}
+            </h2>
+            
+            <p style={{ color: '#475569', fontSize: '1rem', lineHeight: '1.5', marginBottom: '25px' }}>
+              {cancelResult.message}
+            </p>
+
+            <button 
+              onClick={() => setCancelResult(null)}
+              style={{ width: '100%', padding: '12px', backgroundColor: cancelResult.type === 'success' ? '#16a34a' : '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              OK, Entendido
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
