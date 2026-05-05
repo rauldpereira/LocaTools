@@ -52,12 +52,9 @@ const MaintenanceDashboard: React.FC = () => {
 
   return (
     <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginTop:'20px' }}>
-      <h3 style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginTop: 0, color:'#333' }}>
-        Cronograma de Manutenção
-      </h3>
 
       {items.length === 0 ? (
-        <p style={{ color: '#28a745', fontWeight: 'bold' }}>Tudo certo! Nenhuma manutenção pendente.</p>
+        <p style={{ color: '#28a745', fontWeight: 'bold' }}>Nenhuma manutenção Agendada.</p>
       ) : (
         <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>

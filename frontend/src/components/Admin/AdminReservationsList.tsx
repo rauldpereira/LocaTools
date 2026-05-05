@@ -6,6 +6,7 @@ import { parseDateStringAsLocal } from "../../utils/dateUtils";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { ptBR } from "date-fns/locale/pt-BR";
 import "react-datepicker/dist/react-datepicker.css";
+import { AlertTriangle, Clock, Calendar, CalendarClock, ClipboardCheck, FileSignature, FileCheck, Wallet, CreditCard, AlertOctagon, CheckCircle, XCircle, Siren, CircleDollarSign, Truck, RotateCcw, ClipboardList, History } from "lucide-react";
 
 registerLocale("pt-BR", ptBR);
 
@@ -83,12 +84,21 @@ const AdminReservationsList: React.FC = () => {
   const podeReceberPagamentos = user?.tipo_usuario === "admin" || hasPermission("receber_pagamentos");
   
   const abaInicial = (podeGerenciarReservas || podeFazerVistoria) ? "urgentes" : "financeiro";
-  const [activeTab, setActiveTab] = useState<TabKey>(abaInicial);
-  const [activeSubTab, setActiveSubTab] = useState<string>("sub1");
+  const [activeTab, setActiveTab] = useState<TabKey>(() => (sessionStorage.getItem("adminResTab") as TabKey) || abaInicial);
+  const [activeSubTab, setActiveSubTab] = useState<string>(() => sessionStorage.getItem("adminResSubTab") || "sub1");
 
   useEffect(() => {
-    setActiveSubTab("sub1");
+    sessionStorage.setItem("adminResTab", activeTab);
   }, [activeTab]);
+
+  useEffect(() => {
+    sessionStorage.setItem("adminResSubTab", activeSubTab);
+  }, [activeSubTab]);
+
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab);
+    setActiveSubTab("sub1");
+  };
 
   const fetchAllOrders = useCallback(async () => {
     if (!token) return;
@@ -220,11 +230,11 @@ const AdminReservationsList: React.FC = () => {
   };
 
   const getTabStyle = (isActive: boolean, isAlert: boolean = false) => ({
-    padding: "14px 24px", border: "none", background: isActive ? (isAlert ? "#ef4444" : "#2563eb") : "transparent", color: isActive ? "#fff" : "#64748b", fontWeight: "bold" as const, cursor: "pointer", borderRadius: "10px", transition: "all 0.2s", fontSize: "0.95rem", whiteSpace: "nowrap" as const
+    padding: "14px 24px", border: "none", background: isActive ? (isAlert ? "#ef4444" : "#2563eb") : "transparent", color: isActive ? "#fff" : "#64748b", fontWeight: "bold" as const, cursor: "pointer", borderRadius: "10px", transition: "all 0.2s", fontSize: "0.95rem", whiteSpace: "nowrap" as const, display: "flex", alignItems: "center", gap: "8px"
   });
 
   const getSubTabStyle = (isActive: boolean) => ({
-    padding: "8px 16px", border: "none", background: isActive ? "#e2e8f0" : "transparent", color: isActive ? "#0f172a" : "#64748b", fontWeight: "600" as const, cursor: "pointer", borderRadius: "8px", fontSize: "0.85rem", transition: "all 0.2s", marginRight: "10px"
+    padding: "8px 16px", border: "none", background: isActive ? "#e2e8f0" : "transparent", color: isActive ? "#0f172a" : "#64748b", fontWeight: "600" as const, cursor: "pointer", borderRadius: "8px", fontSize: "0.85rem", transition: "all 0.2s", marginRight: "10px", display: "flex", alignItems: "center", gap: "6px"
   });
 
   if (loading) return <div style={{ textAlign: "center", padding: "100px", color: "#64748b" }}>Carregando pedidos...</div>;
@@ -276,41 +286,41 @@ const AdminReservationsList: React.FC = () => {
       </div>
 
       <div style={{ display: "flex", gap: "8px", marginBottom: "25px", overflowX: "auto", paddingBottom: "10px" }}>
-        {(podeGerenciarReservas || podeFazerVistoria) && <button onClick={() => setActiveTab("urgentes")} style={getTabStyle(activeTab === "urgentes", (ordersDelayed.length + ordersDelayedReturn.length) > 0)}>Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})</button>}
-        {podeReceberPagamentos && <button onClick={() => setActiveTab("financeiro")} style={getTabStyle(activeTab === "financeiro", ordersEmPrejuizo.length > 0)}>Financeiro</button>}
+        {(podeGerenciarReservas || podeFazerVistoria) && <button onClick={() => handleTabChange("urgentes")} style={getTabStyle(activeTab === "urgentes", (ordersDelayed.length + ordersDelayedReturn.length) > 0)}><Siren size={18} /> Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})</button>}
+        {podeReceberPagamentos && <button onClick={() => handleTabChange("financeiro")} style={getTabStyle(activeTab === "financeiro", ordersEmPrejuizo.length > 0)}><CircleDollarSign size={18} /> Financeiro</button>}
         {(podeGerenciarReservas || podeFazerVistoria) && (
-          <><button onClick={() => setActiveTab("saidas")} style={getTabStyle(activeTab === "saidas")}>Saídas</button>
-            <button onClick={() => setActiveTab("devolucoes")} style={getTabStyle(activeTab === "devolucoes")}>Devoluções</button>
-            <button onClick={() => setActiveTab("pendencias")} style={getTabStyle(activeTab === "pendencias")}>Assinaturas</button></>
+          <><button onClick={() => handleTabChange("saidas")} style={getTabStyle(activeTab === "saidas")}><Truck size={18} /> Saídas</button>
+            <button onClick={() => handleTabChange("devolucoes")} style={getTabStyle(activeTab === "devolucoes")}><RotateCcw size={18} /> Devoluções</button>
+            <button onClick={() => handleTabChange("pendencias")} style={getTabStyle(activeTab === "pendencias")}><ClipboardList size={18} /> Assinaturas</button></>
         )}
-        {podeGerenciarReservas && <button onClick={() => setActiveTab("historico")} style={getTabStyle(activeTab === "historico")}>Histórico</button>}
+        {podeGerenciarReservas && <button onClick={() => handleTabChange("historico")} style={getTabStyle(activeTab === "historico")}><History size={18} /> Histórico</button>}
       </div>
 
       <div style={{ backgroundColor: "#fff", padding: "30px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
         <div style={{ marginBottom: "25px", display: "flex", borderBottom: "1px solid #f1f5f9", paddingBottom: "15px" }}>
           {activeTab === "urgentes" && (
-            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}>Saídas Atrasadas ({ordersDelayed.length})</button>
-              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}>Retornos Atrasados ({ordersDelayedReturn.length})</button></>
+            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}><AlertTriangle size={14} /> Saídas Atrasadas ({ordersDelayed.length})</button>
+              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}><Clock size={14} /> Retornos Atrasados ({ordersDelayedReturn.length})</button></>
           )}
           {activeTab === "saidas" && (
-            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}>Hoje ({ordersToday.length})</button>
-              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}>Agendadas ({ordersFuture.length})</button></>
+            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}><Calendar size={14} /> Hoje ({ordersToday.length})</button>
+              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}><CalendarClock size={14} /> Agendadas ({ordersFuture.length})</button></>
           )}
           {activeTab === "devolucoes" && (
-            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}>Aguardando Vistoria ({ordersInLocacao.length})</button></>
+            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}><ClipboardCheck size={14} /> Aguardando Vistoria ({ordersInLocacao.length})</button></>
           )}
           {activeTab === "pendencias" && (
-            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}>Saída ({ordersAwaitingSignature.length})</button>
-              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}>Devolução ({ordersAwaitingReturnSignature.length})</button></>
+            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}><FileSignature size={14} /> Saída ({ordersAwaitingSignature.length})</button>
+              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}><FileCheck size={14} /> Devolução ({ordersAwaitingReturnSignature.length})</button></>
           )}
           {activeTab === "financeiro" && (
-            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}>Sinal Pendente ({ordersAbandoned.length})</button>
-              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}>Pagamento Final ({ordersFinalPayment.length})</button>
-              <button onClick={() => setActiveSubTab("sub3")} style={getSubTabStyle(activeSubTab === "sub3")}>Dívidas/BO ({ordersEmPrejuizo.length})</button></>
+            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}><Wallet size={14} /> Sinal Pendente ({ordersAbandoned.length})</button>
+              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}><CreditCard size={14} /> Pagamento Final ({ordersFinalPayment.length})</button>
+              <button onClick={() => setActiveSubTab("sub3")} style={getSubTabStyle(activeSubTab === "sub3")}><AlertOctagon size={14} /> Dívidas/BO ({ordersEmPrejuizo.length})</button></>
           )}
           {activeTab === "historico" && (
-            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}>Finalizados ({finalizedOrders.length})</button>
-              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}>Cancelados ({cancelledOrders.length})</button></>
+            <><button onClick={() => setActiveSubTab("sub1")} style={getSubTabStyle(activeSubTab === "sub1")}><CheckCircle size={14} /> Finalizados ({finalizedOrders.length})</button>
+              <button onClick={() => setActiveSubTab("sub2")} style={getSubTabStyle(activeSubTab === "sub2")}><XCircle size={14} /> Cancelados ({cancelledOrders.length})</button></>
           )}
         </div>
 

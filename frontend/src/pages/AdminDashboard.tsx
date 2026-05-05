@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import EquipmentForm from "../components/Admin/EquipmentForm";
 import AddCategoryForm from "../components/Admin/AddCategoryForm";
-import EquipmentList from "../components/Admin/EquipmentList";
 import AdminReservationsList from "../components/Admin/AdminReservationsList";
 import AdminHorariosPage from "../components/HorarioFuncionamento";
 import AdminReportsPage from "../pages/AdminReportsPage";
-import MaintenanceDashboard from "../components/MaintenanceDashboard";
 import AdminStoreConfig from "../pages/AdminStoreConfig";
 import AdminCalendarPage from "../components/Admin/GerenciamentoCalendario";
 import AdminTeamPage from "../components/Admin/AdminTeamPage";
-import EquipamentosEmLocacao from "../components/Admin/EquipamentosEmLocacao";
+import EquipamentosAdminManager from "../components/Admin/EquipamentosAdminManager";
 import "../styles/AdminDashboard.css";
 
 const Icons = {
@@ -39,20 +36,28 @@ const Icons = {
 
 const AdminDashboard: React.FC = () => {
   const { isLoggedIn, user, hasPermission } = useAuth();
-  const [activeTab, setActiveTab] = useState("vazio");
+  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem("adminActiveTab") || "vazio");
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   useEffect(() => {
-    if (
-      hasPermission("gerenciar_reservas") || 
-      hasPermission("fazer_vistoria") || 
-      hasPermission("receber_pagamentos")
-    )
-      setActiveTab("reservas");
-    else if (hasPermission("gerenciar_estoque")) setActiveTab("equipamentos");
-    else if (hasPermission("configuracoes")) setActiveTab("config");
-    else if (hasPermission("ver_financeiro")) setActiveTab("relatorios"); 
-  }, [user]);
+    if (activeTab === "vazio") {
+      if (
+        hasPermission("gerenciar_reservas") || 
+        hasPermission("fazer_vistoria") || 
+        hasPermission("receber_pagamentos")
+      )
+        setActiveTab("reservas");
+      else if (hasPermission("gerenciar_estoque")) setActiveTab("equipamentos");
+      else if (hasPermission("configuracoes")) setActiveTab("config");
+      else if (hasPermission("ver_financeiro")) setActiveTab("relatorios"); 
+    }
+  }, [user, activeTab, hasPermission]);
+
+  useEffect(() => {
+    if (activeTab !== "vazio") {
+      sessionStorage.setItem("adminActiveTab", activeTab);
+    }
+  }, [activeTab]);
 
   if (
     !isLoggedIn ||
@@ -80,40 +85,7 @@ const AdminDashboard: React.FC = () => {
       case "equipamentos":
         return hasPermission("gerenciar_estoque") ? (
           <div className="admin-content-container">
-            <div style={{ marginBottom: "25px", borderBottom: "1px solid #eee", paddingBottom: "15px" }}>
-              <h2 className="admin-header admin-header-flex" style={{ margin: 0 }}>
-                Gestão de Equipamentos
-              </h2>
-            </div>
-
-            <div style={{ marginBottom: "30px" }}>
-              <MaintenanceDashboard />
-            </div>
-
-            <div style={{ marginBottom: "30px", padding: "25px", backgroundColor: "#fff", borderRadius: "12px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", border: "1px solid #f0f0f0" }}>
-              <h4 style={{ marginTop: 0, marginBottom: "20px", color: "#0d47a1", borderBottom: "2px solid #e3f2fd", paddingBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
-                🚜 Equipamentos em Locação
-              </h4>
-              <EquipamentosEmLocacao />
-            </div>
-
-            <div style={{ marginBottom: "30px", padding: "25px", backgroundColor: "#fff", borderRadius: "12px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", border: "1px solid #f0f0f0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                <h4 style={{ margin: 0, color: "#007bff", display: "flex", alignItems: "center", gap: "8px" }}>
-                  Cadastrar Novo Equipamento
-                </h4>
-              </div>
-              <div style={{ backgroundColor: "#f8f9fa", padding: "20px", borderRadius: "8px", border: "1px dashed #dee2e6" }}>
-                <EquipmentForm />
-              </div>
-            </div>
-
-            <div style={{ padding: "25px", backgroundColor: "#fff", borderRadius: "12px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", border: "1px solid #f0f0f0" }}>
-              <h4 style={{ marginTop: 0, marginBottom: "20px", color: "#333", borderBottom: "2px solid #eee", paddingBottom: "10px" }}>
-                Inventário Completo
-              </h4>
-              <EquipmentList />
-            </div>
+            <EquipamentosAdminManager />
           </div>
         ) : null;
       case "equipe":
@@ -125,7 +97,7 @@ const AdminDashboard: React.FC = () => {
       case "categorias":
         return hasPermission("gerenciar_estoque") ? (
           <div className="admin-content-container">
-            <h2 className="admin-header">Categorias do Sistema</h2>
+            <h2 className="admin-header">Categorias dos Equipamentos</h2>
             <div style={{ marginBottom: "2rem", padding: "1.5rem", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
               <AddCategoryForm />
             </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { Image as ImageIcon, CheckCircle } from 'lucide-react';
 
 interface Category {
   id: number;
@@ -34,10 +35,8 @@ const EquipmentForm: React.FC = () => {
     fetchCategories();
   }, []);
 
-  // Handler para o input de varios arquivo
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      // Converte FileList para Array
       const filesArray = Array.from(e.target.files);
       setSelectedFiles(filesArray);
     }
@@ -45,29 +44,24 @@ const EquipmentForm: React.FC = () => {
 
   const parseBrValue = (val: string) => {
     if (!val) return "";
-    let clean = val.replace(/\s/g, ''); // Remove espaços
+    let clean = val.replace(/\s/g, ''); 
 
-    // Se tem vírgula, segue o padrão BR: tira pontos de milhar e troca vírgula por ponto decimal
     if (clean.includes(',')) {
       return clean.replace(/\./g, '').replace(',', '.');
     }
 
-    // Se NÃO tem vírgula, mas tem ponto:
     if (clean.includes('.')) {
       const parts = clean.split('.');
       const lastPart = parts[parts.length - 1];
 
-      // Se tem mais de um ponto (ex: 1.000.000), é milhar
       if (parts.length > 2) {
         return clean.replace(/\./g, '');
       }
 
-      // Se tem exatamente 3 dígitos após o ponto (ex: 4.500), tratamos como milhar
       if (lastPart.length === 3) {
         return clean.replace(/\./g, '');
       }
 
-      // Caso contrário (ex: 4.5 ou 4.50), tratamos como decimal internacional
       return clean;
     }
 
@@ -107,12 +101,10 @@ const EquipmentForm: React.FC = () => {
 
       alert('Equipamento cadastrado com sucesso!');
 
-      // Limpar form
       setNome(''); setDescricao(''); setPrecoDiaria(''); 
       setPrecoSemanal(''); setPrecoQuinzenal(''); setPrecoMensal('');
       setCategoriaId(''); setTotalQuantidade(''); 
-      setSelectedFiles([]); // Limpa array
-
+      setSelectedFiles([]);
 
     } catch (error) {
       console.error(error);
@@ -123,11 +115,15 @@ const EquipmentForm: React.FC = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '0' }}>
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '15px' }}>
+    <div style={{ backgroundColor: '#fff', borderRadius: '12px', animation: "fadeIn 0.3s ease" }}>
+      
+      <div style={{ marginBottom: "25px" }}>
+        <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "5px 0 0 0" }}>Preencha as informações para adicionar um novo equipamento ao inventário.</p>
+      </div>
 
-          {/* Coluna 1 */}
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+
           <div>
             <label style={labelStyle}>Nome do Equipamento</label>
             <input
@@ -140,7 +136,6 @@ const EquipmentForm: React.FC = () => {
             />
           </div>
 
-          {/* Coluna 2 */}
           <div>
             <label style={labelStyle}>Categoria</label>
             <select
@@ -149,25 +144,23 @@ const EquipmentForm: React.FC = () => {
               style={inputStyle}
               required
             >
-              <option value="">Selecione...</option>
+              <option value="">Selecione uma categoria...</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.nome}</option>
               ))}
             </select>
           </div>
 
-          {/* Descrição */}
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelStyle}>Descrição Técnica</label>
             <textarea
               value={descricao}
               onChange={e => setDescricao(e.target.value)}
-              placeholder="Detalhes do equipamento..."
-              style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
+              placeholder="Detalhes, voltagem, marca e capacidade do equipamento..."
+              style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }}
             />
           </div>
 
-          {/* Preços */}
           <div>
             <label style={labelStyle}>Preço da Diária (R$)</label>
             <input
@@ -213,56 +206,114 @@ const EquipmentForm: React.FC = () => {
             />
           </div>
 
-          {/* Quantidade */}
           <div>
-            <label style={labelStyle}>Quantidade em Estoque</label>
+            <label style={labelStyle}>Quantidade Inicial em Estoque</label>
             <input
               type="number"
               value={totalQuantidade}
               onChange={e => setTotalQuantidade(e.target.value)}
-              placeholder="0"
+              placeholder="1"
+              min="1"
               style={inputStyle}
               required
             />
           </div>
 
-          {/* Input de Arquivo */}
           <div style={{ gridColumn: '1 / -1' }}>
-            <label style={labelStyle}>Galeria de Fotos (Selecione várias)</label>
-            <input 
-              type="file" 
-              accept="image/*"
-              multiple
-              onChange={handleFileChange}
-              style={{...inputStyle, padding: '6px'}}
-            />
+            <label style={labelStyle}>Galeria de Fotos do Equipamento</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <label 
+                htmlFor="file-upload" 
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', 
+                  backgroundColor: '#f1f5f9', color: '#475569', borderRadius: '8px', 
+                  border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+              >
+                <ImageIcon size={18} />
+                Procurar Fotos
+              </label>
+              <input 
+                id="file-upload"
+                type="file" 
+                accept="image/*"
+                multiple
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
+              <span style={{ fontSize: '0.9rem', color: '#64748b' }}>
+                {selectedFiles.length === 0 ? "Nenhuma imagem selecionada" : `${selectedFiles.length} arquivo(s) selecionado(s)`}
+              </span>
+            </div>
             
             {selectedFiles.length > 0 && (
-              <div style={{marginTop: '10px', fontSize: '0.9rem', color: '#666'}}>
-                <strong>{selectedFiles.length} arquivos selecionados:</strong>
-                <ul style={{marginTop: '5px', paddingLeft: '20px'}}>
-                  {selectedFiles.map((f, i) => <li key={i}>{f.name}</li>)}
+              <div style={{ marginTop: '15px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {selectedFiles.map((f, i) => (
+                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckCircle size={14} color="#10b981" /> {f.name}
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}
           </div>
-
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={submitBtnStyle}
-        >
-          {loading ? 'Enviando...' : '+ Cadastrar Equipamento'}
-        </button>
+        <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={submitBtnStyle}
+            onMouseOver={(e) => { if(!loading) e.currentTarget.style.backgroundColor = '#1d4ed8' }}
+            onMouseOut={(e) => { if(!loading) e.currentTarget.style.backgroundColor = '#2563eb' }}
+          >
+            {loading ? 'Cadastrando...' : 'Finalizar Cadastro'}
+          </button>
+        </div>
       </form>
     </div>
   );
 };
 
-const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444', fontSize: '0.9rem' };
-const inputStyle: React.CSSProperties = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem', boxSizing: 'border-box' };
-const submitBtnStyle: React.CSSProperties = { width: '100%', padding: '12px', backgroundColor: '#2c3e50', color: 'white', border: 'none', borderRadius: '6px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' };
+const labelStyle: React.CSSProperties = { 
+  display: 'block', 
+  marginBottom: '8px', 
+  fontWeight: '700', 
+  color: '#475569', 
+  fontSize: '0.85rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em'
+};
+
+const inputStyle: React.CSSProperties = { 
+  width: '100%', 
+  padding: '12px 15px', 
+  borderRadius: '8px', 
+  border: '1px solid #cbd5e1', 
+  fontSize: '0.95rem', 
+  color: '#334155',
+  boxSizing: 'border-box',
+  outline: 'none',
+  transition: 'border-color 0.2s, box-shadow 0.2s'
+};
+
+const submitBtnStyle: React.CSSProperties = { 
+  padding: '14px 28px', 
+  backgroundColor: '#2563eb', 
+  color: 'white', 
+  border: 'none', 
+  borderRadius: '8px', 
+  fontSize: '1rem', 
+  fontWeight: 'bold', 
+  cursor: 'pointer',
+  transition: 'background-color 0.2s',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
+};
 
 export default EquipmentForm;
