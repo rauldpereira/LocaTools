@@ -408,7 +408,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                                     if (rentalPeriod === 'diaria') {
                                         // Armazena como array no nosso estado para consistência
                                         const range = Array.isArray(value) ? value : [value as Date];
-                                        setSelectedRange(range);
+                                        setSelectedRange(range as any);
                                     } else {
                                         const selectedDate = Array.isArray(value) ? value[0] : (value as Date);
                                         if (!selectedDate) return;
@@ -423,9 +423,9 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                                 }}
                                 
                                 value={
-                                    rentalPeriod === 'diaria' 
+                                    (rentalPeriod === 'diaria' 
                                         ? (selectedRange && selectedRange.length === 1 ? selectedRange[0] : selectedRange)
-                                        : (selectedRange ? selectedRange[0] : null)
+                                        : (selectedRange ? selectedRange[0] : null)) as any
                                 }
                                 selectRange={rentalPeriod === 'diaria'}
                                 minDate={minDate}

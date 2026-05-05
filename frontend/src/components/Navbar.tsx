@@ -82,15 +82,16 @@ const Navbar: React.FC = () => {
                                     </li>
                                 </>
                             )}
-                            <li style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>
-                                <NotificationBell />
-                            </li>
-                            
                             {(user?.tipo_usuario === 'admin' || user?.tipo_usuario === 'funcionario') && (
                                 <li>
                                     <Link to="/admin">Painel Interno</Link>
                                 </li>
                             )}
+
+                            <li style={{ display: 'flex', alignItems: 'center', marginRight: '10px' }}>
+                                <NotificationBell />
+                            </li>
+                            
                             <li>
                                 <button onClick={handleLogout} className="navbar-button">Sair</button>
                             </li>
