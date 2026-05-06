@@ -106,7 +106,6 @@ const AdminDashboard: React.FC = () => {
       case "horarios":
         return hasPermission("configuracoes") ? (
           <div className="admin-content-container">
-            <h2 className="admin-header">Horários de Funcionamento</h2>
             <div style={{ padding: "1.5rem", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
               <AdminHorariosPage />
             </div>
