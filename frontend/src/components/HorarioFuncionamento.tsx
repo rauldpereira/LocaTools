@@ -210,7 +210,7 @@ const AdminHorariosPage: React.FC = () => {
             {/* CABEÇALHO FIXO */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "25px 30px", borderBottom: "1px solid #f1f5f9", flexShrink: 0, position: "relative" }}>
               <h3 style={{ margin: 0, color: '#1e293b', display: "flex", alignItems: "center", gap: "10px" }}>
-                <HelpCircle size={22} color="#2563eb" /> Manual: Horários de Funcionamento
+                <HelpCircle size={22} color="#2563eb" /> Manual do Usuário: Horários de Funcionamento
               </h3>
               <button
                 onClick={() => setShowManual(false)}

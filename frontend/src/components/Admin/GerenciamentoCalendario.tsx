@@ -12,6 +12,7 @@ import {
   Lock,
   HelpCircle,
   CheckCircle,
+  AlertTriangle,
   X,
   Loader2
 } from 'lucide-react';
@@ -166,6 +167,12 @@ const GerenciamentoCalendario: React.FC = () => {
         <span className="legenda-item"><div className="cor dia-padrao-fechado"></div> Fechado Padrão</span>
         <span className="legenda-item"><div className="cor dia-excecao-fechado"></div> Feriado / Parada</span>
       </div>
+
+      {error && (
+        <div style={{ padding: "12px 16px", backgroundColor: "#fef2f2", border: "1px solid #ef4444", borderRadius: "8px", color: "#b91c1c", marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px", fontWeight: "bold" }}>
+          <AlertTriangle size={18} /> {error}
+        </div>
+      )}
 
       {/* CALENDÁRIO */}
       <div style={{ position: 'relative' }}>

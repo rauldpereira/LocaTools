@@ -230,7 +230,7 @@ const AdminDashboard: React.FC = () => {
             <>
               <div className="admin-section-divider"></div>
               <MenuItem
-                label="Relatórios & B.O."
+                label="Relatórios"
                 icon={Icons.relatorios}
                 isActive={activeTab === "relatorios"}
                 onClick={() => setActiveTab("relatorios")}

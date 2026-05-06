@@ -57,8 +57,6 @@ const AdminStoreConfig: React.FC = () => {
     uf: ''
   });
 
-  const [isCustomAddress, setIsCustomAddress] = useState(false);
-
   const backendUrl = `${import.meta.env.VITE_API_URL}/api/config`;
 
   useEffect(() => {
@@ -85,10 +83,7 @@ const AdminStoreConfig: React.FC = () => {
           });
 
           if (data.frete?.endereco_origem && data.frete?.endereco_origem !== ENDERECO_PADRAO) {
-            setIsCustomAddress(true);
             tentaPreencherCampos(data.frete.endereco_origem);
-          } else {
-            setIsCustomAddress(false);
           }
         }
       } catch (error) {
@@ -169,7 +164,6 @@ const AdminStoreConfig: React.FC = () => {
       setTimeout(() => setSuccessMsg(''), 4000);
 
       if (enderecoFinal && enderecoFinal !== ENDERECO_PADRAO) {
-        setIsCustomAddress(true);
         setConfig(prev => ({ ...prev, frete: { ...prev.frete, endereco_origem: enderecoFinal } }));
       }
     } catch (error) {
@@ -417,43 +411,50 @@ const AdminStoreConfig: React.FC = () => {
       {/* MODAL MANUAL */}
       {showManual && (
         <div style={manualOverlayStyle} onClick={() => setShowManual(false)}>
-          <div style={manualContentStyle} onClick={e => e.stopPropagation()}>
+          <div style={{ ...manualContentStyle, maxWidth: '650px', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
             <div style={manualHeaderStyle}>
-              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
-                <HelpCircle size={22} color="#2563eb" /> Manual de Configurações
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px", color: "#1e293b" }}>
+                <HelpCircle size={22} color="#2563eb" /> Manual: Configurações do Sistema
               </h3>
               <button onClick={() => setShowManual(false)} style={manualCloseBtnStyle}><X size={22} /></button>
             </div>
 
-            <div style={{ padding: "30px", overflowY: "auto", maxHeight: "70vh" }}>
-              <div style={manualStepStyle}>
-                <div style={stepNumStyle}>1</div>
-                <div>
-                  <strong>Fidelidade:</strong> Ativa o sistema que dá descontos automáticos. Defina após quantos pedidos o cliente ganha o benefício e qual o valor do desconto.
+            <div style={{ padding: "30px", overflowY: "auto", flexGrow: 1, maxHeight: "70vh" }}>
+              <div style={{ color: "#475569", lineHeight: "1.6" }}>
+                <p style={{ marginBottom: "25px", fontSize: "1rem" }}>Gerencie as regras de negócio, logística e dados institucionais da loja.</p>
+                
+                <div style={manualStepStyle}>
+                  <div style={stepNumStyle}>1</div>
+                  <div>
+                    <strong>Programa de Fidelidade:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Ative para premiar clientes recorrentes. Defina quantos pedidos finalizados são necessários para liberar o desconto automático na próxima locação.</p>
+                  </div>
                 </div>
-              </div>
-              <div style={manualStepStyle}>
-                <div style={stepNumStyle}>2</div>
-                <div>
-                  <strong>Travas e Prazos:</strong> Impede que clientes aluguem equipamentos de última hora para o mesmo dia, dando tempo da equipe se organizar. Define também o valor do sinal e a taxa de reagendamento que é fixa.
-                </div>
-              </div>
-              <div style={manualStepStyle}>
-                <div style={stepNumStyle}>3</div>
-                <div>
-                  <strong>Frete:</strong> O sistema calcula o frete baseado no KM entre o endereço da loja e o do cliente. A "Taxa Fixa" é cobrada independente da distância.
-                </div>
-              </div>
-              <div style={manualStepStyle}>
-                <div style={stepNumStyle}>4</div>
-                <div>
-                  <strong>Institucional:</strong> Mantenha o CNPJ e contatos atualizados. Esses dados saem automaticamente no cabeçalho de todos os contratos PDF.
-                </div>
-              </div>
-            </div>
 
-            <div style={{ padding: "20px", textAlign: "center", borderTop: "1px solid #f1f5f9" }}>
-              <button onClick={() => setShowManual(false)} style={{ width: "100%", padding: "12px", borderRadius: "10px", backgroundColor: "#1e293b", color: "#fff", border: "none", fontWeight: "bold", cursor: "pointer" }}>Entendi</button>
+                <div style={manualStepStyle}>
+                  <div style={stepNumStyle}>2</div>
+                  <div>
+                    <strong>Travas e Prazos:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>O <strong>Horário Limite</strong> impede reservas de última hora para o mesmo dia. O <strong>Sinal Mínimo</strong> define o valor obrigatório para que a reserva seja confirmada pelo sistema.</p>
+                  </div>
+                </div>
+
+                <div style={manualStepStyle}>
+                  <div style={stepNumStyle}>3</div>
+                  <div>
+                    <strong>Logística e Frete:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>O frete é calculado por KM a partir do endereço cadastrado. A <strong>Taxa Fixa</strong> é somada ao valor da distância, e o <strong>Raio Máximo</strong> limita a área de atendimento no site.</p>
+                  </div>
+                </div>
+
+                <div style={manualStepStyle}>
+                  <div style={stepNumStyle}>4</div>
+                  <div>
+                    <strong>Dados Institucionais:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Mantenha o CNPJ e contatos sempre atualizados. Essas informações são inseridas automaticamente em todos os contratos e termos gerados em PDF.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
