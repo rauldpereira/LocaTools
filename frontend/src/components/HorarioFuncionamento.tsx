@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Clock, 
-  Calendar, 
-  CheckCircle, 
-  Save, 
-  Loader2, 
+import {
+  Clock,
+  Calendar,
+  CheckCircle,
+  Save,
+  Loader2,
   HelpCircle,
   X
 } from 'lucide-react';
@@ -99,7 +99,7 @@ const AdminHorariosPage: React.FC = () => {
           <p style={{ color: "#64748b", margin: 0 }}>Ajuste os períodos de atendimento para retiradas e devoluções.</p>
         </div>
 
-        <button 
+        <button
           onClick={() => setShowManual(true)}
           title="Manual do Usuário"
           style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "45px", height: "45px", borderRadius: "50%", border: "1px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
@@ -115,9 +115,9 @@ const AdminHorariosPage: React.FC = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: '#f8fafc', color: '#64748b', textAlign: 'left' }}>
-              <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Calendar size={14}/> Dia</div></th>
-              <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Clock size={14}/> Abertura</div></th>
-              <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Clock size={14}/> Fechamento</div></th>
+              <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Calendar size={14} /> Dia</div></th>
+              <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Clock size={14} /> Abertura</div></th>
+              <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Clock size={14} /> Fechamento</div></th>
               <th style={{ ...thStyle, textAlign: 'center' }}>Status de Abertura</th>
             </tr>
           </thead>
@@ -125,36 +125,36 @@ const AdminHorariosPage: React.FC = () => {
             {horarios.map((item, index) => {
               const labelDia = DIAS_ORDENADOS.find(d => d.key === item.dia_semana)?.label;
               const estaAberto = !item.fechado;
-              
+
               return (
                 <tr key={item.dia_semana} style={{ borderBottom: '1px solid #f1f5f9', transition: "background 0.2s", opacity: estaAberto ? 1 : 0.6 }} className="table-row-hover">
                   <td style={{ ...tdStyle, fontWeight: '700', color: estaAberto ? '#1e293b' : '#94a3b8' }}>{labelDia}</td>
-                  
+
                   <td style={tdStyle}>
-                    <input 
-                      type="time" 
-                      value={item.horario_abertura} 
+                    <input
+                      type="time"
+                      value={item.horario_abertura}
                       disabled={!estaAberto}
                       onChange={(e) => handleChange(index, 'horario_abertura', e.target.value)}
                       style={{ ...inputStyle, opacity: estaAberto ? 1 : 0.5 }}
                     />
                   </td>
-                  
+
                   <td style={tdStyle}>
-                    <input 
-                      type="time" 
-                      value={item.horario_fechamento} 
+                    <input
+                      type="time"
+                      value={item.horario_fechamento}
                       disabled={!estaAberto}
                       onChange={(e) => handleChange(index, 'horario_fechamento', e.target.value)}
                       style={{ ...inputStyle, opacity: estaAberto ? 1 : 0.5 }}
                     />
                   </td>
-                  
+
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
                     <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '10px', padding: "6px 16px", borderRadius: "20px", backgroundColor: estaAberto ? "#f0fdf4" : "#fef2f2", border: `1px solid ${estaAberto ? "#d1fae5" : "#fecaca"}`, transition: "all 0.2s" }}>
-                      <input 
-                        type="checkbox" 
-                        checked={estaAberto} 
+                      <input
+                        type="checkbox"
+                        checked={estaAberto}
                         onChange={(e) => handleChange(index, 'fechado', !e.target.checked)}
                         style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                       />
@@ -168,16 +168,16 @@ const AdminHorariosPage: React.FC = () => {
             })}
           </tbody>
         </table>
-        
+
         <div style={{ padding: "20px", backgroundColor: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {successMsg ? (
             <div style={{ color: "#10b981", fontWeight: "700", display: "flex", alignItems: "center", gap: "8px", animation: "fadeIn 0.3s ease" }}>
               <CheckCircle size={18} /> {successMsg}
             </div>
           ) : <div />}
-          
-          <button 
-            onClick={handleSave} 
+
+          <button
+            onClick={handleSave}
             disabled={loading}
             style={{
               backgroundColor: '#2563eb',
@@ -212,8 +212,8 @@ const AdminHorariosPage: React.FC = () => {
               <h3 style={{ margin: 0, color: '#1e293b', display: "flex", alignItems: "center", gap: "10px" }}>
                 <HelpCircle size={22} color="#2563eb" /> Manual: Horários de Funcionamento
               </h3>
-              <button 
-                onClick={() => setShowManual(false)} 
+              <button
+                onClick={() => setShowManual(false)}
                 title="Fechar"
                 style={{ ...closeBtnStyle, backgroundColor: "#f1f5f9", borderRadius: "50%", padding: "10px", color: "#64748b", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
                 onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#fee2e2"; e.currentTarget.style.color = "#ef4444"; }}
@@ -227,7 +227,7 @@ const AdminHorariosPage: React.FC = () => {
             <div style={{ padding: "30px", overflowY: "auto", flexGrow: 1, maxHeight: "70vh" }}>
               <div style={{ color: "#475569", lineHeight: "1.6" }}>
                 <p style={{ marginBottom: "25px", fontSize: "1rem" }}>Gerencie a disponibilidade da loja para retiradas e devoluções.</p>
-                
+
                 <div style={manualStepStyle}>
                   <div style={stepNumberStyle}>1</div>
                   <div>
@@ -256,7 +256,7 @@ const AdminHorariosPage: React.FC = () => {
                   <div style={stepNumberStyle}>4</div>
                   <div>
                     <strong style={{ color: "#1e293b" }}>Regra de Reservas:</strong>
-                    <p style={{ margin: "5px 0 0 0" }}>Alterar os horários <strong style={{ color: "#2563eb" }}>não afeta reservas já confirmadas</strong>, apenas novos pedidos.</p>
+                    <p style={{ margin: "5px 0 0 0" }}>Alterar os horários ou dias de funcionamento <strong style={{ color: "#2563eb" }}>não afeta reservas já confirmadas</strong>, apenas novos pedidos.</p>
                   </div>
                 </div>
 
