@@ -1,6 +1,25 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import {
+  Settings,
+  Heart,
+  Truck,
+  ShieldAlert,
+  CreditCard,
+  FileText,
+  Save,
+  Loader2,
+  CheckCircle,
+  HelpCircle,
+  X,
+  MapPin,
+  Phone,
+  Mail,
+  Hash,
+  Clock,
+  Info
+} from "lucide-react";
 
 const ENDERECO_PADRAO = 'Av. Nossa Senhora do Bom Sucesso, 1000, Pindamonhangaba - SP';
 
@@ -8,6 +27,9 @@ const AdminStoreConfig: React.FC = () => {
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [showManual, setShowManual] = useState(false);
+
   const [config, setConfig] = useState({
     fidelidade_num_pedidos: 10,
     fidelidade_desconto_pct: 10.00,
@@ -17,12 +39,12 @@ const AdminStoreConfig: React.FC = () => {
     taxa_reagendamento: 0.00,
     sinal_porcentagem: 50.00,
     telefone_contato: '12 98837-6000',
-    email_contato: 'Exemplo@exemplo.com',
+    email_contato: 'exemplo@exemplo.com',
     frete: {
-        preco_km: 0,
-        taxa_fixa: 0,
-        endereco_origem: '',
-        raio_maximo_km: 50
+      preco_km: 0,
+      taxa_fixa: 0,
+      endereco_origem: '',
+      raio_maximo_km: 50
     }
   });
 
@@ -55,10 +77,10 @@ const AdminStoreConfig: React.FC = () => {
             telefone_contato: data.telefone_contato || '12 98837-6000',
             email_contato: data.email_contato || 'exemplo@exemplo.com',
             frete: {
-                preco_km: Number(data.frete?.preco_km || 0),
-                taxa_fixa: Number(data.frete?.taxa_fixa || 0),
-                endereco_origem: data.frete?.endereco_origem || '',
-                raio_maximo_km: Number(data.frete?.raio_maximo_km || 50)
+              preco_km: Number(data.frete?.preco_km || 0),
+              taxa_fixa: Number(data.frete?.taxa_fixa || 0),
+              endereco_origem: data.frete?.endereco_origem || '',
+              raio_maximo_km: Number(data.frete?.raio_maximo_km || 50)
             }
           });
 
@@ -80,72 +102,75 @@ const AdminStoreConfig: React.FC = () => {
 
   const tentaPreencherCampos = (enderecoCompleto: string) => {
     try {
-        if (!enderecoCompleto) return;
-        const partes = enderecoCompleto.split(',').map(p => p.trim());
-        const rua = partes[0] || '';
-        const numero = partes[1] || '';
-        const bairro = partes[2] || '';
-        let cidade = '';
-        let uf = '';
-        const parteCidadeUf = partes.find(p => p.includes(' - '));
-        if (parteCidadeUf) {
-            const divisao = parteCidadeUf.split(' - ');
-            cidade = divisao[0].trim();
-            uf = divisao[1].trim();
-        }
-        let cep = '';
-        const ultimaParte = partes[partes.length - 1];
-        const numerosCep = ultimaParte.replace(/\D/g, '');
-        if (numerosCep.length === 8) {
-            cep = numerosCep.replace(/^(\d{5})(\d{3})/, "$1-$2");
-        }
-        setAddress({ rua, numero, bairro, cidade, uf, cep });
+      if (!enderecoCompleto) return;
+      const partes = enderecoCompleto.split(',').map(p => p.trim());
+      const rua = partes[0] || '';
+      const numero = partes[1] || '';
+      const bairro = partes[2] || '';
+      let cidade = '';
+      let uf = '';
+      const parteCidadeUf = partes.find(p => p.includes(' - '));
+      if (parteCidadeUf) {
+        const divisao = parteCidadeUf.split(' - ');
+        cidade = divisao[0].trim();
+        uf = divisao[1].trim();
+      }
+      let cep = '';
+      const ultimaParte = partes[partes.length - 1];
+      const numerosCep = ultimaParte.replace(/\D/g, '');
+      if (numerosCep.length === 8) {
+        cep = numerosCep.replace(/^(\d{5})(\d{3})/, "$1-$2");
+      }
+      setAddress({ rua, numero, bairro, cidade, uf, cep });
     } catch (error) {
-        console.error('Erro ao preencher campos do endereço:', error);
-     }
+      console.error('Erro ao preencher campos do endereço:', error);
+    }
   };
 
   const buscarCepNoApi = async (cepParaBuscar: string) => {
     try {
-        const response = await axios.get(`https://viacep.com.br/ws/${cepParaBuscar}/json/`);
-        if (response.data.erro) return;
-        setAddress(prev => ({
-            ...prev,
-            rua: response.data.logradouro,
-            bairro: response.data.bairro,
-            cidade: response.data.localidade,
-            uf: response.data.uf,
-            cep: cepParaBuscar
-        }));
+      const response = await axios.get(`https://viacep.com.br/ws/${cepParaBuscar}/json/`);
+      if (response.data.erro) return;
+      setAddress(prev => ({
+        ...prev,
+        rua: response.data.logradouro,
+        bairro: response.data.bairro,
+        cidade: response.data.localidade,
+        uf: response.data.uf,
+        cep: cepParaBuscar
+      }));
     } catch (error) {
-        console.error('Erro ViaCEP:', error);
+      console.error('Erro ViaCEP:', error);
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
+    setSuccessMsg('');
     try {
       let enderecoFinal = config.frete.endereco_origem;
       if (address.rua && address.numero) {
-          enderecoFinal = `${address.rua}, ${address.numero}, ${address.bairro}, ${address.cidade} - ${address.uf}`;
-          if (address.cep) enderecoFinal += `, ${address.cep}`;
+        enderecoFinal = `${address.rua}, ${address.numero}, ${address.bairro}, ${address.cidade} - ${address.uf}`;
+        if (address.cep) enderecoFinal += `, ${address.cep}`;
       }
 
       const payload = {
-          ...config,
-          frete: {
-              ...config.frete,
-              endereco_origem: enderecoFinal || ENDERECO_PADRAO
-          }
+        ...config,
+        frete: {
+          ...config.frete,
+          endereco_origem: enderecoFinal || ENDERECO_PADRAO
+        }
       };
 
       const authConfig = { headers: { Authorization: `Bearer ${token}` } };
       await axios.put(backendUrl, payload, authConfig);
-      alert("✅ Configurações atualizadas com sucesso!");
+
+      setSuccessMsg("Configurações atualizadas com sucesso!");
+      setTimeout(() => setSuccessMsg(''), 4000);
 
       if (enderecoFinal && enderecoFinal !== ENDERECO_PADRAO) {
-          setIsCustomAddress(true);
-          setConfig(prev => ({ ...prev, frete: { ...prev.frete, endereco_origem: enderecoFinal } }));
+        setIsCustomAddress(true);
+        setConfig(prev => ({ ...prev, frete: { ...prev.frete, endereco_origem: enderecoFinal } }));
       }
     } catch (error) {
       console.error("Erro ao salvar:", error);
@@ -158,206 +183,125 @@ const AdminStoreConfig: React.FC = () => {
   const formatCNPJ = (value: string) => {
     const digits = value.replace(/\D/g, "");
     return digits
-      .replace(/^(\d{2})(\d)/, ".")
-      .replace(/^(\d{2})\.(\d{3})(\d)/, "..")
-      .replace(/\.(\d{3})(\d)/, "./")
-      .replace(/(\d{4})(\d)/, "-")
+      .replace(/^(\d{2})(\d)/, "$1.$2")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d)/, ".$1/$2")
+      .replace(/(\d{4})(\d)/, "$1-$2")
       .slice(0, 18);
   };
 
-  if (loading) return <div>Carregando configurações...</div>;
+  if (loading) return <div style={{ textAlign: "center", padding: "100px", color: "#64748b" }}>Carregando configurações...</div>;
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", paddingBottom: "50px" }}>
-      <h2 style={{ color: "#2c3e50", borderBottom: "2px solid #eee", paddingBottom: "10px", marginBottom: "30px" }}>
-        ⚙️ Configurações Gerais da Loja
-      </h2>
+    <div style={{ maxWidth: "1000px", margin: "0 auto", animation: "fadeIn 0.3s ease", paddingBottom: "50px" }}>
 
-      {/* PROGRAMA DE FIDELIDADE */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0, color: "#007bff", display: "flex", alignItems: "center", gap: "10px" }}>
-          Programa de Fidelidade
-        </h3>
-        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
-          Defina as regras para o desconto automático baseado no histórico de compras do cliente.
-        </p>
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
+        <div>
+          <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.8rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "12px" }}>
+            <Settings size={32} color="#2563eb" /> Configurações do Sistema
+          </h2>
+          <p style={{ color: "#64748b", marginTop: "5px" }}>Gerencie regras de negócio, logística e dados institucionais.</p>
+        </div>
 
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", marginBottom: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <input
-              type="checkbox"
-              id="fidelidade_ativo"
-              checked={config.fidelidade_ativo}
-              onChange={(e) => setConfig({ ...config, fidelidade_ativo: e.target.checked })}
-              style={{ width: "20px", height: "20px", cursor: "pointer" }}
-            />
-            <label htmlFor="fidelidade_ativo" style={{ fontWeight: "bold", cursor: "pointer", color: "#333" }}>
-              Ativar Programa de Fidelidade
+        <button
+          onClick={() => setShowManual(true)}
+          title="Ajuda"
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "45px", height: "45px", borderRadius: "50%", border: "1px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
+          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#f8fafc"; e.currentTarget.style.color = "#2563eb"; }}
+          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.color = "#64748b"; }}
+        >
+          <HelpCircle size={24} />
+        </button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "25px" }}>
+
+        {/* PROGRAMA DE FIDELIDADE */}
+        <div style={cardStyle}>
+          <div style={cardHeaderStyle}>
+            <Heart size={20} color="#2563eb" />
+            <h3 style={cardTitleStyle}>Fidelidade</h3>
+          </div>
+          <p style={cardDescStyle}>Regras de desconto para clientes recorrentes.</p>
+
+          <div style={{ marginBottom: "20px" }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '10px', padding: "12px 15px", borderRadius: "10px", backgroundColor: config.fidelidade_ativo ? "#eff6ff" : "#f8fafc", border: `1px solid ${config.fidelidade_ativo ? "#bfdbfe" : "#e2e8f0"}`, transition: "0.2s" }}>
+              <input
+                type="checkbox"
+                checked={config.fidelidade_ativo}
+                onChange={(e) => setConfig({ ...config, fidelidade_ativo: e.target.checked })}
+                style={{ width: "18px", height: "18px", cursor: "pointer" }}
+              />
+              <span style={{ fontWeight: "700", color: config.fidelidade_ativo ? "#1e40af" : "#64748b" }}>Programa Ativo</span>
             </label>
           </div>
-        </div>
 
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", opacity: config.fidelidade_ativo ? 1 : 0.5, pointerEvents: config.fidelidade_ativo ? "auto" : "none" }}>
-          <div style={{ flex: 1, minWidth: "250px" }}>
-            <label style={labelStyle}>Número de Pedidos Finalizados</label>
-            <input
-              type="number"
-              value={config.fidelidade_num_pedidos}
-              onChange={(e) => setConfig({ ...config, fidelidade_num_pedidos: parseInt(e.target.value) || 0 })}
-              style={inputStyle}
-              min="1"
-            />
-            <small style={helpTextStyle}>A cada X pedidos completados, o próximo ganha desconto.</small>
-          </div>
-
-          <div style={{ flex: 1, minWidth: "250px" }}>
-            <label style={labelStyle}>Porcentagem de Desconto (%)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={config.fidelidade_desconto_pct}
-              onChange={(e) => setConfig({ ...config, fidelidade_desconto_pct: parseFloat(e.target.value) || 0 })}
-              style={inputStyle}
-              min="0"
-              max="100"
-            />
-            <small style={helpTextStyle}>Valor do desconto aplicado sobre o subtotal da locação.</small>
+          <div style={{ opacity: config.fidelidade_ativo ? 1 : 0.5, pointerEvents: config.fidelidade_ativo ? "auto" : "none" }}>
+            <div style={{ marginBottom: "15px" }}>
+              <label style={labelStyle}>Pedidos p/ Desconto</label>
+              <input
+                type="number"
+                value={config.fidelidade_num_pedidos}
+                onChange={(e) => setConfig({ ...config, fidelidade_num_pedidos: parseInt(e.target.value) || 0 })}
+                style={inputStyle}
+                min="1"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Valor do Desconto (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={config.fidelidade_desconto_pct}
+                onChange={(e) => setConfig({ ...config, fidelidade_desconto_pct: parseFloat(e.target.value) || 0 })}
+                style={inputStyle}
+                min="0"
+                max="100"
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* LOGÍSTICA E FRETE */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0, color: "#28a745", display: "flex", alignItems: "center", gap: "10px" }}>
-          Logística e Frete
-        </h3>
-        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
-          Configure o endereço de saída e as taxas cobradas para entregas.
-        </p>
+        {/* REGRAS DE NEGÓCIO */}
+        <div style={cardStyle}>
+          <div style={cardHeaderStyle}>
+            <ShieldAlert size={20} color="#2563eb" />
+            <h3 style={cardTitleStyle}>Travas e Prazos</h3>
+          </div>
+          <p style={cardDescStyle}>Limites operacionais para evitar erros.</p>
 
-        <div style={{ backgroundColor: "#f8f9fa", padding: "20px", borderRadius: "8px", marginBottom: "20px", border: "1px solid #eee" }}>
-            <h4 style={{ margin: "0 0 15px 0", fontSize: "1rem", color: "#555" }}>Endereço da Loja (Saída)</h4>
-            <div style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: "15px", marginBottom: "15px" }}>
-                <div style={formGroupStyle}>
-                    <label style={labelStyle}>CEP</label>
-                    <input
-                        type="text"
-                        maxLength={9}
-                        value={address.cep}
-                        onChange={(e) => setAddress({ ...address, cep: e.target.value })}
-                        onBlur={(e) => {
-                            const limpo = e.target.value.replace(/\D/g, '');
-                            if (limpo.length === 8) buscarCepNoApi(limpo);
-                        }}
-                        style={inputStyle}
-                        placeholder="00000-000"
-                    />
-                </div>
+          <div style={{ marginBottom: "20px" }}>
+            <label style={labelStyle}>Horário Limite (Locação Hoje)</label>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Clock size={18} color="#64748b" />
+              <input
+                type="time"
+                value={config.horario_limite_hoje}
+                onChange={(e) => setConfig({ ...config, horario_limite_hoje: e.target.value })}
+                style={inputStyle}
+              />
             </div>
+            <small style={helpTextStyle}>Após esse horário, o site bloqueia locações para o mesmo dia.</small>
+          </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "15px", marginBottom: "15px" }}>
-                <div style={formGroupStyle}>
-                    <label style={labelStyle}>Rua / Logradouro</label>
-                    <input
-                        type="text"
-                        value={address.rua}
-                        onChange={(e) => setAddress({ ...address, rua: e.target.value })}
-                        style={{ ...inputStyle, backgroundColor: address.rua ? "#e9ecef" : "#fff" }}
-                    />
-                </div>
-                <div style={formGroupStyle}>
-                    <label style={labelStyle}>Número</label>
-                    <input
-                        type="text"
-                        value={address.numero}
-                        onChange={(e) => setAddress({ ...address, numero: e.target.value })}
-                        style={inputStyle}
-                        placeholder="1000"
-                    />
-                </div>
+          <div style={{ marginBottom: "15px" }}>
+            <label style={labelStyle}>Sinal Mínimo (%)</label>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <CreditCard size={18} color="#64748b" />
+              <input
+                type="number"
+                value={config.sinal_porcentagem}
+                onChange={(e) => setConfig({ ...config, sinal_porcentagem: parseFloat(e.target.value) || 0 })}
+                style={inputStyle}
+                min="0"
+                max="100"
+              />
             </div>
+            <small style={helpTextStyle}>Valor obrigatório para confirmar a reserva.</small>
+          </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: "15px" }}>
-                <div style={formGroupStyle}>
-                    <label style={labelStyle}>Bairro</label>
-                    <input
-                        type="text"
-                        value={address.bairro}
-                        onChange={(e) => setAddress({ ...address, bairro: e.target.value })}
-                        style={{ ...inputStyle, backgroundColor: address.bairro ? "#e9ecef" : "#fff" }}
-                    />
-                </div>
-                <div style={formGroupStyle}>
-                    <label style={labelStyle}>Cidade</label>
-                    <input
-                        type="text"
-                        value={address.cidade}
-                        onChange={(e) => setAddress({ ...address, cidade: e.target.value })}
-                        style={{ ...inputStyle, backgroundColor: address.cidade ? "#e9ecef" : "#fff" }}
-                    />
-                </div>
-                <div style={formGroupStyle}>
-                    <label style={labelStyle}>UF</label>
-                    <input
-                        type="text"
-                        maxLength={2}
-                        value={address.uf}
-                        onChange={(e) => setAddress({ ...address, uf: e.target.value })}
-                        style={{ ...inputStyle, backgroundColor: address.uf ? "#e9ecef" : "#fff" }}
-                    />
-                </div>
-            </div>
-            {isCustomAddress && (
-                <div style={{ marginTop: "15px", padding: "10px", backgroundColor: "#fff3cd", borderRadius: "4px", fontSize: "0.85rem", color: "#856404" }}>
-                    <strong>Endereço Atual:</strong> {config.frete.endereco_origem}
-                </div>
-            )}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "20px" }}>
-            <div style={formGroupStyle}>
-                <label style={labelStyle}>Preço por KM (R$)</label>
-                <input
-                    type="number"
-                    step="0.01"
-                    value={config.frete.preco_km}
-                    onChange={(e) => setConfig({ ...config, frete: { ...config.frete, preco_km: parseFloat(e.target.value) || 0 } })}
-                    style={inputStyle}
-                />
-            </div>
-            <div style={formGroupStyle}>
-                <label style={labelStyle}>Taxa Fixa de Saída (R$)</label>
-                <input
-                    type="number"
-                    step="0.01"
-                    value={config.frete.taxa_fixa}
-                    onChange={(e) => setConfig({ ...config, frete: { ...config.frete, taxa_fixa: parseFloat(e.target.value) || 0 } })}
-                    style={inputStyle}
-                />
-            </div>
-            <div style={formGroupStyle}>
-                <label style={labelStyle}>Raio Máximo (KM)</label>
-                <input
-                    type="number"
-                    value={config.frete.raio_maximo_km}
-                    onChange={(e) => setConfig({ ...config, frete: { ...config.frete, raio_maximo_km: parseInt(e.target.value) || 0 } })}
-                    style={inputStyle}
-                />
-            </div>
-        </div>
-      </div>
-
-      {/* TAXAS EXTRAS */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0, color: "#6f42c1", display: "flex", alignItems: "center", gap: "10px" }}>
-          Taxas Extras
-        </h3>
-        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
-          Configure taxas adicionais cobradas por alterações ou serviços especiais.
-        </p>
-
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: "250px" }}>
+          <div>
             <label style={labelStyle}>Taxa de Reagendamento (R$)</label>
             <input
               type="number"
@@ -367,172 +311,178 @@ const AdminStoreConfig: React.FC = () => {
               style={inputStyle}
               min="0"
             />
-            <small style={helpTextStyle}>
-              Valor fixo cobrado a cada vez que o cliente solicita a remarcação de um pedido.
-            </small>
           </div>
         </div>
-      </div>
 
-      {/* TRAVAS */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0, color: "#dc3545", display: "flex", alignItems: "center", gap: "10px" }}>
-          Trava de Locação (Mesmo Dia)
-        </h3>
-        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
-          Defina até que horas um cliente pode solicitar uma locação para começar no próprio dia de hoje.
-        </p>
+        {/* LOGÍSTICA E FRETE */}
+        <div style={{ ...cardStyle, gridColumn: "span 2" }}>
+          <div style={cardHeaderStyle}>
+            <Truck size={20} color="#2563eb" />
+            <h3 style={cardTitleStyle}>Logística e Frete</h3>
+          </div>
 
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: "250px" }}>
-            <label style={labelStyle}>Horário Limite</label>
-            <input
-              type="time"
-              value={config.horario_limite_hoje}
-              onChange={(e) => setConfig({ ...config, horario_limite_hoje: e.target.value })}
-              style={inputStyle}
-            />
-            <small style={helpTextStyle}>
-              Exemplo: Se definido como 12:00, às 12:01 ninguém poderá alugar algo para hoje.
-            </small>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "30px" }}>
+            <div>
+              <h4 style={subTitleStyle}><MapPin size={16} /> Endereço de Saída</h4>
+              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "10px", marginBottom: "10px" }}>
+                <input type="text" placeholder="CEP" maxLength={9} value={address.cep} onChange={e => setAddress({ ...address, cep: e.target.value })} onBlur={e => { const l = e.target.value.replace(/\D/g, ''); if (l.length === 8) buscarCepNoApi(l); }} style={inputStyle} />
+                <input type="text" placeholder="Rua" value={address.rua} onChange={e => setAddress({ ...address, rua: e.target.value })} style={inputStyle} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 80px", gap: "10px", marginBottom: "10px" }}>
+                <input type="text" placeholder="Nº" value={address.numero} onChange={e => setAddress({ ...address, numero: e.target.value })} style={inputStyle} />
+                <input type="text" placeholder="Bairro" value={address.bairro} onChange={e => setAddress({ ...address, bairro: e.target.value })} style={inputStyle} />
+                <input type="text" placeholder="UF" maxLength={2} value={address.uf} onChange={e => setAddress({ ...address, uf: e.target.value })} style={inputStyle} />
+              </div>
+              <input type="text" placeholder="Cidade" value={address.cidade} onChange={e => setAddress({ ...address, cidade: e.target.value })} style={{ ...inputStyle, marginBottom: "10px" }} />
+            </div>
+
+            <div>
+              <h4 style={subTitleStyle}><Hash size={16} /> Taxas de Entrega</h4>
+              <div style={{ marginBottom: "15px" }}>
+                <label style={labelStyle}>Preço por KM (R$)</label>
+                <input type="number" step="0.01" value={config.frete.preco_km} onChange={e => setConfig({ ...config, frete: { ...config.frete, preco_km: parseFloat(e.target.value) || 0 } })} style={inputStyle} />
+              </div>
+              <div style={{ marginBottom: "15px" }}>
+                <label style={labelStyle}>Taxa Fixa de Saída (R$)</label>
+                <input type="number" step="0.01" value={config.frete.taxa_fixa} onChange={e => setConfig({ ...config, frete: { ...config.frete, taxa_fixa: parseFloat(e.target.value) || 0 } })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Raio Máximo (KM)</label>
+                <input type="number" value={config.frete.raio_maximo_km} onChange={e => setConfig({ ...config, frete: { ...config.frete, raio_maximo_km: parseInt(e.target.value) || 0 } })} style={inputStyle} />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* REGRAS DE PAGAMENTO */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0, color: "#e67e22", display: "flex", alignItems: "center", gap: "10px" }}>
-          Regras de Pagamento
-        </h3>
-        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
-          Defina quanto o cliente deve pagar no ato da reserva e quando o restante deve ser quitado.
-        </p>
+        {/* DADOS INSTITUCIONAIS */}
+        <div style={{ ...cardStyle, gridColumn: "span 2" }}>
+          <div style={cardHeaderStyle}>
+            <FileText size={20} color="#2563eb" />
+            <h3 style={cardTitleStyle}>Dados Institucionais (PDFs e Contratos)</h3>
+          </div>
 
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: "250px" }}>
-            <label style={labelStyle}>Porcentagem do Sinal (%)</label>
-            <input
-              type="number"
-              value={config.sinal_porcentagem}
-              onChange={(e) => setConfig({ ...config, sinal_porcentagem: parseFloat(e.target.value) || 0 })}
-              style={inputStyle}
-              min="0"
-              max="100"
-            />
-            <small style={helpTextStyle}>
-              Quanto do valor total deve ser pago imediatamente para confirmar a reserva (0 a 100).
-            </small>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" }}>
+            <div>
+              <label style={labelStyle}>CNPJ</label>
+              <input type="text" value={config.cnpj} onChange={e => setConfig({ ...config, cnpj: formatCNPJ(e.target.value) })} style={inputStyle} placeholder="00.000.000/0001-00" />
+            </div>
+            <div>
+              <label style={labelStyle}>Telefone</label>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Phone size={16} color="#64748b" />
+                <input type="text" value={config.telefone_contato} onChange={e => setConfig({ ...config, telefone_contato: e.target.value })} style={inputStyle} />
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>E-mail</label>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Mail size={16} color="#64748b" />
+                <input type="email" value={config.email_contato} onChange={e => setConfig({ ...config, email_contato: e.target.value })} style={inputStyle} />
+              </div>
+            </div>
           </div>
         </div>
+
       </div>
 
-      {/* INFORMAÇÕES LEGAIS E CONTATO */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0, color: "#17a2b8", display: "flex", alignItems: "center", gap: "10px" }}>
-          Informações Legais e Contato
-        </h3>
-        <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "20px" }}>
-          Dados que aparecerão nos contratos, cabeçalhos e termos de devolução.
-        </p>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" }}>
-          <div style={formGroupStyle}>
-            <label style={labelStyle}>CNPJ da Loja</label>
-            <input
-              type="text"
-              value={config.cnpj}
-              onChange={(e) => setConfig({ ...config, cnpj: formatCNPJ(e.target.value) })}
-              style={inputStyle}
-              placeholder="00.000.000/0001-00"
-            />
-            <small style={helpTextStyle}>Este CNPJ será impresso automaticamente nos documentos em PDF.</small>
+      {/* FOOTER SALVAR */}
+      <div style={{ marginTop: "30px", padding: "20px", backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+        {successMsg ? (
+          <div style={{ color: "#10b981", fontWeight: "700", display: "flex", alignItems: "center", gap: "8px", animation: "fadeIn 0.3s ease" }}>
+            <CheckCircle size={18} /> {successMsg}
           </div>
-
-          <div style={formGroupStyle}>
-            <label style={labelStyle}>Telefone de Contato</label>
-            <input
-              type="text"
-              value={config.telefone_contato}
-              onChange={(e) => setConfig({ ...config, telefone_contato: e.target.value })}
-              style={inputStyle}
-              placeholder="12 98837-6000"
-            />
-            <small style={helpTextStyle}>Aparecerá no cabeçalho dos contratos PDF.</small>
+        ) : (
+          <div style={{ color: "#64748b", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "8px" }}>
+            <Info size={16} /> Lembre-se de salvar para aplicar as mudanças.
           </div>
+        )}
 
-          <div style={formGroupStyle}>
-            <label style={labelStyle}>E-mail de Contato</label>
-            <input
-              type="email"
-              value={config.email_contato}
-              onChange={(e) => setConfig({ ...config, email_contato: e.target.value })}
-              style={inputStyle}
-              placeholder="exemplo@exemplo.com"
-            />
-            <small style={helpTextStyle}>Aparecerá no cabeçalho dos contratos PDF.</small>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ marginTop: "30px", display: "flex", justifyContent: "flex-end" }}>
         <button
           onClick={handleSave}
           disabled={saving}
           style={{
-            padding: "15px 40px",
-            backgroundColor: "#28a745",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            fontWeight: "bold",
-            cursor: saving ? "not-allowed" : "pointer",
-            fontSize: "1.1rem",
-            boxShadow: "0 4px 6px rgba(40,167,69,0.2)",
+            display: "flex", alignItems: "center", gap: "10px", padding: "12px 30px",
+            backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "10px",
+            fontWeight: "800", cursor: saving ? "not-allowed" : "pointer", fontSize: "1rem",
+            boxShadow: "0 4px 6px -1px rgba(37, 99, 235, 0.3)", transition: "0.2s"
           }}
+          onMouseOver={e => !saving && (e.currentTarget.style.backgroundColor = "#1d4ed8")}
+          onMouseOut={e => !saving && (e.currentTarget.style.backgroundColor = "#2563eb")}
         >
-          {saving ? "Salvando..." : "Salvar Todas as Configurações"}
+          {saving ? <Loader2 size={20} className="spin" /> : <Save size={20} />}
+          {saving ? "Salvando..." : "Salvar Configurações"}
         </button>
       </div>
+
+      {/* MODAL MANUAL */}
+      {showManual && (
+        <div style={manualOverlayStyle} onClick={() => setShowManual(false)}>
+          <div style={manualContentStyle} onClick={e => e.stopPropagation()}>
+            <div style={manualHeaderStyle}>
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+                <HelpCircle size={22} color="#2563eb" /> Manual de Configurações
+              </h3>
+              <button onClick={() => setShowManual(false)} style={manualCloseBtnStyle}><X size={22} /></button>
+            </div>
+
+            <div style={{ padding: "30px", overflowY: "auto", maxHeight: "70vh" }}>
+              <div style={manualStepStyle}>
+                <div style={stepNumStyle}>1</div>
+                <div>
+                  <strong>Fidelidade:</strong> Ativa o sistema que dá descontos automáticos. Defina após quantos pedidos o cliente ganha o benefício e qual o valor do desconto.
+                </div>
+              </div>
+              <div style={manualStepStyle}>
+                <div style={stepNumStyle}>2</div>
+                <div>
+                  <strong>Travas e Prazos:</strong> Impede que clientes aluguem equipamentos de última hora para o mesmo dia, dando tempo da equipe se organizar. Define também o valor do sinal e a taxa de reagendamento que é fixa.
+                </div>
+              </div>
+              <div style={manualStepStyle}>
+                <div style={stepNumStyle}>3</div>
+                <div>
+                  <strong>Frete:</strong> O sistema calcula o frete baseado no KM entre o endereço da loja e o do cliente. A "Taxa Fixa" é cobrada independente da distância.
+                </div>
+              </div>
+              <div style={manualStepStyle}>
+                <div style={stepNumStyle}>4</div>
+                <div>
+                  <strong>Institucional:</strong> Mantenha o CNPJ e contatos atualizados. Esses dados saem automaticamente no cabeçalho de todos os contratos PDF.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: "20px", textAlign: "center", borderTop: "1px solid #f1f5f9" }}>
+              <button onClick={() => setShowManual(false)} style={{ width: "100%", padding: "12px", borderRadius: "10px", backgroundColor: "#1e293b", color: "#fff", border: "none", fontWeight: "bold", cursor: "pointer" }}>Entendi</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+      `}</style>
     </div>
   );
 };
 
-const cardStyle: React.CSSProperties = {
-  backgroundColor: "#fff",
-  padding: "25px",
-  borderRadius: "12px",
-  boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
-  border: "1px solid #f0f0f0",
-  marginTop: "20px",
-};
+// --- ESTILOS ---
+const cardStyle: React.CSSProperties = { backgroundColor: "#fff", padding: "25px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" };
+const cardHeaderStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" };
+const cardTitleStyle: React.CSSProperties = { margin: 0, color: "#1e293b", fontSize: "1.1rem", fontWeight: "800" };
+const cardDescStyle: React.CSSProperties = { color: "#64748b", fontSize: "0.85rem", marginBottom: "20px" };
+const subTitleStyle: React.CSSProperties = { fontSize: "0.9rem", fontWeight: "800", color: "#475569", textTransform: "uppercase", marginBottom: "15px", display: "flex", alignItems: "center", gap: "8px" };
+const labelStyle: React.CSSProperties = { display: "block", fontSize: "0.8rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase", marginBottom: "8px", letterSpacing: "0.02em" };
+const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.95rem", color: "#334155", outline: "none", transition: "0.2s" };
+const helpTextStyle: React.CSSProperties = { display: "block", marginTop: "5px", color: "#94a3b8", fontSize: "0.75rem", lineHeight: "1.3" };
 
-const formGroupStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: "8px",
-  fontWeight: "bold",
-  color: "#555",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "12px",
-  borderRadius: "6px",
-  border: "1px solid #ccc",
-  fontSize: "1rem",
-  boxSizing: "border-box",
-  outline: "none",
-};
-
-const helpTextStyle: React.CSSProperties = {
-  display: "block",
-  marginTop: "5px",
-  color: "#888",
-  fontSize: "0.8rem",
-};
+const manualOverlayStyle: React.CSSProperties = { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, animation: "fadeIn 0.2s ease" };
+const manualContentStyle: React.CSSProperties = { backgroundColor: "#fff", borderRadius: "16px", width: "90%", maxWidth: "600px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", overflow: "hidden", display: "flex", flexDirection: "column" };
+const manualHeaderStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 30px", borderBottom: "1px solid #f1f5f9" };
+const manualCloseBtnStyle: React.CSSProperties = { background: "#f1f5f9", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center" };
+const manualStepStyle: React.CSSProperties = { display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9", color: "#475569", fontSize: "0.9rem" };
+const stepNumStyle: React.CSSProperties = { width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 };
 
 export default AdminStoreConfig;
