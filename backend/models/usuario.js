@@ -59,6 +59,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: false 
     },
+    ativo: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    },
   }, {
     sequelize,
     modelName: 'Usuario',

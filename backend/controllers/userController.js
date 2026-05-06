@@ -72,6 +72,11 @@ const loginUser = async (req, res) => {
     if (!user) {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
+
+    if (user.ativo === false) {
+      return res.status(403).json({ error: 'Sua conta está desativada. Entre em contato com o suporte.' });
+    }
+
     const isPasswordCorrect = await bcrypt.compare(senha, user.senha_hash);
     if (!isPasswordCorrect) {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
@@ -197,7 +202,7 @@ const getTeam = async (req, res) => {
       where: {
         tipo_usuario: ['admin', 'funcionario']
       },
-      attributes: ['id', 'nome', 'email', 'cpf', 'tipo_usuario', 'permissoes']
+      attributes: ['id', 'nome', 'email', 'cpf', 'tipo_usuario', 'permissoes', 'ativo']
     });
 
     res.json(team);
@@ -365,6 +370,33 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const toggleAtivo = async (req, res) => {
+  try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acesso negado.' });
+    }
+
+    const { id } = req.params;
+    const usuario = await Usuario.findByPk(id);
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    if (usuario.id === req.user.id) {
+      return res.status(400).json({ error: 'Você não pode bloquear sua própria conta.' });
+    }
+
+    usuario.ativo = !usuario.ativo;
+    await usuario.save();
+
+    res.status(200).json({ message: `Usuário ${usuario.ativo ? 'desbloqueado' : 'bloqueado'} com sucesso.`, ativo: usuario.ativo });
+  } catch (error) {
+    console.error('Erro ao alternar status do usuário:', error);
+    res.status(500).json({ error: 'Erro interno ao alternar status.' });
+  }
+};
+
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -451,5 +483,6 @@ module.exports = {
   updatePermissions,
   createFuncionario,
   updateFuncionarioDados,
-  deleteUser
+  deleteUser,
+  toggleAtivo
 };

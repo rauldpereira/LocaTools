@@ -10,6 +10,7 @@ const {
   createFuncionario,
   updateFuncionarioDados, 
   deleteUser,
+  toggleAtivo,
   forgotPassword, 
   resetPasswordFromLink
 } = require('../controllers/userController');
@@ -29,6 +30,7 @@ router.put('/profile/password', protect, changePassword);
 
 router.get('/team', protect, getTeam);
 router.put('/team/:id/permissions', protect, updatePermissions);
+router.put('/team/:id/toggle-ativo', protect, admin, toggleAtivo);
 
 router.put('/team/:id/dados', protect, admin, updateFuncionarioDados); 
 
