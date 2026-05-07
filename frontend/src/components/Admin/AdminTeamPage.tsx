@@ -24,7 +24,8 @@ import {
   Camera,
   Settings,
   Loader2,
-  KeyRound
+  KeyRound,
+  HelpCircle
 } from 'lucide-react';
 
 const PERMISSOES_DISPONIVEIS = [
@@ -54,6 +55,7 @@ const AdminTeamPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
 
   // Modais
+  const [showManual, setShowManual] = useState(false);
   const [modalPermissoesAberto, setModalPermissoesAberto] = useState(false);
   const [modalCriarAberto, setModalCriarAberto] = useState(false);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
@@ -265,15 +267,25 @@ const AdminTeamPage: React.FC = () => {
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease", width: "100%" }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
-        <div style={{ flex: "1 1 300px" }}>
-          <h2 style={{ margin: "0 0 20px 0", color: "#1e293b", fontSize: "1.6rem", fontWeight: 800 }}>Equipe e Acessos</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#fff', padding: '10px 15px', borderRadius: '10px', border: '1px solid #e2e8f0', maxWidth: '450px', boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-            <Search size={18} color="#94a3b8" />
-            <input type="text" placeholder="Buscar por nome, email ou CPF..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', backgroundColor: 'transparent', outline: 'none', width: '100%', fontSize: '0.95rem', color: '#334155' }} />
-          </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px", borderBottom: "1px solid #e2e8f0", paddingBottom: "15px" }}>
+        <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.6rem", fontWeight: 800 }}>Equipe e Acessos</h2>
+        <button 
+          onClick={() => setShowManual(true)}
+          title="Manual do Usuário"
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "45px", height: "45px", borderRadius: "50%", border: "1px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
+          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#f8fafc"; e.currentTarget.style.color = "#2563eb"; }}
+          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.color = "#64748b"; }}
+        >
+          <HelpCircle size={24} />
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#fff', padding: '10px 15px', borderRadius: '10px', border: '1px solid #e2e8f0', flexGrow: 1, maxWidth: '450px', boxShadow: "0 2px 4px rgba(0,0,0,0.02)", height: '45px', boxSizing: 'border-box' }}>
+          <Search size={18} color="#94a3b8" />
+          <input type="text" placeholder="Buscar por nome, email ou CPF..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', backgroundColor: 'transparent', outline: 'none', width: '100%', fontSize: '0.95rem', color: '#334155' }} />
         </div>
-        <button onClick={() => { setOpError(''); setModalCriarAberto(true); }} style={primaryBtnStyle}><UserPlus size={20} /> Novo Colaborador</button>
+        <button onClick={() => { setOpError(''); setModalCriarAberto(true); }} style={{...primaryBtnStyle, height: '45px'}}><UserPlus size={20} /> Novo Colaborador</button>
       </div>
 
       {successMsg && (
@@ -467,6 +479,63 @@ const AdminTeamPage: React.FC = () => {
             <div style={{ display: "flex", gap: "10px" }}>
               <button onClick={() => setModalExcluirAberto(false)} style={{ flex: 1, padding: "12px", borderRadius: "8px", border: "none", backgroundColor: "#f1f5f9", fontWeight: "bold", cursor: "pointer" }}>Cancelar</button>
               <button onClick={executeExcluir} disabled={opLoading} style={{ flex: 1, padding: "12px", borderRadius: "8px", border: "none", backgroundColor: "#ef4444", color: "#fff", fontWeight: "bold", cursor: "pointer" }}>{opLoading ? "Excluindo..." : "Sim, Excluir"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MANUAL */}
+      {showManual && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, animation: 'fadeIn 0.2s ease' }} onClick={() => setShowManual(false)}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '16px', width: '90%', maxWidth: '650px', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 30px', borderBottom: '1px solid #f1f5f9' }}>
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px", color: "#1e293b" }}>
+                <HelpCircle size={22} color="#2563eb" /> Manual do Usuário: Equipe e Acessos
+              </h3>
+              <button 
+                onClick={() => setShowManual(false)} 
+                style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center" }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+            
+            <div style={{ padding: "30px", overflowY: "auto", flexGrow: 1, maxHeight: "70vh" }}>
+              <div style={{ color: "#475569", lineHeight: "1.6" }}>
+                <p style={{ marginBottom: "25px", fontSize: "1rem" }}>Gerencie quem tem acesso ao sistema e quais permissões cada membro da equipe possui.</p>
+                
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>1</div>
+                  <div>
+                    <strong style={{ color: "#1e293b" }}>Novo Colaborador:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Adicione membros novos escolhendo se serão Funcionários (acesso restrito) ou Administradores (acesso total).</p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>2</div>
+                  <div>
+                    <strong style={{ color: "#1e293b" }}>Bloquear / Desbloquear:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Clique no botão de cadeado para cortar o acesso de um funcionário imediatamente. O ícone fica vermelho (🔒) quando o usuário está bloqueado.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>3</div>
+                  <div>
+                    <strong style={{ color: "#1e293b" }}>Permissões Específicas:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Para contas do tipo "Funcionário", clique no ícone da <strong>Chave</strong> para limitar quais telas ele pode ver (ex: bloquear relatórios ou financeiro).</p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>4</div>
+                  <div>
+                    <strong style={{ color: "#1e293b" }}>Resetar Senha:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Se alguém esquecer a senha, vá em "Editar" (lápis) e use o botão para resetar a senha usando os 6 primeiros dígitos do CPF.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

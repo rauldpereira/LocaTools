@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { Layers, Plus, Trash2, FolderPlus, CheckCircle, AlertTriangle, X, Edit2, Save, Loader2 } from 'lucide-react';
+import { Layers, Plus, Trash2, FolderPlus, CheckCircle, AlertTriangle, X, Edit2, Save, Loader2, HelpCircle } from 'lucide-react';
 
 interface Category {
   id: number;
@@ -24,6 +24,8 @@ const AddCategoryForm: React.FC = () => {
   const [editName, setEditName] = useState('');
   const [editSuccessMsg, setEditSuccessMsg] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  
+  const [showManual, setShowManual] = useState(false);
 
   const fetchCategories = async () => {
     try {
@@ -117,10 +119,21 @@ const AddCategoryForm: React.FC = () => {
     <div style={{ animation: "fadeIn 0.3s ease", width: "100%", position: "relative" }}>
       {/* HEADER E FORMULÁRIO DE CRIAÇÃO */}
       <div style={{ marginBottom: "30px", padding: "25px", backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-        <h3 style={{ margin: "0 0 20px 0", color: "#1e293b", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "10px" }}>
-          <FolderPlus size={20} color="#2563eb" /> 
-          Nova Categoria
-        </h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "10px" }}>
+            <FolderPlus size={20} color="#2563eb" /> 
+            Categorias de Equipamentos
+          </h3>
+          <button 
+            onClick={() => setShowManual(true)}
+            title="Manual do Usuário"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "45px", height: "45px", borderRadius: "50%", border: "1px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
+            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#f8fafc"; e.currentTarget.style.color = "#2563eb"; }}
+            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.color = "#64748b"; }}
+          >
+            <HelpCircle size={24} />
+          </button>
+        </div>
         
         {successMsg && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 16px", backgroundColor: "#ecfdf5", border: "1px solid #10b981", borderRadius: "8px", color: "#047857", marginBottom: "20px", fontWeight: "bold" }}>
@@ -303,6 +316,54 @@ const AddCategoryForm: React.FC = () => {
                 >
                   Excluir
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MANUAL */}
+      {showManual && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, animation: 'fadeIn 0.2s ease' }} onClick={() => setShowManual(false)}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '16px', width: '90%', maxWidth: '650px', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 30px', borderBottom: '1px solid #f1f5f9' }}>
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px", color: "#1e293b" }}>
+                <HelpCircle size={22} color="#2563eb" /> Manual do Usuário: Categorias
+              </h3>
+              <button 
+                onClick={() => setShowManual(false)} 
+                style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center" }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+            <div style={{ padding: "30px", overflowY: "auto", flexGrow: 1, maxHeight: "70vh" }}>
+              <div style={{ color: "#475569", lineHeight: "1.6" }}>
+                <p style={{ marginBottom: "25px", fontSize: "1rem" }}>Organize seu catálogo agrupando os equipamentos por categorias.</p>
+                
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>1</div>
+                  <div>
+                    <strong style={{ color: "#1e293b" }}>Criar Categoria:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Digite o nome da nova categoria (ex: "Ferramentas Elétricas") e clique em Adicionar. Ela aparecerá na lista abaixo.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>2</div>
+                  <div>
+                    <strong style={{ color: "#1e293b" }}>Editar Categoria:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Use o ícone de lápis para corrigir erros de digitação. As alterações serão refletidas em todos os equipamentos dessa categoria.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>3</div>
+                  <div>
+                    <strong style={{ color: "#1e293b" }}>Excluir Categoria:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Você só pode excluir uma categoria se ela estiver <strong style={{ color: "#ef4444" }}>VAZIA</strong> (sem nenhum equipamento vinculado). Caso contrário, o sistema bloqueará a exclusão para evitar erros.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -78,7 +78,6 @@ const AdminDashboard: React.FC = () => {
           hasPermission("fazer_vistoria") ||
           hasPermission("receber_pagamentos") ? (
           <div className="admin-content-container">
-            <h2 className="admin-header">Gerenciamento de Reservas e Vistorias</h2>
             <AdminReservationsList />
           </div>
         ) : null;
@@ -97,7 +96,6 @@ const AdminDashboard: React.FC = () => {
       case "categorias":
         return hasPermission("gerenciar_estoque") ? (
           <div className="admin-content-container">
-            <h2 className="admin-header">Categorias dos Equipamentos</h2>
             <div style={{ marginBottom: "2rem", padding: "1.5rem", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
               <AddCategoryForm />
             </div>
@@ -114,7 +112,6 @@ const AdminDashboard: React.FC = () => {
       case "calendario":
         return hasPermission("configuracoes") ? (
           <div className="admin-content-container">
-            <h2 className="admin-header">Calendário e Feriados</h2>
             <AdminCalendarPage />
           </div>
         ) : null;
