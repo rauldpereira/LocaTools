@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import { ClipboardCheck, Camera, AlertTriangle, CheckCircle, Package, ArrowLeft, ShieldAlert, FileText, UploadCloud, MessageSquare, AlertCircle, HelpCircle, X } from "lucide-react";
 
 interface TipoAvaria {
   id: number;
@@ -75,6 +76,7 @@ const VistoriaPage: React.FC = () => {
   const tipoVistoria =
     params.get("tipo") === "devolucao" ? "devolucao" : "entrega";
   const backendUrl = import.meta.env.VITE_API_URL;
+  const [showManual, setShowManual] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -288,7 +290,6 @@ const VistoriaPage: React.FC = () => {
         );
       }
 
-      alert("Processo concluído com sucesso!");
       navigate(`/my-reservations/${order.id}`);
     } catch (error: any) {
       console.error("Erro ao salvar:", error);
@@ -301,28 +302,45 @@ const VistoriaPage: React.FC = () => {
     }
   };
 
-  if (!order) return <p>A carregar dados da ordem...</p>;
+  if (!order) return (
+    <div style={{ textAlign: "center", padding: "60px", color: "#64748b", marginTop: "100px" }}>
+        <p style={{ fontWeight: "bold" }}>Carregando dados da ordem...</p>
+    </div>
+  );
 
   const vistoriaDeSaida = order?.Vistorias.find(
     (v) => v.tipo_vistoria === "entrega",
   );
 
   return (
-    <div
-      style={{
-        padding: "2rem",
-        marginTop: "60px",
-        maxWidth: "900px",
-        margin: "80px auto",
-        color: "black",
-      }}
-    >
-      <h1 style={{ color: "white" }}>
-        {tipoVistoria === "entrega"
-          ? "Vistoria de Saída"
-          : "Vistoria de Devolução"}{" "}
-        - Pedido #{order.id}
-      </h1>
+    <div style={{ maxWidth: "950px", margin: "100px auto 50px auto", padding: "0 20px", animation: "fadeIn 0.3s ease" }}>
+      
+      {/* HEADER */}
+      <div style={{ display: "flex", alignItems: "center", gap: "15px", marginBottom: "30px" }}>
+        <button onClick={() => navigate(-1)} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "50%", padding: "10px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
+          <ArrowLeft size={24} />
+        </button>
+        <div style={{ backgroundColor: "#eff6ff", padding: "15px", borderRadius: "14px" }}>
+          <ClipboardCheck size={32} color="#2563eb" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <h1 style={{ margin: 0, color: "#1e293b", fontSize: "1.8rem", fontWeight: 800 }}>
+            {tipoVistoria === "entrega" ? "Vistoria de Saída" : "Vistoria de Devolução"}
+          </h1>
+          <p style={{ margin: "5px 0 0 0", color: "#64748b", fontWeight: "600", fontSize: "1rem" }}>
+            Pedido #{order.id}
+          </p>
+        </div>
+        <button
+            onClick={() => setShowManual(true)}
+            title="Manual da Vistoria"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "45px", height: "45px", borderRadius: "50%", border: "1px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
+            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#f8fafc"; e.currentTarget.style.color = "#2563eb"; }}
+            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.color = "#64748b"; }}
+          >
+            <HelpCircle size={24} />
+        </button>
+      </div>
 
       {order.ItemReservas.map((item) => {
         const unitId = item.Unidade.id;
@@ -354,340 +372,223 @@ const VistoriaPage: React.FC = () => {
           <div
             key={item.id}
             style={{
-              border: isPrejuizo ? "2px solid #dc3545" : "1px solid #ccc",
-              borderRadius: "8px",
-              padding: "1.5rem",
-              marginBottom: "2rem",
-              backgroundColor: isPrejuizo ? "#fff5f5" : "white",
+              border: isPrejuizo ? "2px solid #fecaca" : "1px solid #e2e8f0",
+              borderRadius: "16px",
+              padding: "25px",
+              marginBottom: "30px",
+              backgroundColor: isPrejuizo ? "#fef2f2" : "#fff",
+              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
             }}
           >
-            <h3 style={{ marginTop: 0 }}>
-              {equipamento.nome} (Unidade ID: {unitId})
-            </h3>
+            {/* Header do Equipamento */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", borderBottom: "1px solid #f1f5f9", paddingBottom: "15px" }}>
+                 <Package size={22} color={isPrejuizo ? "#ef4444" : "#64748b"} />
+                 <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.3rem", fontWeight: 800 }}>
+                   {equipamento.nome} 
+                 </h3>
+                 <span style={{ backgroundColor: "#f1f5f9", padding: "6px 12px", borderRadius: "8px", fontSize: "0.85rem", fontWeight: "bold", color: "#475569" }}>
+                   Unidade #{unitId}
+                 </span>
+            </div>
 
             {tipoVistoria === "devolucao" && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: "20px",
-                  marginBottom: "1.5rem",
-                  borderBottom: "1px solid #eee",
-                  paddingBottom: "10px",
-                }}
-              >
-                <label
-                  style={{
-                    cursor: "pointer",
-                    fontWeight: !isPrejuizo ? "bold" : "normal",
-                  }}
+              <div style={{ display: "flex", gap: "15px", marginBottom: "25px" }}>
+                <button 
+                  onClick={() => handleDetailChange(unitId, "statusItem", "devolvido")}
+                  style={{ flex: 1, padding: "12px", borderRadius: "10px", border: `2px solid ${!isPrejuizo ? "#10b981" : "#e2e8f0"}`, backgroundColor: !isPrejuizo ? "#f0fdf4" : "#f8fafc", color: !isPrejuizo ? "#047857" : "#64748b", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", transition: "0.2s" }}
                 >
-                  <input
-                    type="radio"
-                    name={`status_${unitId}`}
-                    checked={!isPrejuizo}
-                    onChange={() =>
-                      handleDetailChange(unitId, "statusItem", "devolvido")
-                    }
-                  />
-                  Item Devolvido (Fazer Vistoria)
-                </label>
-                <label
-                  style={{
-                    cursor: "pointer",
-                    color: "#dc3545",
-                    fontWeight: isPrejuizo ? "bold" : "normal",
-                  }}
+                  <CheckCircle size={18} /> Item Devolvido (Vistoriar)
+                </button>
+                <button 
+                  onClick={() => handleDetailChange(unitId, "statusItem", "prejuizo")}
+                  style={{ flex: 1, padding: "12px", borderRadius: "10px", border: `2px solid ${isPrejuizo ? "#ef4444" : "#e2e8f0"}`, backgroundColor: isPrejuizo ? "#fef2f2" : "#f8fafc", color: isPrejuizo ? "#b91c1c" : "#64748b", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", transition: "0.2s" }}
                 >
-                  <input
-                    type="radio"
-                    name={`status_${unitId}`}
-                    checked={isPrejuizo}
-                    onChange={() =>
-                      handleDetailChange(unitId, "statusItem", "prejuizo")
-                    }
-                  />
-                  Não Devolvido / Roubo / Perda
-                </label>
+                  <ShieldAlert size={18} /> Não Devolvido / Ocorrência
+                </button>
               </div>
             )}
 
             {!isPrejuizo && (
               <>
                 {tipoVistoria === "devolucao" && detalheVistoriaSaida && (
-                  <div
-                    style={{
-                      backgroundColor: "#f8f9fa",
-                      padding: "15px",
-                      borderLeft: "4px solid #007bff",
-                      borderRadius: "5px",
-                      marginBottom: "1.5rem",
-                      color: "#333",
-                      fontSize: "0.9rem",
-                    }}
-                  >
-                    <div style={{ marginBottom: "10px" }}>
-                      <strong style={{ fontSize: "1rem" }}>
-                        📋 Histórico (Saída):
-                      </strong>{" "}
-                      {condicaoRealSaida === "ok" ? (
-                        <span style={{ color: "#28a745", fontWeight: "bold" }}>
-                          ✅ OK / Bom Estado
-                        </span>
-                      ) : (
-                        <span style={{ color: "#dc3545", fontWeight: "bold" }}>
-                          ⚠️ Avariado na Entrega
-                        </span>
-                      )}
-
-                      {tinhaAvariaNaSaida && (
-                        <ul
-                          style={{
-                            margin: "5px 0 10px 20px",
-                            padding: 0,
-                            color: "#dc3545",
-                            fontWeight: "bold",
-                            fontSize: "0.85rem",
-                          }}
-                        >
-                          {avariasHistorico.map((a: any) => (
-                            <li key={a.id}>{a.descricao}</li>
-                          ))}
-                        </ul>
-                      )}
-
-                      <div style={{ marginTop: "5px" }}>
-                        <strong>Obs:</strong>{" "}
-                        <span style={{ fontStyle: "italic" }}>
-                          {detalheVistoriaSaida?.comentarios || "Sem obs adicionais"}
-                        </span>
-                      </div>
+                  <div style={{ backgroundColor: "#f8fafc", padding: "20px", borderLeft: "4px solid #3b82f6", borderRadius: "10px", marginBottom: "25px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                      <FileText size={18} color="#3b82f6" />
+                      <strong style={{ fontSize: "1rem", color: "#1e293b" }}>Histórico da Vistoria de Saída:</strong>
                     </div>
 
-                    {detalheVistoriaSaida.foto &&
-                      detalheVistoriaSaida.foto.length > 0 && (
-                        <div
-                          style={{
-                            marginTop: "15px",
-                            borderTop: "1px solid #ddd",
-                            paddingTop: "10px",
-                          }}
-                        >
-                          <strong
-                            style={{
-                              display: "block",
-                              marginBottom: "8px",
-                              fontSize: "0.85rem",
-                              color: "#666",
-                            }}
-                          >
-                            📸 Fotos registradas na entrega:
+                    <div style={{ marginBottom: "10px" }}>
+                      {condicaoRealSaida === "ok" ? (
+                        <span style={{ color: "#10b981", fontWeight: "800", backgroundColor: "#ecfdf5", padding: "6px 12px", borderRadius: "6px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                          <CheckCircle size={16} /> Entregue em Bom Estado
+                        </span>
+                      ) : (
+                        <span style={{ color: "#ef4444", fontWeight: "800", backgroundColor: "#fef2f2", padding: "6px 12px", borderRadius: "6px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                          <AlertTriangle size={16} /> Avariado na Entrega
+                        </span>
+                      )}
+                    </div>
+
+                    {tinhaAvariaNaSaida && (
+                        <div style={{ margin: "15px 0 10px 0", backgroundColor: "#fff", padding: "15px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                          <strong style={{ color: "#ef4444", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                            <AlertTriangle size={16} /> Avarias Pré-existentes:
                           </strong>
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "10px",
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            {detalheVistoriaSaida.foto.map(
-                              (url: string, idx: number) => (
-                                <a
-                                  key={idx}
-                                  href={`${backendUrl}${url}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
+                          <ul style={{ margin: 0, paddingLeft: "25px", color: "#475569", fontWeight: "600", fontSize: "0.9rem" }}>
+                            {avariasHistorico.map((a: any) => (
+                              <li key={a.id} style={{ marginBottom: "4px" }}>{a.descricao}</li>
+                            ))}
+                          </ul>
+                        </div>
+                    )}
+
+                    {detalheVistoriaSaida?.comentarios && (
+                      <div style={{ marginTop: "15px", color: "#475569", fontSize: "0.95rem", fontStyle: "italic", backgroundColor: "#fff", padding: "15px", borderRadius: "10px", border: "1px solid #e2e8f0", display: "flex", gap: "10px" }}>
+                        <MessageSquare size={18} color="#94a3b8" style={{ flexShrink: 0, marginTop: "2px" }} />
+                        <span>"{detalheVistoriaSaida.comentarios}"</span>
+                      </div>
+                    )}
+
+                    {detalheVistoriaSaida.foto && detalheVistoriaSaida.foto.length > 0 && (
+                        <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px dashed #cbd5e1" }}>
+                          <strong style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "15px", fontSize: "0.9rem", color: "#64748b" }}>
+                            <Camera size={18} /> Fotos da Saída:
+                          </strong>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: "12px" }}>
+                            {detalheVistoriaSaida.foto.map((url: string, idx: number) => (
+                                <a key={idx} href={`${backendUrl}${url}`} target="_blank" rel="noopener noreferrer" style={{ display: "block", aspectRatio: "1/1" }}>
                                   <img
                                     src={`${backendUrl}${url}`}
                                     alt={`Foto Saída ${idx + 1}`}
-                                    style={{
-                                      width: "70px",
-                                      height: "70px",
-                                      objectFit: "cover",
-                                      borderRadius: "6px",
-                                      border: "2px solid #ddd",
-                                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                                      cursor: "zoom-in",
-                                    }}
+                                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "10px", border: "2px solid #e2e8f0", cursor: "zoom-in", transition: "all 0.2s ease", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
+                                    onMouseOver={e => { e.currentTarget.style.borderColor = "#3b82f6"; e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "0 4px 8px rgba(59, 130, 246, 0.2)"; }}
+                                    onMouseOut={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)"; }}
                                   />
                                 </a>
-                              ),
-                            )}
+                            ))}
                           </div>
                         </div>
-                      )}
+                    )}
                   </div>
                 )}
 
-                <div>
-                  <label style={{ fontWeight: "bold" }}>
-                    Condição Geral (Agora):
+                <div style={{ marginBottom: "25px" }}>
+                  <label style={{ display: "block", fontWeight: "800", color: "#475569", marginBottom: "8px", fontSize: "0.9rem", textTransform: "uppercase" }}>
+                    Condição Geral do Equipamento
                   </label>
                   <select
                     value={details?.condicao || "ok"}
-                    onChange={(e) =>
-                      handleDetailChange(unitId, "condicao", e.target.value)
-                    }
-                    style={{ marginLeft: "10px", padding: "5px" }}
+                    onChange={(e) => handleDetailChange(unitId, "condicao", e.target.value)}
+                    style={{ width: "100%", padding: "12px 15px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "1rem", outline: "none", color: "#1e293b", backgroundColor: "#fff" }}
                   >
                     <option value="ok">OK / Bom Estado</option>
                     <option value="danificado">Danificado / Avariado</option>
                   </select>
                 </div>
 
-                <h4 style={{ marginBottom: "5px" }}>Checklist de Avarias</h4>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "5px",
-                  }}
-                >
-                  {avariasNormais.map((avaria) => (
-                    <label key={avaria.id}>
-                      <input
-                        type="checkbox"
-                        checked={details?.checkedAvarias?.[avaria.id] || false}
-                        onChange={() => handleAvariaCheck(unitId, avaria.id)}
-                      />{" "}
-                      {avaria.descricao}
-                    </label>
-                  ))}
+                <div style={{ marginBottom: "25px" }}>
+                  <label style={{ fontWeight: "800", color: "#475569", marginBottom: "12px", fontSize: "0.9rem", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <AlertTriangle size={16} /> Checklist de Avarias
+                  </label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "10px" }}>
+                    {avariasNormais.map((avaria) => (
+                      <label key={avaria.id} style={{ display: "flex", alignItems: "center", gap: "10px", background: details?.checkedAvarias?.[avaria.id] ? '#fef2f2' : '#f8fafc', padding: '10px 15px', borderRadius: '8px', border: `1px solid ${details?.checkedAvarias?.[avaria.id] ? '#fecaca' : '#e2e8f0'}`, cursor: 'pointer', transition: "0.2s" }}>
+                        <input
+                          type="checkbox"
+                          checked={details?.checkedAvarias?.[avaria.id] || false}
+                          onChange={() => handleAvariaCheck(unitId, avaria.id)}
+                          style={{ width: "18px", height: "18px", accentColor: "#ef4444" }}
+                        /> 
+                        <span style={{ fontSize: "0.95rem", fontWeight: "600", color: details?.checkedAvarias?.[avaria.id] ? "#ef4444" : "#475569" }}>{avaria.descricao}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {avariaOutros && (
+                    <div style={{ marginTop: "10px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "10px", background: details?.checkedAvarias?.[avariaOutros.id] ? '#fef2f2' : '#f8fafc', padding: '10px 15px', borderRadius: '8px', border: `1px solid ${details?.checkedAvarias?.[avariaOutros.id] ? '#fecaca' : '#e2e8f0'}`, cursor: 'pointer', transition: "0.2s" }}>
+                        <input
+                          type="checkbox"
+                          checked={details?.checkedAvarias?.[avariaOutros.id] || false}
+                          onChange={() => handleAvariaCheck(unitId, avariaOutros.id)}
+                          style={{ width: "18px", height: "18px", accentColor: "#ef4444" }}
+                        /> 
+                        <span style={{ fontSize: "0.95rem", fontWeight: "600", color: details?.checkedAvarias?.[avariaOutros.id] ? "#ef4444" : "#475569" }}>Outros (Descrever nas observações)</span>
+                      </label>
+                    </div>
+                  )}
                 </div>
 
-                {avariaOutros && (
-                  <div style={{ marginTop: "10px" }}>
-                    <label>
+                <div style={{ marginBottom: "25px" }}>
+                  <label style={{ fontWeight: "800", color: "#475569", marginBottom: "8px", fontSize: "0.9rem", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Camera size={16} /> Anexar Fotos
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", padding: "20px", border: "2px dashed #cbd5e1", borderRadius: "12px", backgroundColor: "#f8fafc", cursor: "pointer", transition: "0.2s" }}>
+                      <UploadCloud size={32} color="#94a3b8" style={{ marginBottom: "10px" }} />
+                      <span style={{ color: "#475569", fontWeight: "600", fontSize: "0.95rem" }}>Clique para selecionar imagens</span>
+                      <span style={{ color: "#94a3b8", fontSize: "0.8rem", marginTop: "5px" }}>{details?.fotos && details.fotos.length > 0 ? `${details.fotos.length} arquivo(s) selecionado(s)` : 'Nenhuma imagem selecionada'}</span>
                       <input
-                        type="checkbox"
-                        checked={
-                          details?.checkedAvarias?.[avariaOutros.id] || false
-                        }
-                        onChange={() =>
-                          handleAvariaCheck(unitId, avariaOutros.id)
-                        }
-                      />{" "}
-                      Outros (Descreva abaixo)
-                    </label>
-                  </div>
-                )}
-
-                <div style={{ marginTop: "1rem" }}>
-                  <label style={{ fontWeight: "bold" }}>📸 Anexar Fotos:</label>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    style={{
-                      display: "block",
-                      marginTop: "8px",
-                      padding: "8px",
-                      border: "1px solid #ccc",
-                      borderRadius: "6px",
-                      width: "100%",
-                      cursor: "pointer",
-                      backgroundColor: "#fff",
-                    }}
-                    onChange={(e) => handleFileChange(unitId, e.target.files)}
-                  />
-                  <small style={{ color: "#666" }}>
-                    Selecione as fotos da galeria ou dos seus arquivos.
-                  </small>
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => handleFileChange(unitId, e.target.files)}
+                      />
+                  </label>
                 </div>
               </>
             )}
 
             {isPrejuizo && (
-              <div
-                style={{
-                  backgroundColor: "#fff",
-                  padding: "10px",
-                  marginTop: "1rem",
-                }}
-              >
-                <p
-                  style={{
-                    color: "#dc3545",
-                    fontWeight: "bold",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  Atenção: Ao confirmar, este item será baixado do estoque e o
-                  contrato deste item encerrado.
-                </p>
+              <div style={{ backgroundColor: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #fecaca", marginBottom: "25px" }}>
+                <div style={{ display: "flex", gap: "10px", backgroundColor: "#fef2f2", padding: "12px", borderRadius: "8px", marginBottom: "20px" }}>
+                    <AlertCircle size={20} color="#ef4444" style={{ flexShrink: 0 }} />
+                    <p style={{ margin: 0, color: "#991b1b", fontSize: "0.9rem", fontWeight: "600" }}>
+                      {details?.tipoPrejuizo === "CALOTE" 
+                        ? "Atenção: Ao confirmar, o contrato deste item será encerrado como Inadimplência. A máquina constará como devolvida no estoque, mas a dívida será gerada e cobrada no pedido."
+                        : "Atenção: Ao confirmar, esta unidade será automaticamente baixada do estoque (Perda/Roubo) e o contrato deste item será encerrado como Ocorrência."}
+                    </p>
+                </div>
 
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ display: "block", fontWeight: "bold" }}>
-                    Motivo do B.O.:
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ display: "block", fontWeight: "800", color: "#475569", marginBottom: "8px", fontSize: "0.85rem", textTransform: "uppercase" }}>
+                    Motivo da Ocorrência
                   </label>
                   <select
-                    value={details?.tipoPrejuizo}
-                    onChange={(e) =>
-                      handleDetailChange(unitId, "tipoPrejuizo", e.target.value)
-                    }
-                    style={{ width: "100%", padding: "8px" }}
+                    value={details?.tipoPrejuizo || "EXTRAVIO"}
+                    onChange={(e) => handleDetailChange(unitId, "tipoPrejuizo", e.target.value)}
+                    style={{ width: "100%", padding: "12px 15px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "1rem", outline: "none", color: "#1e293b", backgroundColor: "#fff" }}
                   >
-                    <option value="EXTRAVIO">
-                      Não Devolvido (Baixa de Estoque)
-                    </option>
-                    <option value="AVARIA">
-                      Avaria Total / Perda Total (Baixa de Estoque)
-                    </option>
-                    <option value="CALOTE">
-                      Inadimplência (Devolveu, mas não pagou)
-                    </option>
+                    <option value="EXTRAVIO">Não Devolvido / Roubo (Baixa de Estoque)</option>
+                    <option value="AVARIA">Avaria Total / Perda Total (Baixa de Estoque)</option>
+                    <option value="CALOTE">Inadimplência (Devolveu, mas não pagou)</option>
                   </select>
                 </div>
 
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ display: "block", fontWeight: "bold" }}>
-                    Valor do Prejuízo (R$):
+                <div>
+                  <label style={{ display: "block", fontWeight: "800", color: "#475569", marginBottom: "8px", fontSize: "0.85rem", textTransform: "uppercase" }}>
+                    Valor Estimado do Prejuízo (R$) *
                   </label>
                   <input
                     type="number"
                     placeholder="Ex: 2500.00"
-                    value={details?.valorPrejuizo}
-                    onChange={(e) =>
-                      handleDetailChange(
-                        unitId,
-                        "valorPrejuizo",
-                        e.target.value,
-                      )
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #dc3545",
-                    }}
+                    value={details?.valorPrejuizo || ""}
+                    onChange={(e) => handleDetailChange(unitId, "valorPrejuizo", e.target.value)}
+                    style={{ width: "100%", padding: "12px 15px", borderRadius: "10px", border: "1px solid #ef4444", fontSize: "1rem", outline: "none", color: "#1e293b", backgroundColor: "#fff", boxSizing: "border-box" }}
                   />
                 </div>
               </div>
             )}
 
-            <div style={{ marginTop: "1rem" }}>
-              <label style={{ fontWeight: "bold", color: "black" }}>
-                {isPrejuizo
-                  ? "Justificativa / Observação do B.O.:"
-                  : "Comentários da Vistoria:"}
+            <div>
+              <label style={{ fontWeight: "800", color: "#475569", marginBottom: "8px", fontSize: "0.9rem", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}>
+                <MessageSquare size={16} /> {isPrejuizo ? "Justificativa da Ocorrência *" : "Observações da Vistoria"}
               </label>
               <textarea
-                style={{
-                  width: "100%",
-                  minHeight: "80px",
-                  marginTop: "5px",
-                  padding: "8px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                }}
+                style={{ width: "100%", minHeight: "100px", padding: "15px", border: "1px solid #cbd5e1", borderRadius: "10px", fontSize: "0.95rem", color: "#334155", outline: "none", boxSizing: "border-box", resize: "vertical" }}
                 value={details?.comentarios || ""}
-                onChange={(e) =>
-                  handleDetailChange(unitId, "comentarios", e.target.value)
-                }
-                placeholder={
-                  isPrejuizo
-                    ? "Descreva o ocorrido (obrigatório)..."
-                    : "Observações gerais..."
-                }
+                onChange={(e) => handleDetailChange(unitId, "comentarios", e.target.value)}
+                placeholder={isPrejuizo ? "Descreva os detalhes do ocorrido (obrigatório)..." : "Observações gerais sobre as condições do equipamento..."}
               />
             </div>
           </div>
@@ -699,18 +600,103 @@ const VistoriaPage: React.FC = () => {
         disabled={loading}
         style={{
           width: "100%",
-          padding: "1.2rem",
+          padding: "18px",
           fontSize: "1.2rem",
-          fontWeight: "bold",
-          backgroundColor: "#28a745",
+          fontWeight: "800",
+          backgroundColor: "#10b981",
           color: "white",
           border: "none",
-          borderRadius: "8px",
-          cursor: "pointer",
+          borderRadius: "14px",
+          cursor: loading ? "not-allowed" : "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "10px",
+          boxShadow: "0 10px 15px -3px rgba(16, 185, 129, 0.3)",
+          transition: "transform 0.2s",
+          opacity: loading ? 0.7 : 1
         }}
+        onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+        onMouseOut={e => e.currentTarget.style.transform = "translateY(0)"}
       >
-        {loading ? "Processando..." : "Confirmar e Salvar Tudo"}
+        {loading ? "Processando e Salvando Vistoria..." : "Confirmar e Finalizar Vistoria"}
       </button>
+
+      {/* MODAL MANUAL */}
+      {showManual && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, animation: "fadeIn 0.2s ease" }} onClick={() => setShowManual(false)}>
+          <div style={{ backgroundColor: "#fff", borderRadius: "16px", width: "90%", maxWidth: "600px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "90vh" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 30px", borderBottom: "1px solid #f1f5f9" }}>
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px", color: "#1e293b" }}>
+                <HelpCircle size={22} color="#2563eb" /> Manual do Usuário: Vistoria de {tipoVistoria === "entrega" ? "Saída" : "Devolução"}
+              </h3>
+              <button onClick={() => setShowManual(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center" }}><X size={22} /></button>
+            </div>
+
+            <div style={{ padding: "30px", overflowY: "auto", flexGrow: 1 }}>
+              <div style={{ color: "#475569", lineHeight: "1.6" }}>
+                <p style={{ marginBottom: "25px", fontSize: "1rem" }}>
+                  A vistoria é um passo obrigatório para garantir a integridade dos equipamentos e a segurança jurídica da locação.
+                </p>
+
+                {tipoVistoria === "entrega" ? (
+                  <>
+                    <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                      <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>1</div>
+                      <div>
+                        <strong>Condição do Equipamento:</strong>
+                        <p style={{ margin: "5px 0 0 0" }}>Marque como "OK" se o equipamento estiver limpo, funcionando e sem avarias. Se houver alguma avaria, marque "danificado" e selecione o tipo de avaria na lista. Caso não encontre o tipo de avaria desejado, utilize a opção "Outro" e descreva a avaria.</p>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                      <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>2</div>
+                      <div>
+                        <strong>Fotos (Obrigatório):</strong>
+                        <p style={{ margin: "5px 0 0 0" }}>Tire fotos nítidas do equipamento antes de entregá-lo. Registre todos os ângulos e, principalmente, qualquer avaria pré-existente.</p>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                      <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>3</div>
+                      <div>
+                        <strong>Assinatura do Cliente:</strong>
+                        <p style={{ margin: "5px 0 0 0" }}>Após finalizar esta vistoria de saída, o sistema liberará a coleta de assinatura do cliente no Protocolo de Entrega.</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                      <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>1</div>
+                      <div>
+                        <strong>Comparação com a Saída:</strong>
+                        <p style={{ margin: "5px 0 0 0" }}>Observe as fotos e comentários registrados na Vistoria de Saída (mostrados na tela) para comparar se o equipamento sofreu novos danos.</p>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#fef2f2", borderRadius: "12px", border: "1px solid #fecaca" }}>
+                      <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ef4444", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>2</div>
+                      <div>
+                        <strong>Registrar Ocorrência:</strong>
+                        <p style={{ margin: "5px 0 0 0" }}>Se o cliente não devolver o item, ou se houver "Perda Total", clique em "Não Devolvido / Ocorrência". Você precisará informar o valor estimado do prejuízo. O item será baixado do estoque e a dívida será cobrada no pedido.</p>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                      <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}>3</div>
+                      <div>
+                        <strong>Checklist de Avarias:</strong>
+                        <p style={{ margin: "5px 0 0 0" }}>Marque qualquer nova avaria encontrada. Isso ficará salvo no histórico da máquina para a próxima locação.</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 };

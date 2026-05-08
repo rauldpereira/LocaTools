@@ -546,7 +546,7 @@ const getOrderById = async (req, res) => {
                 {
                     model: Usuario,
                     as: 'Usuario',
-                    attributes: ['id', 'nome', 'email', 'cpf', 'cnpj', 'tipo_pessoa']
+                    attributes: ['id', 'nome', 'email', 'cpf', 'cnpj', 'tipo_pessoa', 'telefone']
                 },
                 {
                     model: Pagamento,

@@ -133,8 +133,6 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
         if (!pendingSelection || !token) return;
 
         const { start, end } = pendingSelection;
-        const startStr = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
-        const endStr = end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0'); // Fix: should use end.getDate() but for range blocks it's common
 
         // Re-calculate dates properly
         const startFormatted = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;

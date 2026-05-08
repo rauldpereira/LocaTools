@@ -8,6 +8,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import ContractModal from "../components/ContractModal";
 import ReturnContractModal from "../components/ReturnContractModal";
+import { ArrowLeft, Download, FileText, FileCode2, Info, CheckCircle, Package, Truck, AlertTriangle, AlertCircle, RefreshCw, XCircle, MapPin, DollarSign, Clock, Check, FileSignature, HelpCircle, CreditCard, ShieldAlert, Store, X, ClipboardCheck } from "lucide-react";
 
 interface TipoAvaria {
   id: number;
@@ -70,10 +71,12 @@ interface OrderDetails {
   id: number;
   id_usuario: number;
   Usuario?: {
+    id: number;
     nome: string;
     email: string;
     cpf?: string;
     cnpj?: string;
+    telefone?: string;
   };
   status: string;
   data_inicio: string;
@@ -131,6 +134,8 @@ const ReservationDetailsPage: React.FC = () => {
 
   const [showConfirmReturnModal, setShowConfirmReturnModal] = useState(false);
   const [isRequestingReturn, setIsRequestingReturn] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const fetchOrderDetails = async () => {
     if (!token || !orderId) return;
@@ -529,39 +534,55 @@ const ReservationDetailsPage: React.FC = () => {
     return (
       <div
         style={{
-          marginTop: "10px",
-          backgroundColor: "#f1f1f1",
-          padding: "15px",
-          borderRadius: "8px",
-          border: "1px solid #e0e0e0",
+          marginTop: "15px",
+          backgroundColor: "#f8fafc",
+          padding: "20px",
+          borderRadius: "10px",
+          borderLeft: "4px solid #3b82f6",
         }}
       >
-        <h4
-          style={{
-            margin: "0 0 8px 0",
-            color: "#333",
-            borderBottom: "1px solid #ddd",
-            paddingBottom: "5px",
-          }}
-        >
-          {title}
-        </h4>
-        <p style={{ margin: "4px 0", color: "#333" }}>
-          <strong>Condição:</strong>{" "}
-          {detail.condicao === "ok" ? "✅ OK / Bom Estado" : "⚠️ Com Avarias"}
-        </p>
-        <p style={{ margin: "4px 0", color: "#333" }}>
-          <strong>Obs:</strong> {detail.comentarios || "Sem observações."}
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "15px" }}>
+          <FileText size={18} color="#3b82f6" />
+          <h4
+            style={{
+              margin: 0,
+              color: "#1e293b",
+              fontSize: "1.05rem"
+            }}
+          >
+            {title}
+          </h4>
+        </div>
+        
+        <div style={{ marginBottom: "15px" }}>
+          {detail.condicao === "ok" ? (
+            <span style={{ color: "#10b981", fontWeight: "800", backgroundColor: "#ecfdf5", padding: "6px 12px", borderRadius: "6px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <CheckCircle size={16} /> OK / Bom Estado
+            </span>
+          ) : (
+            <span style={{ color: "#ef4444", fontWeight: "800", backgroundColor: "#fef2f2", padding: "6px 12px", borderRadius: "6px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <AlertTriangle size={16} /> Com Avarias
+            </span>
+          )}
+        </div>
+        
+        {detail.comentarios && (
+          <div style={{ color: "#475569", fontSize: "0.95rem", fontStyle: "italic", backgroundColor: "#fff", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", display: "flex", gap: "10px", marginBottom: "15px" }}>
+            <Info size={18} color="#94a3b8" style={{ flexShrink: 0, marginTop: "2px" }} />
+            <span>"{detail.comentarios}"</span>
+          </div>
+        )}
 
         {avarias && avarias.length > 0 && (
-          <div style={{ marginTop: "8px" }}>
-            <strong>Avarias Identificadas:</strong>
+          <div style={{ margin: "15px 0", backgroundColor: "#fff", padding: "15px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+            <strong style={{ color: "#ef4444", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+              <AlertTriangle size={16} /> Avarias Identificadas:
+            </strong>
             <ul
-              style={{ margin: "5px 0 0 20px", padding: 0, color: "#d32f2f" }}
+              style={{ margin: 0, paddingLeft: "25px", color: "#475569", fontWeight: "600", fontSize: "0.9rem" }}
             >
               {avarias.map((avaria) => (
-                <li key={avaria.id}>
+                <li key={avaria.id} style={{ marginBottom: "4px" }}>
                   {avaria.TipoAvaria.descricao}
                   {Number(avaria.TipoAvaria.preco) > 0 &&
                     ` (R$ ${Number(avaria.TipoAvaria.preco).toFixed(2)})`}
@@ -570,36 +591,44 @@ const ReservationDetailsPage: React.FC = () => {
             </ul>
           </div>
         )}
+        
         {detail.foto && detail.foto.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              marginTop: "10px",
-              flexWrap: "wrap",
-            }}
-          >
-            {detail.foto.map((url, index) => (
-              <a
-                key={index}
-                href={`${backendUrl}${url}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <img
-                  src={`${backendUrl}${url}`}
-                  alt="Foto"
-                  style={{
-                    height: "80px",
-                    width: "80px",
-                    objectFit: "cover",
-                    borderRadius: "4px",
-                    border: "2px solid #fff",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                  }}
-                />
-              </a>
-            ))}
+          <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px dashed #cbd5e1" }}>
+            <strong style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "15px", fontSize: "0.9rem", color: "#64748b" }}>
+              <FileText size={18} /> Fotos Registradas:
+            </strong>
+            <div
+              style={{
+                display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: "12px"
+              }}
+            >
+              {detail.foto.map((url, index) => (
+                <a
+                  key={index}
+                  href={`${backendUrl}${url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "block", aspectRatio: "1/1" }}
+                >
+                  <img
+                    src={`${backendUrl}${url}`}
+                    alt="Foto"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      borderRadius: "8px",
+                      border: "2px solid #e2e8f0",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                      cursor: "zoom-in",
+                      transition: "all 0.2s ease"
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = "#3b82f6"; e.currentTarget.style.transform = "scale(1.05)"; }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.transform = "scale(1)"; }}
+                  />
+                </a>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -669,7 +698,8 @@ const ReservationDetailsPage: React.FC = () => {
         config,
       );
 
-      alert("Dívida recuperada com sucesso!");
+      setSuccessMessage("Pagamento da pendência registrado com sucesso!");
+      setTimeout(() => setSuccessMessage(""), 4000);
       setShowRecoverModal(false);
       fetchOrderDetails();
     } catch (error) {
@@ -701,53 +731,93 @@ const ReservationDetailsPage: React.FC = () => {
     hasPermission("gerenciar_reservas") ||
     hasPermission("fazer_vistoria");
 
-  const podeVerPainelAcoes = isAdmin || isFuncionario || podeColetarAssinatura;
+  const statusesComAcao = [
+    "aguardando_assinatura",
+    "aguardando_assinatura_devolucao",
+    "aprovada",
+    "em_andamento",
+    "aguardando_pagamento_final",
+    "PREJUIZO",
+  ];
+
+  const temAcaoPendente = order ? statusesComAcao.includes(order.status) : false;
+
+  const podeVerPainelAcoes = (isAdmin || isFuncionario || podeColetarAssinatura) && temAcaoPendente;
 
   return (
     <div
       style={{
         padding: "2rem",
-        marginTop: "60px",
-        maxWidth: "1000px",
-        margin: "80px auto",
-        color: "#333",
-        fontFamily: "Arial, sans-serif",
+        maxWidth: "1100px",
+        margin: "90px auto 50px auto",
+        color: "#1e293b",
+        animation: "fadeIn 0.3s ease"
       }}
     >
+      {successMessage && (
+        <div style={{
+          backgroundColor: "#ecfdf5",
+          color: "#047857",
+          padding: "15px",
+          borderRadius: "8px",
+          marginBottom: "20px",
+          border: "1px solid #a7f3d0",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          fontWeight: "bold",
+          animation: "slideDown 0.3s ease"
+        }}>
+          <CheckCircle size={20} />
+          {successMessage}
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "1rem",
+          marginBottom: "30px",
           flexWrap: "wrap",
-          gap: "10px",
+          gap: "15px",
         }}
       >
         <div>
           {isAdmin || isFuncionario ? (
-            <button onClick={() => navigate("/admin")} style={btnBackStyle}>
-              &larr; Painel
+            <button onClick={() => navigate("/admin")} style={{ ...btnBackStyle, display: "flex", alignItems: "center", gap: "8px" }}>
+              <ArrowLeft size={18} /> Painel
             </button>
           ) : (
             <button
               onClick={() => navigate("/my-reservations")}
-              style={btnBackStyle}
+              style={{ ...btnBackStyle, display: "flex", alignItems: "center", gap: "8px" }}
             >
-              &larr; Voltar
+              <ArrowLeft size={18} /> Voltar
             </button>
           )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+          {/* BOTÃO DE AJUDA */}
+          <button
+            onClick={() => setShowManual(true)}
+            title="Manual do Usuário"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "45px", height: "45px", borderRadius: "50%", border: "1px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
+            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#f8fafc"; e.currentTarget.style.color = "#2563eb"; }}
+            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.color = "#64748b"; }}
+          >
+            <HelpCircle size={24} />
+          </button>
+
           {/* BOTÕES DE EMISSÃO */}
           {order.status !== "pendente" && order.status !== "cancelada" && (
-            <div style={{ display: "flex", gap: "8px", padding: "5px", backgroundColor: "#f1f3f5", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+            <div style={{ display: "flex", gap: "8px", padding: "6px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
               <button onClick={handleDownloadDFE} style={btnDocStyleGov} title="Baixar Documento Fiscal Eletrônico">
-                🏛️ DFE (PDF)
+                <FileText size={16} /> DFE (PDF)
               </button>
               <button onClick={handleDownloadXmlDFE} style={btnDocStyleGov} title="Baixar Arquivo XML">
-                📄 XML
+                <FileCode2 size={16} /> XML
               </button>
             </div>
           )}
@@ -755,58 +825,81 @@ const ReservationDetailsPage: React.FC = () => {
           {/* MAQUIAGEM VISUAL DA TAG DE STATUS */}
           {(() => {
             let badgeText = order.status.replace(/_/g, " ").toUpperCase();
-            let badgeColor = "#495057";
-            let badgeBg = "#e9ecef";
-            let badgeBorder = "#dee2e6";
+            let badgeColor = "#64748b";
+            let badgeBg = "#f1f5f9";
+            let badgeBorder = "#e2e8f0";
+            let IconComponent = Info;
 
             if (order.status === "pendente") {
-              badgeColor = "#856404";
-              badgeBg = "#fff3cd";
-              badgeBorder = "#ffeeba";
-            } else if (order.status === "PREJUIZO") {
-              badgeColor = "#c62828";
-              badgeBg = "#ffebee";
-              badgeBorder = "#ffcdd2";
-              badgeText = "🚨 " + badgeText;
-            } else if (order.status === "aprovada") {
-              badgeColor = "#d97706";
-              badgeBg = "#fef3c7";
+              badgeColor = "#b45309";
+              badgeBg = "#fffbeb";
               badgeBorder = "#fde68a";
+              IconComponent = AlertCircle;
+            } else if (order.status === "PREJUIZO") {
+              badgeColor = "#b91c1c";
+              badgeBg = "#fef2f2";
+              badgeBorder = "#fecaca";
+              badgeText = "OCORRÊNCIA REGISTRADA";
+              IconComponent = AlertTriangle;
+            } else if (order.status === "aprovada") {
+              badgeColor = "#b45309";
+              badgeBg = "#fffbeb";
+              badgeBorder = "#fde68a";
+              IconComponent = Clock;
               badgeText =
                 order.tipo_entrega === "entrega"
-                  ? "⏳ AGENDADA PARA ENTREGA"
-                  : "🏪 AGENDADA PARA RETIRADA";
+                  ? "AGENDADA PARA ENTREGA"
+                  : "AGENDADA PARA RETIRADA";
             } else if (order.status === "saiu_para_entrega") {
               if (order.tipo_entrega === "entrega") {
-                badgeColor = "#007bff";
-                badgeBg = "#e7f1ff";
-                badgeBorder = "#b6d4fe";
-                badgeText = "🚚 EM TRÂNSITO (A CAMINHO)";
+                badgeColor = "#1d4ed8";
+                badgeBg = "#eff6ff";
+                badgeBorder = "#bfdbfe";
+                IconComponent = Truck;
+                badgeText = "EM TRÂNSITO (A CAMINHO)";
               } else {
-                badgeColor = "#28a745";
-                badgeBg = "#e8f5e9";
-                badgeBorder = "#c8e6c9";
-                badgeText = "✅ PRONTO PARA RETIRADA NA LOJA";
+                badgeColor = "#047857";
+                badgeBg = "#ecfdf5";
+                badgeBorder = "#a7f3d0";
+                IconComponent = Package;
+                badgeText = "PRONTO PARA RETIRADA NA LOJA";
               }
             } else if (order.status === "em_andamento") {
-              badgeColor = "#2e7d32";
-              badgeBg = "#e8f5e9";
-              badgeBorder = "#c8e6c9";
-              badgeText = "✅ EM LOCAÇÃO ATIVA";
+              badgeColor = "#047857";
+              badgeBg = "#ecfdf5";
+              badgeBorder = "#a7f3d0";
+              IconComponent = CheckCircle;
+              badgeText = "EM LOCAÇÃO ATIVA";
+            } else if (order.status === "finalizada") {
+              badgeColor = "#0f766e";
+              badgeBg = "#ecfdf5";
+              badgeBorder = "#a7f3d0";
+              IconComponent = CheckCircle;
+              badgeText = "FINALIZADA";
+            } else if (order.status === "cancelada") {
+               badgeColor = "#be123c";
+               badgeBg = "#fff1f2";
+               badgeBorder = "#fecdd3";
+               IconComponent = XCircle;
+               badgeText = "CANCELADA";
             }
 
             return (
               <span
                 style={{
-                  padding: "6px 12px",
-                  borderRadius: "20px",
-                  fontWeight: "bold",
-                  fontSize: "0.9rem",
+                  padding: "8px 14px",
+                  borderRadius: "12px",
+                  fontWeight: "800",
+                  fontSize: "0.85rem",
                   backgroundColor: badgeBg,
                   color: badgeColor,
                   border: `1px solid ${badgeBorder}`,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
                 }}
               >
+                <IconComponent size={16} />
                 {badgeText}
               </span>
             );
@@ -814,7 +907,12 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       </div>
 
-      <h1 style={{ marginTop: 0, color: "#2c3e50" }}>Pedido #{order.id}</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "25px" }}>
+         <div style={{ backgroundColor: "#eff6ff", padding: "12px", borderRadius: "12px" }}>
+            <FileText size={28} color="#2563eb" />
+         </div>
+         <h1 style={{ margin: 0, color: "#1e293b", fontSize: "1.8rem", fontWeight: 800 }}>Detalhes do Pedido #{order.id}</h1>
+      </div>
 
       {order.status === "cancelada" && (
         <div style={{
@@ -842,8 +940,6 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
-      <HorarioFuncionamento />
-
       {/* LINHA DO TEMPO (TIMELINE) */}
       {order.status !== "cancelada" && (
         <div style={{
@@ -866,12 +962,12 @@ const ReservationDetailsPage: React.FC = () => {
           }} />
 
           {[
-            { label: "Reserva", icon: "📝" },
-            { label: "Confirmado", icon: "📅" },
-            { label: "Entrega/Retirada", icon: "🚚" },
-            { label: "Em Uso", icon: "🏗️" },
-            { label: "Devolução", icon: "🔄" },
-            { label: "Finalizado", icon: "✅" }
+            { label: "Reserva", icon: <FileText size={16} /> },
+            { label: "Confirmado", icon: <Clock size={16} /> },
+            { label: "Entrega/Retirada", icon: <Truck size={16} /> },
+            { label: "Em Uso", icon: <Package size={16} /> },
+            { label: "Devolução", icon: <RefreshCw size={16} /> },
+            { label: "Finalizado", icon: <CheckCircle size={16} /> }
           ].map((step, index, array) => {
             let currentIndex = 0;
             if (order.status === "aprovada") currentIndex = 1;
@@ -909,8 +1005,8 @@ const ReservationDetailsPage: React.FC = () => {
               }}>
                 {/* Círculo do Step */}
                 <div style={{
-                  width: "30px",
-                  height: "30px",
+                  width: "32px",
+                  height: "32px",
                   borderRadius: "50%",
                   backgroundColor: isLate ? "#dc3545" : (isCompleted ? "#007bff" : "white"),
                   border: `2px solid ${color}`,
@@ -923,7 +1019,7 @@ const ReservationDetailsPage: React.FC = () => {
                   transition: "all 0.3s ease",
                   boxShadow: isActive ? "0 0 0 4px rgba(0,123,255,0.2)" : (isLate ? "0 0 0 4px rgba(220,53,69,0.2)" : "none")
                 }}>
-                  {isLate ? "!" : (isCompleted ? "✓" : step.icon)}
+                  {isLate ? <AlertTriangle size={16} /> : (isCompleted ? <Check size={18} /> : step.icon)}
                 </div>
                 
                 {/* Nome do Step */}
@@ -932,9 +1028,12 @@ const ReservationDetailsPage: React.FC = () => {
                   fontWeight: (isActive || isLate) ? "bold" : "500",
                   color: color,
                   textAlign: "center",
-                  lineHeight: "1.1"
+                  lineHeight: "1.1",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px"
                 }}>
-                  {isLate ? `⚠️ ATRASO NA DEVOLUÇÃO` : step.label}
+                  {isLate ? <><AlertTriangle size={12} /> ATRASO NA DEVOLUÇÃO</> : step.label}
                 </span>
 
                 {/* Linha de progresso ativa */}
@@ -1015,58 +1114,53 @@ const ReservationDetailsPage: React.FC = () => {
       {podeVerPainelAcoes && (
         <div
           style={{
-            border: "1px solid #007bff",
-            padding: "1.5rem",
+            border: "1px solid #bfdbfe",
+            padding: "25px",
             margin: "2rem 0",
-            borderRadius: "8px",
-            backgroundColor: "#f0f7ff",
+            borderRadius: "16px",
+            backgroundColor: "#eff6ff",
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
           }}
         >
-          <h3
-            style={{
-              marginTop: 0,
-              color: "#0056b3",
-              borderBottom: "1px solid #cce5ff",
-              paddingBottom: "10px",
-            }}
-          >
-            Painel de Ações Internas
-          </h3>
           <div
             style={{
               display: "flex",
-              gap: "15px",
-              flexWrap: "wrap",
-              marginTop: "15px",
+              alignItems: "center",
+              gap: "10px",
+              borderBottom: "1px solid #bfdbfe",
+              paddingBottom: "15px",
+              marginBottom: "20px"
             }}
           >
-            {/* Botão de Assinatura liberado para admin ou permissão correta */}
+            <ShieldAlert size={22} color="#1d4ed8" />
+            <h3 style={{ margin: 0, color: "#1e40af", fontSize: "1.2rem", fontWeight: 800 }}>
+              Painel de Ações Internas
+            </h3>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
             {order.status === "aguardando_assinatura" &&
               podeColetarAssinatura && (
                 <button
                   onClick={() => setIsContractModalOpen(true)}
-                  style={{
-                    ...btnActionStyle,
-                    backgroundColor: "#17a2b8",
-                    boxShadow: "0 2px 5px rgba(23, 162, 184, 0.3)",
-                  }}
+                  style={{ ...btnActionStyle, backgroundColor: "#0284c7" }}
                 >
-                  🖊️ Coletar Assinatura Do Cliente
+                  <FileSignature size={18} /> Coletar Assinatura Do Cliente
                 </button>
               )}
 
-            {/* Botão para os funcionarios coletarem a assinatura de DEVOLUÇÃO  */}
             {order.status === "aguardando_assinatura_devolucao" &&
               podeColetarAssinatura && (
                 <button
                   onClick={() => setIsReturnModalOpen(true)}
-                  style={{
-                    ...btnActionStyle,
-                    backgroundColor: "#28a745",
-                    boxShadow: "0 2px 5px rgba(40, 167, 69, 0.3)",
-                  }}
+                  style={{ ...btnActionStyle, backgroundColor: "#059669" }}
                 >
-                  🖊️ Coletar Assinatura de Devolução
+                  <FileSignature size={18} /> Coletar Assinatura de Devolução
                 </button>
               )}
 
@@ -1074,9 +1168,9 @@ const ReservationDetailsPage: React.FC = () => {
               hasPermission("fazer_vistoria") ||
               hasPermission("gerenciar_reservas")) &&
               order.status === "aprovada" && (
-                <Link to={`/admin/vistoria/${order.id}`}>
+                <Link to={`/admin/vistoria/${order.id}`} style={{ textDecoration: 'none' }}>
                   <button style={btnActionStyle}>
-                    📋 Realizar Vistoria de Saída
+                    <ClipboardCheck size={18} /> Realizar Vistoria de Saída
                   </button>
                 </Link>
               )}
@@ -1085,9 +1179,9 @@ const ReservationDetailsPage: React.FC = () => {
               hasPermission("fazer_vistoria") ||
               hasPermission("gerenciar_reservas")) &&
               order.status === "em_andamento" && (
-                <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`}>
+                <Link to={`/admin/vistoria/${order.id}?tipo=devolucao`} style={{ textDecoration: 'none' }}>
                   <button style={btnActionStyle}>
-                    📋 Registrar Devolução / Vistoria
+                    <ClipboardCheck size={18} /> Registrar Devolução / Vistoria
                   </button>
                 </Link>
               )}
@@ -1096,8 +1190,10 @@ const ReservationDetailsPage: React.FC = () => {
               hasPermission("gerenciar_reservas") ||
               hasPermission("ver_financeiro")) &&
               order.status === "aguardando_pagamento_final" && (
-                <Link to={`/admin/finalize-payment/${order.id}`}>
-                  <button style={btnActionStyle}>💲 Finalizar e Cobrar</button>
+                <Link to={`/admin/finalize-payment/${order.id}`} style={{ textDecoration: 'none' }}>
+                  <button style={{ ...btnActionStyle, backgroundColor: "#059669" }}>
+                    <DollarSign size={18} /> Finalizar e Cobrar
+                  </button>
                 </Link>
               )}
 
@@ -1109,12 +1205,10 @@ const ReservationDetailsPage: React.FC = () => {
                 }}
                 style={{
                   ...btnActionStyle,
-                  backgroundColor: "#28a745",
-                  borderColor: "#28a745",
+                  backgroundColor: "#059669"
                 }}
               >
-                💰 Registrar Pagamento da Dívida (R${" "}
-                {totalPendenteGeral.toFixed(2)})
+                <DollarSign size={18} /> Registrar Pagamento da Dívida (R$ {totalPendenteGeral.toFixed(2)})
               </button>
             )}
           </div>
@@ -1163,11 +1257,13 @@ const ReservationDetailsPage: React.FC = () => {
                 transition: "all 0.3s ease"
               }}
             >
-              {order.coleta_confirmada
-                ? "🚚 Caminhão a Caminho!"
-                : order.solicitou_devolucao
-                  ? "✅ Coleta Solicitada com Sucesso"
-                  : "🚚 Solicitar Recolhimento da Máquina"}
+              {order.coleta_confirmada ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}><Truck size={18} /> Caminhão a Caminho!</span>
+              ) : order.solicitou_devolucao ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}><CheckCircle size={18} /> Coleta Solicitada com Sucesso</span>
+              ) : (
+                <span style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}><Truck size={18} /> Solicitar Recolhimento da Máquina</span>
+              )}
             </button>
           </div>
         )}
@@ -1186,7 +1282,7 @@ const ReservationDetailsPage: React.FC = () => {
             animation: "fadeIn 0.2s ease-out"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#007bff", marginBottom: "15px" }}>
-              <span style={{ fontSize: "2rem" }}>🚚</span>
+              <Truck size={32} color="#007bff" />
               <h2 style={{ margin: 0, fontSize: "1.5rem" }}>Confirmar Coleta</h2>
             </div>
 
@@ -1339,9 +1435,12 @@ const ReservationDetailsPage: React.FC = () => {
                               fontWeight: "bold",
                               color: "#2e7d32",
                               marginBottom: "5px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px"
                             }}
                           >
-                            ✅ PAGO / RECUPERADO
+                            <CheckCircle size={18} /> PAGO / RECUPERADO
                           </div>
                           <p style={{ margin: 0, fontSize: "0.9rem" }}>
                             Data:{" "}
@@ -1361,9 +1460,12 @@ const ReservationDetailsPage: React.FC = () => {
                               fontWeight: "bold",
                               color: "#c62828",
                               marginBottom: "5px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px"
                             }}
                           >
-                            ❌ PENDENTE (Dívida Ativa)
+                            <XCircle size={18} /> PENDENTE (Dívida Ativa)
                           </div>
                           <p style={{ margin: 0, fontSize: "0.9rem" }}>
                             O valor consta como débito para o cliente.
@@ -1392,7 +1494,7 @@ const ReservationDetailsPage: React.FC = () => {
                 }}
               >
                 <div>
-                  Total Registrado (B.O.):{" "}
+                  Total Registrado (Ocorrências):{" "}
                   <strong>R$ {totalPrejuizoOriginal.toFixed(2)}</strong>
                 </div>
                 <div style={{ color: "green" }}>
@@ -1407,101 +1509,83 @@ const ReservationDetailsPage: React.FC = () => {
                   fontWeight: "bold",
                   color: totalDividaAtiva > 0 ? "#c62828" : "#2e7d32",
                   marginTop: "10px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  alignItems: "center",
+                  gap: "8px"
                 }}
               >
                 {totalDividaAtiva > 0
                   ? `Restante Pendente: R$ ${totalDividaAtiva.toFixed(2)}`
-                  : "✅ Todas as pendências foram quitadas."}
+                  : <><CheckCircle size={22} /> Todas as pendências foram quitadas.</>}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {vistoriaDeSaida && (
+      {(vistoriaDeSaida || order.assinatura_devolucao) && (
         <div
           style={{
             margin: "2rem 0",
-            padding: "1.5rem",
+            padding: "25px",
             backgroundColor: "#fff",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+            border: "1px solid #e2e8f0",
+            borderRadius: "16px",
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
           }}
         >
-          <div>
-            <h3 style={{ marginTop: 0, color: "#2c3e50" }}>
-              Contrato de Locação Digital
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "2px solid #f1f5f9", paddingBottom: "15px", marginBottom: "20px" }}>
+            <FileText size={22} color="#475569" />
+            <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", fontWeight: 800 }}>
+              Documentos e Contratos
             </h3>
-            <p style={{ margin: 0, color: "#666" }}>
-              Documento assinado e válido juridicamente.
-            </p>
           </div>
-          <button
-            onClick={handleDownloadContract}
-            disabled={contractLoading}
-            style={btnSecondaryStyle}
-          >
-            {contractLoading ? "Gerando PDF..." : "Baixar Contrato (PDF)"}
-          </button>
-        </div>
-      )}
 
-      {order.assinatura_devolucao && (
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "20px",
-            backgroundColor: "#f8f9fa",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <h3
-            style={{
-              color: "#2c3e50",
-              marginTop: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            ✅ Equipamentos Devolvidos
-          </h3>
-          <p style={{ color: "#555", marginBottom: "20px" }}>
-            O termo de devolução foi assinado pelo cliente em{" "}
-            {order.data_assinatura_devolucao
-              ? new Date(order.data_assinatura_devolucao).toLocaleDateString(
-                "pt-BR",
-              )
-              : "data não registrada"}
-            .
-          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            {vistoriaDeSaida && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0", flexWrap: "wrap", gap: "15px" }}>
+                <div>
+                  <h4 style={{ margin: "0 0 5px 0", color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <CheckCircle size={18} color="#10b981" /> Contrato de Locação Digital
+                  </h4>
+                  <p style={{ margin: 0, color: "#64748b", fontSize: "0.9rem" }}>Documento de entrega assinado e válido juridicamente.</p>
+                </div>
+                <button
+                  onClick={handleDownloadContract}
+                  disabled={contractLoading}
+                  style={{
+                    padding: "10px 20px", border: "2px solid #2c3e50", backgroundColor: "white", color: "#2c3e50", borderRadius: "6px", cursor: "pointer", fontWeight: "bold",
+                    display: "flex", alignItems: "center", gap: "8px"
+                  }}
+                >
+                  <Download size={16} /> {contractLoading ? "Gerando PDF..." : "Baixar Contrato"}
+                </button>
+              </div>
+            )}
 
-          <button
-            onClick={handleDownloadReturnContract}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#17a2b8",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              boxShadow: "0 2px 4px rgba(23,162,184,0.3)",
-            }}
-          >
-            📄 Baixar Termo de Devolução (PDF)
-          </button>
+            {order.assinatura_devolucao && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0", flexWrap: "wrap", gap: "15px" }}>
+                <div>
+                  <h4 style={{ margin: "0 0 5px 0", color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <CheckCircle size={18} color="#10b981" /> Termo de Devolução (Quitação)
+                  </h4>
+                  <p style={{ margin: 0, color: "#64748b", fontSize: "0.9rem" }}>
+                    Assinado em {order.data_assinatura_devolucao ? new Date(order.data_assinatura_devolucao).toLocaleDateString("pt-BR") : "data não registrada"}.
+                  </p>
+                </div>
+                <button
+                  onClick={handleDownloadReturnContract}
+                  style={{
+                    padding: "10px 20px", border: "none", backgroundColor: "#0284c7", color: "white", borderRadius: "6px", cursor: "pointer", fontWeight: "bold",
+                    display: "flex", alignItems: "center", gap: "8px", boxShadow: "0 2px 4px rgba(2,132,199,0.3)"
+                  }}
+                >
+                  <Download size={16} /> Baixar Termo
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1732,9 +1816,13 @@ const ReservationDetailsPage: React.FC = () => {
                   color: "#1b5e20",
                   textAlign: "center",
                   fontSize: "0.9rem",
-                  fontWeight: "bold"
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px"
                 }}>
-                  ✅ Pagamento Integral Recebido. Reserva Confirmada!
+                  <CheckCircle size={16} /> Pagamento Integral Recebido. Reserva Confirmada!
                 </div>
               )
             )}
@@ -1789,65 +1877,81 @@ const ReservationDetailsPage: React.FC = () => {
         <div
           style={{
             flex: 1,
-            border: "1px solid #ddd",
-            padding: "1.5rem",
-            borderRadius: "8px",
+            border: "1px solid #e2e8f0",
+            padding: "25px",
+            borderRadius: "16px",
             backgroundColor: "#fff",
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
           }}
         >
-          <h3
-            style={{
-              marginTop: 0,
-              color: "#2c3e50",
-              borderBottom: "2px solid #f0f0f0",
-              paddingBottom: "10px",
-            }}
-          >
-            Dados Logísticos
-          </h3>
-          <p>
-            <strong>Tipo de Entrega:</strong>{" "}
-            {order.tipo_entrega === "entrega"
-              ? "Entrega na Obra"
-              : "Retirada na Loja"}
-          </p>
-          {order.tipo_entrega === "entrega" ? (
-            <p>
-              <strong>Endereço de Entrega:</strong> {order.endereco_entrega}
-            </p>
-          ) : (
-            lojaConfig && (
-              <div style={{
-                marginTop: "10px",
-                padding: "12px",
-                backgroundColor: "#e7f3ff",
-                borderRadius: "6px",
-                borderLeft: "4px solid #007bff"
-              }}>
-                <p style={{ margin: 0, color: "#0056b3", fontWeight: "bold", fontSize: "0.9rem" }}>
-                  📍 ENDEREÇO PARA RETIRADA:
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "2px solid #f1f5f9", paddingBottom: "15px", marginBottom: "20px" }}>
+            <MapPin size={22} color="#475569" />
+            <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", fontWeight: 800 }}>
+              Dados Logísticos
+            </h3>
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", color: "#475569" }}>
+              <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                <strong style={{ color: "#1e293b" }}>Tipo de Entrega:</strong>{" "}
+                <span style={{ backgroundColor: "#f8fafc", padding: "6px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", display: "inline-flex", alignItems: "center", gap: "6px", fontWeight: "600", color: "#1d4ed8" }}>
+                  {order.tipo_entrega === "entrega" ? <><Truck size={16} /> Entrega na Obra</> : <><Store size={16} /> Retirada na Loja</>}
+                </span>
+              </p>
+              {order.tipo_entrega === "entrega" ? (
+                <p style={{ margin: 0 }}>
+                  <strong style={{ color: "#1e293b" }}>Endereço de Entrega:</strong> {order.endereco_entrega}
                 </p>
-                <p style={{ margin: "5px 0 0 0", color: "#333", fontSize: "0.95rem" }}>
-                  {lojaConfig.frete?.endereco_origem || "Endereço não configurado."}
-                </p>
+              ) : (
+                lojaConfig && (
+                  <div style={{
+                    marginTop: "5px",
+                    padding: "15px",
+                    backgroundColor: "#eff6ff",
+                    borderRadius: "8px",
+                    borderLeft: "4px solid #3b82f6"
+                  }}>
+                    <p style={{ margin: 0, color: "#1d4ed8", fontWeight: "bold", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <MapPin size={16} /> ENDEREÇO PARA RETIRADA:
+                    </p>
+                    <p style={{ margin: "8px 0 0 0", color: "#1e293b", fontSize: "0.95rem" }}>
+                      {lojaConfig.frete?.endereco_origem || "Endereço não configurado."}
+                    </p>
+                  </div>
+                )
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "flex-start" }}>
+              {/* DATAS DA LOCAÇÃO */}
+              <div style={{ display: "flex", gap: "30px", padding: "20px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px dashed #cbd5e1", flex: 1, minWidth: "250px" }}>
+                <div>
+                  <span style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Data de Saída</span>
+                  <strong style={{ color: "#1e293b", fontSize: "1.1rem" }}>{parseDateStringAsLocal(order.data_inicio).toLocaleDateString()}</strong>
+                </div>
+                <div>
+                  <span style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Data de Devolução</span>
+                  <strong style={{ color: "#1e293b", fontSize: "1.1rem" }}>{parseDateStringAsLocal(order.data_fim).toLocaleDateString()}</strong>
+                </div>
               </div>
-            )
-          )}          <div style={{ marginTop: "20px" }}>
-            <p>
-              <strong>Data de Saída:</strong>{" "}
-              {parseDateStringAsLocal(order.data_inicio).toLocaleDateString()}
-            </p>
-            <p>
-              <strong>Data de Devolução:</strong>{" "}
-              {parseDateStringAsLocal(order.data_fim).toLocaleDateString()}
-            </p>
+
+              {/* HORÁRIOS DA LOJA (DENTRO DOS DADOS LOGÍSTICOS E LADO A LADO) */}
+              <div style={{ flex: 1, minWidth: "300px" }}>
+                <HorarioFuncionamento />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <hr style={{ margin: "3rem 0", borderColor: "#eee" }} />
+      <hr style={{ margin: "3rem 0", borderColor: "#f1f5f9" }} />
 
-      <h2 style={{ color: "#2c3e50" }}>Itens do Pedido e Vistorias</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+        <Package size={24} color="#1e293b" />
+        <h2 style={{ color: "#1e293b", margin: 0, fontWeight: 800 }}>Itens do Pedido e Vistorias</h2>
+      </div>
+      
       {order.ItemReservas.map((item) => {
         const detalheSaida = vistoriaDeSaida?.detalhes.find(
           (d: any) => d.id_unidade === item.Unidade.id,
@@ -1860,12 +1964,12 @@ const ReservationDetailsPage: React.FC = () => {
           <div
             key={item.id}
             style={{
-              border: "1px solid #ddd",
-              padding: "2rem",
+              border: item.prejuizo ? "2px solid #fecaca" : "1px solid #e2e8f0",
+              padding: "25px",
               marginBottom: "2rem",
-              borderRadius: "12px",
-              backgroundColor: item.prejuizo ? "#fff5f5" : "white",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+              borderRadius: "16px",
+              backgroundColor: item.prejuizo ? "#fef2f2" : "#fff",
+              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
             }}
           >
             <div
@@ -1873,68 +1977,84 @@ const ReservationDetailsPage: React.FC = () => {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: "15px",
+                marginBottom: "20px",
+                borderBottom: "1px solid #f1f5f9",
+                paddingBottom: "15px"
               }}
             >
-              <h3 style={{ margin: 0, fontSize: "1.4rem", color: "#2c3e50" }}>
+              <h3 style={{ margin: 0, fontSize: "1.4rem", color: "#1e293b", fontWeight: 800 }}>
                 {item.Unidade.Equipamento.nome}
                 <span
                   style={{
-                    color: "#888",
-                    fontSize: "0.9rem",
-                    fontWeight: "normal",
-                    marginLeft: "10px",
+                    backgroundColor: "#f1f5f9",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    fontSize: "0.85rem",
+                    fontWeight: "bold",
+                    color: "#475569",
+                    marginLeft: "15px",
                   }}
                 >
-                  {" "}
-                  (Patrimônio #{item.Unidade.id})
+                  Unidade #{item.Unidade.id}
                 </span>
               </h3>
 
               {item.status === "FINALIZADO_COM_PREJUIZO" && (
                 <span
                   style={{
-                    backgroundColor: "#c62828",
+                    backgroundColor: "#ef4444",
                     color: "white",
-                    padding: "5px 10px",
+                    padding: "6px 14px",
                     borderRadius: "20px",
                     fontSize: "0.85rem",
                     fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
                   }}
                 >
-                  NÃO DEVOLVIDO / B.O.
+                  <ShieldAlert size={16} /> NÃO DEVOLVIDO / OCORRÊNCIA
                 </span>
               )}
             </div>
 
             {vistoriaDeSaida ? (
               <VistoriaDetailDisplay
-                title="📋 Vistoria de Saída (Entrega)"
+                title="Vistoria de Saída (Entrega)"
                 detail={detalheSaida}
               />
             ) : order.status === "pendente" ? (
               <div
                 style={{
                   padding: "15px",
-                  backgroundColor: "#f8f9fa",
-                  color: "#6c757d",
-                  borderRadius: "6px",
-                  border: "1px dashed #ccc",
+                  backgroundColor: "#f8fafc",
+                  color: "#64748b",
+                  borderRadius: "10px",
+                  border: "1px dashed #cbd5e1",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px"
                 }}
               >
-                Aguardando confirmação do pagamento para liberar vistoria...
+                <Clock size={20} color="#94a3b8" />
+                <span>Aguardando confirmação do pagamento para liberar vistoria...</span>
               </div>
             ) : (
               order.status !== "cancelada" && (
                 <div
                   style={{
                     padding: "15px",
-                    backgroundColor: "#fff3cd",
-                    color: "#856404",
-                    borderRadius: "6px",
+                    backgroundColor: "#fffbeb",
+                    color: "#b45309",
+                    borderRadius: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    border: "1px solid #fde68a"
                   }}
                 >
-                  Aguardando vistoria de saída...
+                  <Clock size={20} color="#d97706" />
+                  <span style={{ fontWeight: "600" }}>Aguardando vistoria de saída...</span>
                 </div>
               )
             )}
@@ -1957,8 +2077,8 @@ const ReservationDetailsPage: React.FC = () => {
                 }}
               >
                 <div>
-                  <h3 style={{ margin: "0 0 5px 0" }}>
-                    🚨 Pendência Financeira (B.O.)
+                  <h3 style={{ margin: "0 0 5px 0", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <AlertCircle size={22} /> Pendência Financeira (Ocorrência)
                   </h3>
                   <p style={{ margin: 0 }}>
                     Existem valores em aberto referentes a avarias, perdas ou
@@ -1980,9 +2100,12 @@ const ReservationDetailsPage: React.FC = () => {
                     cursor: "pointer",
                     fontSize: "1.1rem",
                     boxShadow: "0 4px 6px rgba(198,40,40,0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
                   }}
                 >
-                  💳 Pagar Dívida Agora
+                  <CreditCard size={18} /> Pagar Dívida Agora
                 </button>
               </div>
             )}
@@ -2083,7 +2206,7 @@ const ReservationDetailsPage: React.FC = () => {
                 gap: "10px",
               }}
             >
-              💰 Quitar Inadimplência
+              <DollarSign size={28} /> Quitar Inadimplência
             </h2>
 
             <div
@@ -2211,6 +2334,77 @@ const ReservationDetailsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL MANUAL */}
+      {showManual && (
+        <div style={manualOverlayStyle} onClick={() => setShowManual(false)}>
+          <div style={{ ...manualContentStyle, maxWidth: '650px', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={manualHeaderStyle}>
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px", color: "#1e293b" }}>
+                <HelpCircle size={22} color="#2563eb" /> Manual: {isAdmin || isFuncionario ? 'Gestão do Pedido (Equipe)' : 'Acompanhamento do Pedido'}
+              </h3>
+              <button onClick={() => setShowManual(false)} style={manualCloseBtnStyle}><X size={22} /></button>
+            </div>
+
+            <div style={{ padding: "30px", overflowY: "auto", flexGrow: 1, maxHeight: "70vh" }}>
+              <div style={{ color: "#475569", lineHeight: "1.6" }}>
+                <p style={{ marginBottom: "25px", fontSize: "1rem" }}>
+                  {isAdmin || isFuncionario 
+                    ? 'Painel administrativo para controle total da locação, desde a saída até a baixa final do patrimônio.' 
+                    : 'Acompanhe em tempo real o status da sua locação e acesse seus documentos e contratos.'}
+                </p>
+
+                <div style={manualStepStyle}>
+                  <div style={stepNumStyle}>1</div>
+                  <div>
+                    <strong>Linha do Tempo (Timeline):</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Mostra em qual estágio a locação se encontra. {isAdmin || isFuncionario ? 'Acompanhe para garantir o cumprimento dos prazos de entrega e coleta.' : 'Veja se seu pedido já foi confirmado ou se já saiu para entrega.'}</p>
+                  </div>
+                </div>
+
+                <div style={manualStepStyle}>
+                  <div style={stepNumStyle}>2</div>
+                  <div>
+                    <strong>Dados Logísticos e Horários:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Verifique se o pedido é para entrega ou retirada. Os horários da loja ajudam no planejamento {isAdmin || isFuncionario ? 'das rotas de entrega.' : 'da sua vinda para retirar ou devolver.'}</p>
+                  </div>
+                </div>
+
+                { (isAdmin || isFuncionario) && (
+                  <div style={manualStepStyle}>
+                    <div style={stepNumStyle}>3</div>
+                    <div>
+                      <strong>Painel de Ações (Exclusivo Equipe):</strong>
+                      <p style={{ margin: "5px 0 0 0" }}>Use os botões para realizar vistorias, coletar assinaturas no tablet/celular e registrar recebimentos manuais de sinal ou saldo final.</p>
+                    </div>
+                  </div>
+                )}
+
+                <div style={manualStepStyle}>
+                  <div style={stepNumStyle}>{isAdmin || isFuncionario ? '4' : '3'}</div>
+                  <div>
+                    <strong>Vistorias e Fotos:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Consulte as fotos tiradas no momento da entrega para evitar discussões sobre avarias. {isAdmin || isFuncionario ? 'Registrar fotos nítidas é obrigatório para a segurança jurídica da empresa.' : 'As fotos garantem que você recebeu o equipamento em perfeito estado.'}</p>
+                  </div>
+                </div>
+
+                <div style={manualStepStyle}>
+                  <div style={stepNumStyle}>{isAdmin || isFuncionario ? '5' : '4'}</div>
+                  <div>
+                    <strong>Documentos e Contratos:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>{isAdmin || isFuncionario ? 'O sistema gera o DFE (Documento Fiscal Eletrônico) e o XML automaticamente após o faturamento.' : 'Baixe seu contrato assinado e o documento fiscal de locação (DFE) a qualquer momento.'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 };
@@ -2234,19 +2428,19 @@ const btnActionStyle: React.CSSProperties = {
   fontWeight: "bold",
   fontSize: "0.95rem",
   boxShadow: "0 2px 5px rgba(0,123,255,0.3)",
-};
-
-const btnSecondaryStyle: React.CSSProperties = {
-  padding: "10px 20px",
-  border: "2px solid #2c3e50",
-  backgroundColor: "white",
-  color: "#2c3e50",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: "bold",
+  display: "flex",
+  alignItems: "center",
+  gap: "8px"
 };
 
 const btnDocStyle: React.CSSProperties = { padding: "6px 12px", border: "1px solid #ccc", backgroundColor: "white", color: "#333", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "5px" };
 const btnDocStyleGov: React.CSSProperties = { ...btnDocStyle, backgroundColor: "#e9ecef", borderColor: "#ced4da", color: "#495057" };
+
+const manualOverlayStyle: React.CSSProperties = { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, animation: "fadeIn 0.2s ease" };
+const manualContentStyle: React.CSSProperties = { backgroundColor: "#fff", borderRadius: "16px", width: "90%", maxWidth: "600px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", overflow: "hidden", display: "flex", flexDirection: "column" };
+const manualHeaderStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 30px", borderBottom: "1px solid #f1f5f9" };
+const manualCloseBtnStyle: React.CSSProperties = { background: "#f1f5f9", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center" };
+const manualStepStyle: React.CSSProperties = { display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9", color: "#475569", fontSize: "0.9rem" };
+const stepNumStyle: React.CSSProperties = { width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 };
 
 export default ReservationDetailsPage;

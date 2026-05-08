@@ -5,6 +5,18 @@ import 'react-calendar/dist/Calendar.css';
 import '../styles/CalendarCommon.css';
 import { parseDateStringAsLocal } from '../utils/dateUtils';
 import { useAuth } from '../context/AuthContext';
+import { 
+  X, 
+  Calendar as CalendarIcon, 
+  RefreshCw, 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle, 
+  Info,
+  Clock,
+  ArrowRight,
+  AlertCircle
+} from 'lucide-react';
 
 interface RescheduleModalProps {
   order: any;
@@ -318,139 +330,164 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
     }
   };
 
-  const handleContentClick = (e: React.MouseEvent) => e.stopPropagation();
-
   return (
     <div style={modalOverlayStyle} onClick={onClose}>
-      <div className="availability-calendar-container" style={modalContentStyle} onClick={handleContentClick}>
-        <button onClick={onClose} style={closeButtonStyle}>&times;</button>
+      <div className="availability-calendar-container" style={modalContentStyle} onClick={e => e.stopPropagation()}>
         
-        <div style={{ marginBottom: '20px' }}>
-            <h2 style={{ margin: '0 0 5px 0', fontSize: '1.5rem', color: '#2c3e50' }}>Remarcar Pedido #{order.id}</h2>
-            <p style={{ margin: 0, color: '#666', fontSize: '0.9rem' }}>
-                Período Atual: <strong>{originalStartDate.toLocaleDateString()}</strong> a <strong>{originalEndDate.toLocaleDateString()}</strong>
-            </p>
-        </div>
-
-        {isPastOrToday && (
-          <div style={warningBoxStyle}>
-            ⚠️ <strong>Pedido em andamento:</strong> A data de início está fixada. Escolha no calendário apenas a nova data de <strong>término</strong>.
-          </div>
-        )}
-
-        <div style={legendContainerStyle}>
-          <div style={legendItemStyle}><div className="day-green" style={legendCircleStyle}></div> Disponível</div>
-          <div style={legendItemStyle}><div className="day-red" style={legendCircleStyle}></div> Indisponível</div>
-          <div style={legendItemStyle}><div style={{ ...legendCircleStyle, backgroundColor: '#3498db' }}></div> Sua Seleção</div>
-        </div>
-
-        <div style={{ ...calendarWrapperStyle, position: 'relative', opacity: isLoadingMonth ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-            {isInitialLoading ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
-                    <div className="spinner"></div>
-                    <p>Carregando calendário...</p>
+        {/* CABEÇALHO */}
+        <div style={headerStyle}>
+          <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+            <div style={{ backgroundColor: "#fff7ed", padding: "12px", borderRadius: "12px" }}>
+                <RefreshCw size={28} color="#f97316" />
+            </div>
+            <div>
+                <h2 style={{ margin: 0, color: "#1e293b", fontSize: "1.4rem", fontWeight: 800 }}>Remarcar Pedido #{order.id}</h2>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#64748b", fontSize: "0.9rem", fontWeight: "600" }}>
+                  <CalendarIcon size={14} />
+                  <span>Período atual: {originalStartDate.toLocaleDateString()} — {originalEndDate.toLocaleDateString()}</span>
                 </div>
-            ) : error && !availabilityData ? (
-                <p style={{ color: '#e74c3c', textAlign: 'center', padding: '20px' }}>{error}</p>
-            ) : (
-                <>
-                    {isLoadingMonth && (
-                        <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}>
-                            <div className="spinner" style={{ width: '20px', height: '20px', margin: 0 }}></div>
-                        </div>
-                    )}
-                    <Calendar
-                        onChange={handleDateChange}
-                        value={isPastOrToday 
-                            ? parseDateStringAsLocal(newEndDate) 
-                            : [parseDateStringAsLocal(newStartDate), parseDateStringAsLocal(newEndDate)]
-                        }
-                        selectRange={!isPastOrToday}
-                        minDate={minDate}
-                        maxDate={maxDate}
-                        activeStartDate={currentMonthView}
-                        onActiveStartDateChange={({ activeStartDate }) => setCurrentMonthView(activeStartDate || new Date())}
-                        tileClassName={getTileClassName}
-                        tileDisabled={tileDisabled}
-                        minDetail="month"
-                        maxDetail="month"
-                        prev2Label={null}
-                        next2Label={null}
-                    />
-                </>
-            )}
-        </div>
-
-        <div style={infoBoxStyle}>
-          <div style={{ marginBottom: '10px' }}>
-            <span style={{ color: '#7f8c8d', fontSize: '0.85rem', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Novo Período Selecionado</span>
-            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#2c3e50' }}>
-                {parseDateStringAsLocal(newStartDate).toLocaleDateString()} — {parseDateStringAsLocal(newEndDate).toLocaleDateString()}
             </div>
           </div>
-          
-          {error && (
-            <div style={{ color: '#e74c3c', fontWeight: 'bold', fontSize: '0.95rem', marginTop: '10px' }}>
-                ⚠️ {error}
+          <button onClick={onClose} style={closeBtnStyle}><X size={24} /></button>
+        </div>
+
+        <div style={{ padding: '25px' }}>
+          {isPastOrToday && (
+            <div style={{ ...warningBoxStyle, display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <Info size={20} style={{ flexShrink: 0 }} />
+              <div>
+                <strong>Pedido em andamento:</strong> A data de início está fixada. Escolha no calendário apenas a nova data de <strong>término</strong> (extensão).
+              </div>
             </div>
           )}
 
-          {availability.checking ? (
-            <div style={{ color: '#3498db', fontSize: '0.9rem', marginTop: '10px' }}>Verificando estoque...</div>
-          ) : !error && availability.available === true ? (
-            <div style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '10px' }}>
-                ✅ Período disponível para alteração
-            </div>
-          ) : !error && availability.available === false ? (
-            <div style={{ color: '#e74c3c', fontWeight: 'bold', fontSize: '0.95rem', marginTop: '10px' }}>
-                ❌ Indisponível: Não há equipamentos livres nestas datas.
-            </div>
-          ) : null}
-        </div>
+          {/* LEGENDA */}
+          <div style={legendContainerStyle}>
+            <div style={legendItemStyle}><div style={{ ...legendCircleStyle, backgroundColor: '#10b981' }}></div> Disponível</div>
+            <div style={legendItemStyle}><div style={{ ...legendCircleStyle, backgroundColor: '#ef4444' }}></div> Indisponível</div>
+            <div style={legendItemStyle}><div style={{ ...legendCircleStyle, backgroundColor: '#3b82f6' }}></div> Sua Seleção</div>
+          </div>
 
-        <div style={footerActionStyle}>
-            <button 
-                onClick={onClose} 
-                style={btnCancelStyle}
-            >
-                Cancelar
-            </button>
-            <button 
-                onClick={handleSubmit} 
-                disabled={!!error || !availability.available || availability.checking || isSubmitting}
-                style={{
-                    ...btnConfirmStyle,
-                    opacity: (!!error || !availability.available || availability.checking || isSubmitting) ? 0.6 : 1,
-                    cursor: (!!error || !availability.available || availability.checking || isSubmitting) ? 'not-allowed' : 'pointer'
-                }}
-            >
-                {isSubmitting ? 'Processando...' : 'Confirmar Alteração'}
-            </button>
+          <div style={{ ...calendarWrapperStyle, position: 'relative', opacity: isLoadingMonth ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+              {isInitialLoading ? (
+                  <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                      <div className="spinner"></div>
+                      <p style={{ fontWeight: 'bold', marginTop: '10px' }}>Carregando disponibilidade...</p>
+                  </div>
+              ) : error && !availabilityData ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#ef4444', backgroundColor: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca' }}>
+                    <AlertTriangle size={24} style={{ margin: '0 auto 10px' }} />
+                    <p style={{ fontWeight: 'bold' }}>{error}</p>
+                  </div>
+              ) : (
+                  <>
+                      {isLoadingMonth && (
+                          <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}>
+                              <div className="spinner" style={{ width: '20px', height: '20px', margin: 0 }}></div>
+                          </div>
+                      )}
+                      <Calendar
+                          onChange={handleDateChange}
+                          value={isPastOrToday 
+                              ? parseDateStringAsLocal(newEndDate) 
+                              : [parseDateStringAsLocal(newStartDate), parseDateStringAsLocal(newEndDate)]
+                          }
+                          selectRange={!isPastOrToday}
+                          minDate={minDate}
+                          maxDate={maxDate}
+                          activeStartDate={currentMonthView}
+                          onActiveStartDateChange={({ activeStartDate }) => setCurrentMonthView(activeStartDate || new Date())}
+                          tileClassName={getTileClassName}
+                          tileDisabled={tileDisabled}
+                          minDetail="month"
+                          maxDetail="month"
+                          prev2Label={null}
+                          next2Label={null}
+                      />
+                  </>
+              )}
+          </div>
+
+          {/* BOX DE INFORMAÇÕES DO NOVO PERÍODO */}
+          <div style={infoBoxStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <span style={{ color: '#64748b', fontSize: '0.8rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Novo Período</span>
+                <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#1e293b', display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                    {parseDateStringAsLocal(newStartDate).toLocaleDateString()} 
+                    <ArrowRight size={18} color="#94a3b8" />
+                    {parseDateStringAsLocal(newEndDate).toLocaleDateString()}
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <span style={{ color: '#64748b', fontSize: '0.8rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Duração</span>
+                <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#2563eb' }}>
+                  {Math.round(Math.abs((parseDateStringAsLocal(newEndDate).getTime() - parseDateStringAsLocal(newStartDate).getTime()) / oneDay)) + 1} dias
+                </div>
+              </div>
+            </div>
+            
+            {error && (
+              <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.9rem', marginTop: '15px', backgroundColor: '#fef2f2', padding: '10px', borderRadius: '8px', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertCircle size={18} /> {error}
+              </div>
+            )}
+
+            {availability.checking ? (
+              <div style={{ color: '#3b82f6', fontSize: '0.9rem', marginTop: '15px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                <Clock size={18} className="spin-animation" /> Verificando estoque...
+              </div>
+            ) : !error && availability.available === true ? (
+              <div style={{ color: '#10b981', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '15px' }}>
+                  <CheckCircle size={18} /> Período disponível para alteração
+              </div>
+            ) : !error && availability.available === false ? (
+              <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '15px' }}>
+                  <XCircle size={18} /> Indisponível: Não há equipamentos livres nestas datas.
+              </div>
+            ) : null}
+          </div>
+
+          <div style={footerActionStyle}>
+              <button onClick={onClose} style={btnCancelStyle}>Desistir</button>
+              <button 
+                  onClick={handleSubmit} 
+                  disabled={!!error || !availability.available || availability.checking || isSubmitting}
+                  style={{
+                      ...btnConfirmStyle,
+                      backgroundColor: (!!error || !availability.available || availability.checking || isSubmitting) ? "#cbd5e1" : "#2563eb",
+                      opacity: isSubmitting ? 0.7 : 1
+                  }}
+              >
+                  {isSubmitting ? 'Processando...' : 'Confirmar Remarcação'}
+              </button>
+          </div>
         </div>
       </div>
 
       <style>{`
         .day-selected-reschedule {
-            background: #3498db !important;
+            background: #3b82f6 !important;
             color: white !important;
             border-radius: 4px;
         }
         .spinner {
             width: 30px;
             height: 30px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
+            border: 3px solid #f1f5f9;
+            border-top: 3px solid #2563eb;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
+            margin: 0 auto;
+        }
+        .spin-animation {
+          animation: spin 1s linear infinite;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        @media (max-width: 480px) {
-            h2 { fontSize: 1.2rem !important; }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );
@@ -458,121 +495,128 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({ order, onClose, onSuc
 
 
 const modalOverlayStyle: React.CSSProperties = {
-  position: 'fixed', zIndex: 1000, top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex',
+  position: 'fixed', zIndex: 3000, top: 0, left: 0, right: 0, bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex',
   justifyContent: 'center', alignItems: 'center',
-  padding: '15px'
+  padding: '15px',
+  animation: "fadeIn 0.2s ease"
 };
 
 const modalContentStyle: React.CSSProperties = {
   backgroundColor: '#fff',
-  padding: '30px',
-  borderRadius: '16px',
+  borderRadius: '24px',
   width: '100%',
-  maxWidth: '550px',
-  position: 'relative',
-  maxHeight: '90vh',
+  maxWidth: '600px',
+  display: 'flex',
+  flexDirection: 'column',
+  maxHeight: '92vh',
   overflowY: 'auto',
-  boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+};
+
+const headerStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '25px',
+  borderBottom: '1px solid #f1f5f9'
+};
+
+const closeBtnStyle: React.CSSProperties = {
+  background: '#f1f5f9',
+  border: 'none',
+  borderRadius: '50%',
+  padding: '8px',
+  cursor: 'pointer',
+  color: '#64748b',
+  display: 'flex',
+  alignItems: 'center'
 };
 
 const warningBoxStyle: React.CSSProperties = {
-    backgroundColor: '#fff3cd',
-    color: '#856404',
-    padding: '12px 15px',
-    borderRadius: '8px',
+    backgroundColor: '#fffbeb',
+    color: '#92400e',
+    padding: '15px',
+    borderRadius: '12px',
     marginBottom: '20px',
     fontSize: '0.85rem',
-    border: '1px solid #ffeeba',
-    lineHeight: '1.4'
+    border: '1px solid #fef3c7',
+    lineHeight: '1.5'
 };
 
 const legendContainerStyle: React.CSSProperties = {
     display: 'flex',
-    gap: '12px',
+    gap: '15px',
     justifyContent: 'center',
     flexWrap: 'wrap',
     marginBottom: '20px',
-    padding: '10px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px'
+    padding: '12px',
+    backgroundColor: '#f8fafc',
+    borderRadius: '12px',
+    border: '1px solid #f1f5f9'
 };
 
 const legendItemStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
+    gap: '6px',
     fontSize: '0.75rem',
-    color: '#666',
-    fontWeight: '600'
+    color: '#475569',
+    fontWeight: '700',
+    textTransform: 'uppercase'
 };
 
 const legendCircleStyle: React.CSSProperties = {
-    width: 12,
-    height: 12,
-    borderRadius: '50%',
-    marginRight: '5px'
+    width: 10,
+    height: 10,
+    borderRadius: '50%'
 };
 
 const calendarWrapperStyle: React.CSSProperties = {
     marginBottom: '25px',
-    padding: '10px',
-    border: '1px solid #eee',
-    borderRadius: '12px'
+    padding: '15px',
+    border: '1px solid #f1f5f9',
+    borderRadius: '16px',
+    backgroundColor: '#fff'
 };
 
 const infoBoxStyle: React.CSSProperties = {
-    backgroundColor: '#f1f4f9',
+    backgroundColor: '#f8fafc',
     padding: '20px',
-    borderRadius: '12px',
-    marginBottom: '25px'
+    borderRadius: '16px',
+    marginBottom: '25px',
+    border: '1px solid #e2e8f0'
 };
 
 const footerActionStyle: React.CSSProperties = {
     display: 'flex',
-    gap: '15px',
-    marginTop: '10px'
-};
-
-const btnBaseStyle: React.CSSProperties = {
-    flex: 1,
-    padding: '14px',
-    borderRadius: '10px',
-    fontWeight: 'bold',
-    fontSize: '1rem',
-    border: 'none',
-    transition: 'all 0.2s ease'
+    gap: '15px'
 };
 
 const btnCancelStyle: React.CSSProperties = {
-    ...btnBaseStyle,
-    backgroundColor: '#eee',
-    color: '#666',
-    cursor: 'pointer'
+    flex: 1,
+    padding: '14px',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    fontSize: '1rem',
+    border: '1px solid #e2e8f0',
+    backgroundColor: 'white',
+    color: '#64748b',
+    cursor: 'pointer',
+    transition: 'all 0.2s'
 };
 
 const btnConfirmStyle: React.CSSProperties = {
-    ...btnBaseStyle,
-    backgroundColor: '#3498db',
+    flex: 2,
+    padding: '14px',
+    borderRadius: '12px',
+    fontWeight: '800',
+    fontSize: '1rem',
+    border: 'none',
     color: 'white',
-    boxShadow: '0 4px 10px rgba(52,152,219,0.3)'
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
 };
-
-const closeButtonStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: '20px',
-  right: '20px',
-  cursor: 'pointer',
-  background: '#f8f9fa',
-  border: 'none',
-  fontSize: '1.2rem',
-  width: '32px',
-  height: '32px',
-  borderRadius: '50%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: '#999'
-};
-
 
 export default RescheduleModal;

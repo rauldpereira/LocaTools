@@ -245,7 +245,7 @@ const FinalizePaymentPage: React.FC = () => {
             
             {order.status === 'PREJUIZO' && (
                 <div style={{backgroundColor: '#ffe6e6', padding: '15px', border: '1px solid red', borderRadius: '5px', marginBottom: '2rem'}}>
-                    <h3 style={{color: 'red', margin: '0 0 10px 0'}}>⚠️ Atenção: Este pedido possui B.O./Prejuízo registrado</h3>
+                    <h3 style={{color: 'red', margin: '0 0 10px 0'}}>⚠️ Atenção: Este pedido possui Ocorrência/Prejuízo registrado</h3>
                     <p style={{margin: 0}}>O valor dos itens perdidos foi adicionado ao total abaixo.</p>
                 </div>
             )}
@@ -276,7 +276,7 @@ const FinalizePaymentPage: React.FC = () => {
                             )}
                         </div>
                         {item.status === 'FINALIZADO_COM_PREJUIZO' ? (
-                            <span style={{color: 'red', fontWeight: 'bold', border: '1px solid red', padding: '2px 5px', borderRadius: '4px'}}>B.O. REGISTRADO</span>
+                            <span style={{color: 'red', fontWeight: 'bold', border: '1px solid red', padding: '2px 5px', borderRadius: '4px'}}>OCORRÊNCIA REGISTRADA</span>
                         ) : (
                             <button onClick={() => setSelectedItemForPrejuizo(item)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer' }}>
                                 🚨 Registrar Prejuízo
@@ -380,7 +380,7 @@ const FinalizePaymentPage: React.FC = () => {
                     )}
                     {totalPrejuizos > 0 && (
                         <div style={{display: 'flex', justifyContent: 'space-between', color: '#b00020', fontWeight: 'bold'}}>
-                            <span>Roubos / Extravios / B.O.:</span>
+                            <span>Roubos / Extravios / Ocorrências:</span>
                             <span>+ R$ {totalPrejuizos.toFixed(2)}</span>
                         </div>
                     )}

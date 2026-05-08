@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { HelpCircle, X, ShieldAlert, KeyRound, UserCircle } from 'lucide-react';
 
 const Profile: React.FC = () => {
   const { user, updateUser, logout } = useAuth();
@@ -16,6 +17,8 @@ const Profile: React.FC = () => {
   const [mensagemPerfil, setMensagemPerfil] = useState('');
   const [mensagemSenha, setMensagemSenha] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  const [showManual, setShowManual] = useState(false);
 
   const maskPhone = (value: string) => {
     const num = value.replace(/\D/g, '').substring(0, 11);
@@ -127,7 +130,22 @@ const Profile: React.FC = () => {
 
   return (
     <div style={{ padding: '2rem', marginTop: '60px', maxWidth: '800px', margin: '60px auto' }}>
-      <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>Perfil do Usuário</h2>
+      
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+        <h2 style={{ margin: 0, color: "#1e293b", display: "flex", alignItems: "center", gap: "10px" }}>
+          <UserCircle size={28} color="#3b82f6" /> Perfil do Usuário
+        </h2>
+        <button
+            onClick={() => setShowManual(true)}
+            title="Manual do Usuário"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "40px", height: "40px", borderRadius: "50%", border: "1px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}
+            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#f8fafc"; e.currentTarget.style.color = "#2563eb"; }}
+            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.color = "#64748b"; }}
+          >
+            <HelpCircle size={20} />
+        </button>
+      </div>
       
       <form onSubmit={handleUpdateProfile} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
         <div style={fieldContainerStyle}>
@@ -272,6 +290,56 @@ const Profile: React.FC = () => {
           )}
         </div>
       </form>
+
+      {/* MODAL MANUAL */}
+      {showManual && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, animation: "fadeIn 0.2s ease" }} onClick={() => setShowManual(false)}>
+          <div style={{ backgroundColor: "#fff", borderRadius: "16px", width: "90%", maxWidth: "600px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "90vh" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 30px", borderBottom: "1px solid #f1f5f9" }}>
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px", color: "#1e293b" }}>
+                <HelpCircle size={22} color="#2563eb" /> Manual do Usuário: Gestão de Perfil
+              </h3>
+              <button onClick={() => setShowManual(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center" }}><X size={22} /></button>
+            </div>
+
+            <div style={{ padding: "30px", overflowY: "auto", flexGrow: 1 }}>
+              <div style={{ color: "#475569", lineHeight: "1.6" }}>
+                <p style={{ marginBottom: "25px", fontSize: "1rem" }}>
+                  Mantenha seus dados atualizados para garantir que os contratos de locação sejam gerados corretamente.
+                </p>
+
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}><UserCircle size={14} /></div>
+                  <div>
+                    <strong>Dados Cadastrais e Contratuais:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>O Nome e o Telefone que você preencher aqui serão impressos automaticamente nos seus Termos de Responsabilidade e Contratos de Locação. Mantenha-os sempre atualizados.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#fef2f2", borderRadius: "12px", border: "1px solid #fecaca" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ef4444", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}><ShieldAlert size={14} /></div>
+                  <div>
+                    <strong>Documento de Identificação (CPF/CNPJ):</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Por questões de segurança e integridade contratual, o seu documento (CPF ou CNPJ) é travado após o cadastro inicial e não pode ser alterado por esta tela. Caso precise corrigir, entre em contato com o suporte da LocaTools.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}><KeyRound size={14} /></div>
+                  <div>
+                    <strong>Segurança da Conta:</strong>
+                    <p style={{ margin: "5px 0 0 0" }}>Você pode trocar sua senha a qualquer momento. Lembre-se que a nova senha precisa ter no mínimo 8 caracteres e conter pelo menos uma letra e um número.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 };

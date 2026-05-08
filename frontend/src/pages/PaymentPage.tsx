@@ -387,7 +387,7 @@ const PaymentPage: React.FC = () => {
                             </div>
                             {totalPrejuizos > 0 && (
                                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
-                                    <span style={{fontWeight: 500, color: '#c62828'}}>Avarias / Extravios (B.O.):</span>
+                                    <span style={{fontWeight: 500, color: '#c62828'}}>Avarias / Extravios (Ocorrências):</span>
                                     <span style={{fontWeight: 500, color: '#c62828'}}>R$ {totalPrejuizos.toFixed(2)}</span>
                                 </div>
                             )}
