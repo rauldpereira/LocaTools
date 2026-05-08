@@ -286,10 +286,34 @@ const deleteEquipment = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const equipamento = await Equipamento.findByPk(id);
+    const equipamento = await Equipamento.findByPk(id, {
+      include: [{
+        model: Unidade,
+        as: 'Unidades',
+        include: [{
+          model: ItemReserva,
+          as: 'ItensReserva',
+          required: false
+        }]
+      }]
+    });
 
     if (!equipamento) {
       return res.status(404).json({ error: "Equipamento não encontrado." });
+    }
+
+    let hasHistory = false;
+    if (equipamento.Unidades) {
+      for (const unit of equipamento.Unidades) {
+        if (unit.ItensReserva && unit.ItensReserva.length > 0) {
+          hasHistory = true;
+          break;
+        }
+      }
+    }
+
+    if (hasHistory) {
+      return res.status(400).json({ error: "Bloqueado: Este equipamento possui unidades com histórico de locação ou manutenção. Ele não pode ser excluído." });
     }
 
     await equipamento.destroy();

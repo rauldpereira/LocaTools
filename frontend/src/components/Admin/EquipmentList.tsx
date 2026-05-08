@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import EditEquipmentModal from '../EditEquipmentModal';
 import StockManagerModal from '../StockManagerModal';
-import { Edit, Package, Trash2, Search, RefreshCw, Layers } from 'lucide-react';
+import { Edit, Package, Trash2, Search, RefreshCw, Layers, X, AlertTriangle } from 'lucide-react';
 
 interface Category {
     id: number;
@@ -35,6 +35,8 @@ const EquipmentList: React.FC = () => {
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(10);
     const [searchTerm, setSearchTerm] = useState("");
+    const [equipmentToDelete, setEquipmentToDelete] = useState<number | null>(null);
+    const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
     const fetchEquipments = async () => {
         try {
@@ -52,15 +54,22 @@ const EquipmentList: React.FC = () => {
         fetchEquipments();
     }, []);
 
-    const handleDelete = async (id: number) => {
-        if (!confirm('Tem certeza que deseja excluir este equipamento?')) return;
+    const handleDelete = (id: number) => {
+        setEquipmentToDelete(id);
+        setDeleteErrorMessage(null);
+    };
+
+    const confirmDelete = async () => {
+        if (!equipmentToDelete) return;
+        setDeleteErrorMessage(null);
         try {
-            await axios.delete(`${import.meta.env.VITE_API_URL}/api/equipment/${id}`, {
+            await axios.delete(`${import.meta.env.VITE_API_URL}/api/equipment/${equipmentToDelete}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            setEquipmentToDelete(null);
             fetchEquipments();
-        } catch (error) {
-            alert('Erro ao excluir.');
+        } catch (error: any) {
+            setDeleteErrorMessage(error.response?.data?.error || 'Erro ao excluir o equipamento.');
         }
     };
 
@@ -236,12 +245,60 @@ const EquipmentList: React.FC = () => {
                     fetchEquipments();
                 }}
             />
+
+            {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+            {equipmentToDelete !== null && (
+              <div style={overlayStyle} onClick={() => setEquipmentToDelete(null)}>
+                <div style={{ ...modalStyle, width: '450px', border: "2px solid #ef4444" }} onClick={e => e.stopPropagation()}>
+                  <div style={{ ...headerStyle, backgroundColor: "#fef2f2", borderBottom: "1px solid #fee2e2" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <div style={{ backgroundColor: "#fee2e2", padding: "10px", borderRadius: "10px" }}>
+                          <AlertTriangle size={28} color="#ef4444" />
+                      </div>
+                      <div>
+                          <h2 style={{ margin: 0, color: '#991b1b', fontSize: "1.25rem" }}>Confirmar Exclusão</h2>
+                      </div>
+                    </div>
+                    <button onClick={() => setEquipmentToDelete(null)} style={closeBtnStyle}><X size={24} /></button>
+                  </div>
+                  <div style={{ padding: "25px" }}>
+                    {deleteErrorMessage ? (
+                        <div style={{ margin: "0 0 15px 0", color: "#b91c1c", backgroundColor: "#fef2f2", border: "1px solid #fecaca", padding: "12px", borderRadius: "8px", fontSize: "0.9rem", fontWeight: "600", animation: "fadeIn 0.3s ease" }}>
+                            {deleteErrorMessage}
+                        </div>
+                    ) : (
+                        <p style={{ margin: 0, color: "#475569", fontSize: "0.95rem", lineHeight: "1.5" }}>
+                        Tem certeza que deseja excluir permanentemente o <strong>Equipamento #{equipmentToDelete}</strong> do catálogo?
+                        <br /><br />
+                        <span style={{ color: "#ef4444", fontWeight: "600" }}>Atenção:</span> Esta ação apagará todas as unidades associadas a ele, desde que nenhuma tenha histórico de locação.
+                        </p>
+                    )}
+                  </div>
+                  <div style={{ padding: "20px 25px", borderTop: "1px solid #f1f5f9", display: "flex", gap: "12px" }}>
+                    <button onClick={() => setEquipmentToDelete(null)} style={btnSecondaryStyle}>Cancelar</button>
+                    <button onClick={confirmDelete} disabled={!!deleteErrorMessage} style={{ ...btnPrimaryStyle, backgroundColor: "#ef4444", opacity: deleteErrorMessage ? 0.5 : 1, cursor: deleteErrorMessage ? 'not-allowed' : 'pointer' }}>
+                      <Trash2 size={18} />
+                      Excluir Equipamento
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <style>{`
               .table-row-hover:hover { background-color: #f8fafc !important; }
+              @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
             `}</style>
         </div>
     );
 };
+
+const overlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, animation: "fadeIn 0.2s ease" };
+const modalStyle: React.CSSProperties = { backgroundColor: 'white', borderRadius: '20px', maxWidth: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: "hidden", boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' };
+const headerStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: "25px", borderBottom: "1px solid #f1f5f9" };
+const closeBtnStyle: React.CSSProperties = { background: '#f1f5f9', color: "#64748b", border: 'none', borderRadius: "50%", padding: "8px", cursor: 'pointer', display: "flex", alignItems: "center", transition: "0.2s" };
+const btnPrimaryStyle: React.CSSProperties = { padding: "12px 20px", backgroundColor: "#2563eb", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", transition: "0.2s" };
+const btnSecondaryStyle: React.CSSProperties = { padding: "12px 20px", backgroundColor: "#f1f5f9", color: "#475569", border: "none", borderRadius: "10px", fontWeight: "bold", cursor: "pointer" };
 
 const thStyle: React.CSSProperties = { padding: '16px', color: '#64748b', fontWeight: '700', textAlign: 'left', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' };
 const tdStyle: React.CSSProperties = { padding: '16px' };

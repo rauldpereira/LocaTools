@@ -6,6 +6,11 @@
     background: transparent !important;
 }
 
+/* Remove a cor vermelha padrão dos finais de semana do react-calendar */
+.availability-calendar-container .react-calendar__month-view__days__day--weekend {
+    color: #1e293b !important;
+}
+
 .availability-calendar-container .react-calendar__tile {
     padding: 12px 8px !important;
     font-weight: 600 !important;

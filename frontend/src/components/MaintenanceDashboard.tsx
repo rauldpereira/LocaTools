@@ -1,6 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { 
+  Wrench, 
+  Calendar, 
+  Clock, 
+  Package, 
+  Loader2,
+  CheckCircle2,
+  Info,
+  ChevronRight,
+  ShieldCheck
+} from 'lucide-react';
 
 interface MaintenanceItem {
   id: number;
@@ -37,76 +48,134 @@ const MaintenanceDashboard: React.FC = () => {
     fetchMaintenance();
   }, [token]);
 
-  const getStatusLabel = (inicio: string) => {
+  const getStatusBadge = (inicio: string) => {
     const now = new Date();
     const startDate = new Date(inicio);
     
     if (startDate <= now) {
-        return <span style={{background:'#ffeeba', color:'#856404', padding:'2px 8px', borderRadius:'10px', fontSize:'0.8rem', fontWeight:'bold'}}>Em Andamento 🛠️</span>;
+        return (
+            <span style={{
+                display: "inline-flex", alignItems: "center", gap: "5px",
+                backgroundColor: '#fffbeb', color: '#92400e', 
+                padding: '4px 10px', borderRadius: '20px', 
+                fontSize: '0.75rem', fontWeight: '800', textTransform: "uppercase",
+                border: "1px solid #fef3c7"
+            }}>
+                <Wrench size={12} /> Em Andamento
+            </span>
+        );
     } else {
-        return <span style={{background:'#d1ecf1', color:'#0c5460', padding:'2px 8px', borderRadius:'10px', fontSize:'0.8rem', fontWeight:'bold'}}>Agendado 📅</span>;
+        return (
+            <span style={{
+                display: "inline-flex", alignItems: "center", gap: "5px",
+                backgroundColor: '#eff6ff', color: '#1e40af', 
+                padding: '4px 10px', borderRadius: '20px', 
+                fontSize: '0.75rem', fontWeight: '800', textTransform: "uppercase",
+                border: "1px solid #bfdbfe"
+            }}>
+                <Calendar size={12} /> Agendado
+            </span>
+        );
     }
   };
 
-  if (loading) return <div>Carregando painel...</div>;
+  if (loading) return (
+    <div style={{ textAlign: "center", padding: "60px", color: "#64748b" }}>
+        <Loader2 size={40} className="spin-animation" style={{ margin: "0 auto 15px", color: "#2563eb" }} />
+        <p style={{ fontWeight: "bold" }}>Sincronizando painel operacional...</p>
+    </div>
+  );
 
   return (
-    <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginTop:'20px' }}>
-
+    <div style={{ animation: "fadeIn 0.3s ease" }}>
+      
       {items.length === 0 ? (
-        <p style={{ color: '#28a745', fontWeight: 'bold' }}>Nenhuma manutenção Agendada.</p>
+        <div style={{ textAlign: "center", padding: "60px 20px", backgroundColor: "#ecfdf5", borderRadius: "16px", border: "2px dashed #10b981", color: "#047857" }}>
+            <CheckCircle2 size={48} color="#10b981" style={{ marginBottom: "15px" }} />
+            <h3 style={{ margin: 0, fontSize: "1.2rem" }}>Tudo em ordem!</h3>
+            <p style={{ margin: "5px 0 0 0", opacity: 0.8 }}>Nenhum equipamento em manutenção no momento.</p>
+        </div>
       ) : (
-        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', color: '#666', fontSize: '0.9rem' }}>
-                <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>Equipamento</th>
-                <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>S/N</th>
-                <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>Período</th>
-                <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>Motivo</th>
-                <th style={{ padding: '10px', borderBottom:'1px solid #eee' }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => {
-                 let imgUrl = '';
-                 try {
-                    const parsed = JSON.parse(item.Unidade.Equipamento.url_imagem);
-                    imgUrl = Array.isArray(parsed) ? parsed[0] : parsed;
-                 } catch {
-                    imgUrl = item.Unidade.Equipamento.url_imagem;
-                 }
+        <div style={{ backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8fafc', color: '#64748b', textAlign: 'left', borderBottom: "2px solid #e2e8f0" }}>
+                  <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Package size={14}/> Equipamento</div></th>
+                  <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><ShieldCheck size={14}/> Patrimônio</div></th>
+                  <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Clock size={14}/> Período</div></th>
+                  <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Info size={14}/> Motivo</div></th>
+                  <th style={{ ...thStyle, textAlign: 'center' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => {
+                   let imgUrl = '';
+                   const equipamentoNome = item.Unidade?.Equipamento?.nome || 'Equipamento não encontrado';
+                   const urlImagem = item.Unidade?.Equipamento?.url_imagem;
+                   
+                   if (urlImagem) {
+                       try {
+                          const parsed = JSON.parse(urlImagem);
+                          imgUrl = Array.isArray(parsed) ? parsed[0] : parsed;
+                       } catch {
+                          imgUrl = urlImagem;
+                       }
+                   }
 
-                 return (
-                  <tr key={item.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                    <td style={{ padding: '10px', display:'flex', alignItems:'center', gap:'10px' }}>
-                        {imgUrl && <img src={`${import.meta.env.VITE_API_URL}${imgUrl}`} alt="" style={{width:40, height:40, objectFit:'cover', borderRadius:4}} />}
-                        <strong style={{color:"#000"}}>{item.Unidade.Equipamento.nome}</strong>
-                    </td>
-                    <td style={{ padding: '10px', fontWeight:'bold', color:'#555' }}>
-                        #{item.Unidade.id} - {item.Unidade.codigo_serial || 'Sem S/N'}
-                    </td>
-                    <td style={{ padding: '10px', fontSize:'0.9rem', color: '#666'}}>
-                      De: {new Date(item.data_inicio).toLocaleDateString()}<br/>
-                      Até: {new Date(item.data_fim).toLocaleDateString()}
-                    </td>
-                    
-                    <td style={{ padding: '10px', fontSize: '0.9rem', color: '#555', maxWidth: '200px' }}>
-                        {item.observacao || 'Manutenção Preventiva / Não informado'}
-                    </td>
+                   return (
+                    <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', transition: "background 0.2s" }} className="table-row-hover">
+                      <td style={tdStyle}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                              <div style={{ width: 40, height: 40, borderRadius: 8, overflow: "hidden", border: "1px solid #f1f5f9" }}>
+                                {imgUrl ? <img src={`${import.meta.env.VITE_API_URL}${imgUrl}`} alt="" style={{ width: "100%", height: "100%", objectFit:'cover' }} /> : <div style={{ width: "100%", height: "100%", backgroundColor: "#e2e8f0" }}></div>}
+                              </div>
+                              <strong style={{ color: "#1e293b" }}>{equipamentoNome}</strong>
+                          </div>
+                      </td>
+                      <td style={tdStyle}>
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                              <span style={{ fontWeight:'800', color:'#475569' }}>#{item.Unidade?.id || 'N/A'}</span>
+                              <span style={{ fontSize: "0.75rem", color: "#94a3b8", fontWeight: "600" }}>{item.Unidade?.codigo_serial || 'S/N Não Inf.'}</span>
+                          </div>
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "5px", color: "#475569", fontWeight: "600" }}>
+                            {new Date(item.data_inicio).toLocaleDateString()}
+                            <ChevronRight size={12} color="#cbd5e1" />
+                            {new Date(item.data_fim).toLocaleDateString()}
+                        </div>
+                      </td>
+                      
+                      <td style={{ ...tdStyle, maxWidth: '250px' }}>
+                          <span style={{ color: '#64748b', fontSize: '0.85rem', lineHeight: "1.4" }}>
+                            {item.observacao || 'Manutenção Preventiva Padrão'}
+                          </span>
+                      </td>
 
-                    <td style={{ padding: '10px' }}>
-                        {getStatusLabel(item.data_inicio)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                          {getStatusBadge(item.data_inicio)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+      <style>{`
+        .table-row-hover:hover { background-color: #f8fafc !important; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .spin-animation { animation: spin 1s linear infinite; }
+      `}</style>
     </div>
   );
 };
+
+const thStyle: React.CSSProperties = { padding: '16px', fontWeight: '700', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' };
+const tdStyle: React.CSSProperties = { padding: '16px', verticalAlign: 'middle' };
 
 export default MaintenanceDashboard;

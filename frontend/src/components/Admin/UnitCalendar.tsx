@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import axios from 'axios';
 import 'react-calendar/dist/Calendar.css';
 import '../../styles/CalendarCommon.css';
+import { CheckCircle } from 'lucide-react';
 
 interface Reservation {
     id: number;
     data_inicio: string;
     data_fim: string;
     status: string;
+    OrdemDeServico?: {
+        id: number;
+        status: string;
+    };
 }
 
 interface UnitCalendarProps {
@@ -24,8 +29,17 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
 
     const [pendingSelection, setPendingSelection] = useState<{ start: Date, end: Date } | null>(null);
     const [maintenanceReason, setMaintenanceReason] = useState('');
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     
     const [pickerSelection, setPickerSelection] = useState<[Date, Date] | null>(null);
+
+    // Auto-limpar mensagem de sucesso
+    useEffect(() => {
+        if (successMessage) {
+            const timer = setTimeout(() => setSuccessMessage(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [successMessage]);
 
     const getTileClassName = ({ date, view }: { date: Date, view: string }) => {
         if (view !== 'month') return null;
@@ -100,7 +114,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                         await axios.delete(`${import.meta.env.VITE_API_URL}/api/units/maintenance/${existingBlock.id}`, {
                             headers: { Authorization: `Bearer ${token}` }
                         });
-                        alert('🔓 Desbloqueado com sucesso!');
+                        setSuccessMessage('🔓 Desbloqueado!');
                         onUpdate();
                     } catch (error) { alert('Erro ao desbloquear.'); }
                 }
@@ -120,17 +134,21 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
 
         const { start, end } = pendingSelection;
         const startStr = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
-        const endStr = end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0');
+        const endStr = end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0'); // Fix: should use end.getDate() but for range blocks it's common
+
+        // Re-calculate dates properly
+        const startFormatted = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+        const endFormatted = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
 
         try {
             await axios.post(`${import.meta.env.VITE_API_URL}/api/units/${unitId}/maintenance`, {
-                data_inicio: startStr,
-                data_fim: endStr,
+                data_inicio: startFormatted,
+                data_fim: endFormatted,
                 motivo: maintenanceReason || 'Manutenção Preventiva',
                 forceReallocation: force 
             }, { headers: { Authorization: `Bearer ${token}` } });
 
-            alert('✅ Bloqueio realizado com sucesso!');
+            setSuccessMessage('✅ Bloqueio realizado!');
             setPendingSelection(null);
             setMaintenanceReason('');
             onUpdate();
@@ -152,8 +170,30 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
     today.setHours(0, 0, 0, 0);
 
     return (
-        <div className="availability-calendar-container" style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className="availability-calendar-container" style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
             
+            {successMessage && (
+                <div style={{
+                    position: 'absolute',
+                    top: '-10px',
+                    zIndex: 10,
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    padding: '8px 15px',
+                    borderRadius: '50px',
+                    fontWeight: 'bold',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.4)',
+                    animation: 'slideDown 0.3s ease-out'
+                }}>
+                    <CheckCircle size={16} />
+                    {successMessage}
+                </div>
+            )}
+
             <Calendar
                 tileClassName={getTileClassName}
                 selectRange={true}
@@ -166,12 +206,17 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                 next2Label={null}
             />
             
-            <div style={{ fontSize: '0.8rem', marginTop: '5px', display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '15px' }}>
-                <span style={{ color: '#cc0000' }}>■ Alugado</span>
-                <span style={{ color: '#ffc800' }}>■ Manutenção</span>
+            <div style={{ fontSize: '0.8rem', marginTop: '10px', display: 'flex', gap: '15px', justifyContent: 'center', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: '#cc0000', borderRadius: '2px' }}></div>
+                    <span style={{ color: '#444' }}>Alugado</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: '#ffc800', borderRadius: '2px' }}></div>
+                    <span style={{ color: '#444' }}>Manutenção</span>
+                </div>
             </div>
 
-            {/* O formulário de manutenção SÓ aparece se NÃO estiver no modo picker */}
             {!isPicker && pendingSelection && (
                 <div style={{ backgroundColor: '#fff3cd', padding: '15px', borderRadius: '8px', border: '1px solid #ffeeba', width: '100%', boxSizing: 'border-box', marginTop: '10px' }}>
                     <h4 style={{ margin: '0 0 10px 0', color: '#856404' }}>
@@ -206,6 +251,12 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                     </div>
                 </div>
             )}
+            <style>{`
+                @keyframes slideDown {
+                    from { opacity: 0; transform: translateY(-20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
     );
 };

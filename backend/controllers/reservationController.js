@@ -1872,7 +1872,7 @@ const criarReservaBalcao = async (req, res) => {
           telefone: cliente.telefone,
           cpf: isCnpj ? null : cliente.cpf_cnpj,
           cnpj: isCnpj ? cliente.cpf_cnpj : null,
-          tipo_pessoa: isCnpj ? 'pj' : 'pf',
+          tipo_pessoa: isCnpj ? 'juridica' : 'fisica',
           razao_social: isCnpj ? cliente.nome : null,
           email: cliente.email,
           senha: Math.random().toString(36).slice(-10),

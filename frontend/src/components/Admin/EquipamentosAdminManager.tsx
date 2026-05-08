@@ -112,7 +112,7 @@ const EquipamentosAdminManager: React.FC = () => {
                   <div style={stepNumStyle}>3</div>
                   <div>
                     <strong style={{ color: "#1e293b" }}>Inventário Completo:</strong>
-                    <p style={{ margin: "5px 0 0 0" }}>A listagem geral do seu estoque. Você pode adicionar unidades (patrimônios individuais) e configurar categorias. Excluir um modelo aqui apagará todas as unidades dele. Você pode editar todos os dados do equipamento clicando no icone de lápis. Também pode gerenciar cada unidade do equipamento clicando no ícone de caixa. Podendo ver suas avarias, agendar uma manutenção e fazer uma locação manual para algum cliente. Pode também excluir a unidade. Caso a unidade excluida ou unidade que tenha uma manutenção em andamento, as locações que tinham agendadas para ela no periodo poderão ser designadas para outro equipamento de mesmo modelo caso esteja livre.</p>
+                    <p style={{ margin: "5px 0 0 0" }}>A listagem geral do seu estoque. Você pode adicionar unidades (patrimônios individuais) e configurar categorias. Excluir um modelo aqui apagará todas as unidades dele. Você pode editar todos os dados do equipamento clicando no ícone de lápis. Também pode gerenciar cada unidade do equipamento clicando no ícone de caixa, podendo ver suas avarias, agendar uma manutenção e fazer uma locação de balcão para algum cliente. Você também pode excluir a unidade. Caso uma unidade seja excluída ou entre em manutenção, as locações que estavam agendadas para ela no período serão transferidas para outra unidade do mesmo modelo, desde que esteja livre.</p>
                   </div>
                 </div>
 
