@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const ForcePasswordChangeModal: React.FC = () => {
+  const toast = useToast();
   const { user, token } = useAuth();
   const [newSenha, setNewSenha] = useState('');
   const [confirmSenha, setConfirmSenha] = useState('');
@@ -14,7 +16,7 @@ const ForcePasswordChangeModal: React.FC = () => {
     e.preventDefault();
     
     if (newSenha !== confirmSenha) {
-        return alert('As senhas não coincidem! Digite a mesma senha nos dois campos.');
+        return toast.error('As senhas não coincidem! Digite a mesma senha nos dois campos.');
     }
 
     setLoading(true);
@@ -26,7 +28,7 @@ const ForcePasswordChangeModal: React.FC = () => {
         new_senha: newSenha
       }, config);
 
-      alert('✅ Senha alterada com segurança! Você já pode continuar trabalhando.');
+      toast.success('✅ Senha alterada com segurança! Você já pode continuar trabalhando.');
       
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
@@ -34,7 +36,7 @@ const ForcePasswordChangeModal: React.FC = () => {
       }
 
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao tentar mudar a senha.');
+      toast.error(error.response?.data?.error || 'Erro ao tentar mudar a senha.');
       setLoading(false);
     } 
   };

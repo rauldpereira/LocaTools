@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import HorarioFuncionamento from './HorarioFuncionamentoDisplay';
 import '../styles/CalendarCommon.css';
 import '../styles/AvailabilityCalendarModal.css';
+import { useToast } from '../context/ToastContext';
 
 interface IDiaStatus {
     data: string;
@@ -25,6 +26,7 @@ const toISODate = (date: Date): string => {
 };
 
 const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void }> = ({ equipment, onClose }) => {
+    const toast = useToast();
     const { addToCart } = useCart();
     const navigate = useNavigate();
 
@@ -301,11 +303,11 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         const statusFim = statusDias.get(endDateString);
 
         if (statusInicio?.status === 'FECHADO') {
-            alert(`A loja estará fechada no dia ${startDate.toLocaleDateString()}. Por favor, escolha outra data de início.`);
+            toast.error(`A loja estará fechada no dia ${startDate.toLocaleDateString()}. Por favor, escolha outra data de início.`);
             return;
         }
         if (statusFim?.status === 'FECHADO') {
-            alert(`A loja estará fechada no dia ${endDate.toLocaleDateString()}. Por favor, escolha outra data de término.`);
+            toast.error(`A loja estará fechada no dia ${endDate.toLocaleDateString()}. Por favor, escolha outra data de término.`);
             return;
         }
 

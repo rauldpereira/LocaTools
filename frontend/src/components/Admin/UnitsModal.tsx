@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
@@ -48,7 +49,7 @@ const UnitItem: React.FC<{
   onDelete: (unitId: number) => void,
   onUpdate: () => void
 }> = ({ unit, tiposAvaria, token, onDelete, onUpdate }) => {
-
+  const toast = useToast();
   const [status, setStatus] = useState(unit.status);
   const [showCalendar, setShowCalendar] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,7 +85,7 @@ const UnitItem: React.FC<{
       onUpdate();
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      alert('Falha ao salvar as alterações da unidade.');
+      toast.error('Falha ao salvar as alterações da unidade.');
     } finally {
       setSaving(false);
     }
@@ -235,6 +236,7 @@ const UnitItem: React.FC<{
 };
 
 const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose }) => {
+  const toast = useToast();
   const { token } = useAuth();
   const [units, setUnits] = useState<Unit[]>([]);
   const [equipment, setEquipment] = useState<EquipamentoComAvarias | null>(null);
@@ -270,7 +272,7 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
       fetchModalData();
     } catch (error) {
       console.error('Erro ao excluir unidade:', error);
-      alert('Não foi possível excluir esta unidade.');
+      toast.error('Não foi possível excluir esta unidade.');
     }
   };
 

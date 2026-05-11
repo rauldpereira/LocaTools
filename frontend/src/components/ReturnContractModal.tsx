@@ -1,3 +1,4 @@
+import { useToast } from '../context/ToastContext';
 import React, { useRef, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import axios from "axios";
@@ -8,7 +9,7 @@ import {
   AlertTriangle,
   Download,
   FileCheck
-} from "lucide-react";
+} from 'lucide-react';
 
 interface ReturnContractModalProps {
   order: any;
@@ -21,6 +22,7 @@ const ReturnContractModal: React.FC<ReturnContractModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const toast = useToast();
   const { token } = useAuth();
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +37,7 @@ const ReturnContractModal: React.FC<ReturnContractModalProps> = ({
 
   const handleSaveSignature = async () => {
     if (sigCanvas.current?.isEmpty()) {
-      alert("Por favor, assine antes de confirmar.");
+      toast.error("Por favor, assine antes de confirmar.");
       return;
     }
 
@@ -56,7 +58,7 @@ const ReturnContractModal: React.FC<ReturnContractModalProps> = ({
       onSuccess();
     } catch (error) {
       console.error("Erro ao salvar assinatura:", error);
-      alert("Erro ao salvar a assinatura. Tente novamente.");
+      toast.error("Erro ao salvar a assinatura. Tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -83,7 +85,7 @@ const ReturnContractModal: React.FC<ReturnContractModalProps> = ({
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Erro ao baixar termo de devolução:", error);
-      alert("Erro ao gerar PDF do termo.");
+      toast.error("Erro ao gerar PDF do termo.");
     } finally {
       setDownloading(false);
     }

@@ -1141,7 +1141,7 @@ const cancelOrder = async (req, res) => {
                     if (taxa_cancelamento > 0) {
                         mensagem += ` Foi retida uma taxa de R$ ${taxa_cancelamento.toFixed(2)} referente à política de cancelamento tardio.`;
                     }
-                    mensagem += ` O reembolso de R$ ${valor_reembolsado.toFixed(2)} será estornado manualmente pela nossa equipe em até 48 horas.`;
+                    mensagem += `O valor de R$ ${valor_reembolsado.toFixed(2)} será estornado. O prazo para visualização na fatura depende da administradora do cartão de crédito.`;
                 }
             } else {
                 mensagem += ` O estorno de R$ ${valor_reembolsado.toFixed(2)} deve ser alinhado diretamente no balcão da loja, pois foi pago presencialmente.`;

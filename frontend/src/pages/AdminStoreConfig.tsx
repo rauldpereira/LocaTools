@@ -1,7 +1,8 @@
+import { useToast } from '../context/ToastContext';
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import {
+import { 
   Settings,
   Heart,
   Truck,
@@ -19,11 +20,12 @@ import {
   Hash,
   Clock,
   Info
-} from "lucide-react";
+} from 'lucide-react';
 
 const ENDERECO_PADRAO = 'Av. Nossa Senhora do Bom Sucesso, 1000, Pindamonhangaba - SP';
 
 const AdminStoreConfig: React.FC = () => {
+  const toast = useToast();
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -168,7 +170,7 @@ const AdminStoreConfig: React.FC = () => {
       }
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      alert("Erro ao salvar as configurações.");
+      toast.error("Erro ao salvar as configurações.");
     } finally {
       setSaving(false);
     }

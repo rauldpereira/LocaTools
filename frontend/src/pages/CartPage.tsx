@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import AuthModal from '../components/AuthModal';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { Truck, Store, Gift, HelpCircle, X, CheckCircle, Info } from 'lucide-react';
 import '../styles/CartPage.css';
 
 const parseDateStringAsLocal = (dateString: string) => {
@@ -41,6 +42,8 @@ const CartPage: React.FC = () => {
     const [loyaltyConfig, setLoyaltyConfig] = useState<{ num: number, pct: number, ativo: boolean } | null>(null);
     const [lojaConfig, setLojaConfig] = useState<any>(null);
     const [completedOrders, setCompletedOrders] = useState(0);
+    const [showManual, setShowManual] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
 
     // BUSCA CONFIGURAÇÕES E HISTÓRICO
     useEffect(() => {
@@ -248,8 +251,8 @@ const CartPage: React.FC = () => {
             clearCart();
             
             if (lojaConfig?.momento_pagamento === 'entrega') {
-                alert('✅ Reserva realizada com sucesso! O pagamento será feito presencialmente.');
-                navigate('/my-reservations');
+                setSuccessMessage('Reserva realizada com sucesso! O pagamento será feito presencialmente.');
+                setTimeout(() => navigate('/my-reservations'), 3000);
             } else {
                 // Passa os IDs separados por vírgula na URL (ex: /payment-multi?ids=101,102)
                 navigate(`/payment-multi?ids=${newOrder.ids.join(',')}`);
@@ -265,7 +268,42 @@ const CartPage: React.FC = () => {
     return (
         <div>
             <div className="cart-container">
-                <h1 className="cart-title">Meu Carrinho</h1>
+                {successMessage && (
+                    <div style={{
+                        backgroundColor: "#ecfdf5",
+                        color: "#047857",
+                        padding: "15px",
+                        borderRadius: "8px",
+                        marginBottom: "20px",
+                        border: "1px solid #a7f3d0",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        fontWeight: "bold",
+                        animation: "fadeIn 0.3s ease"
+                    }}>
+                        <CheckCircle size={20} />
+                        {successMessage}
+                    </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h1 className="cart-title" style={{ margin: 0 }}>Meu Carrinho</h1>
+                    <button
+                        onClick={() => setShowManual(true)}
+                        title="Dúvidas sobre Frete e Retirada?"
+                        style={{ 
+                            display: "flex", alignItems: "center", justifyContent: "center", gap: '8px',
+                            padding: "8px 15px", borderRadius: "20px", border: "1px solid #e2e8f0", 
+                            backgroundColor: "#fff", color: "#2563eb", cursor: "pointer", 
+                            transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                            fontWeight: 'bold', fontSize: '0.9rem'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#f8fafc"; }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#fff"; }}
+                    >
+                        <HelpCircle size={20} /> Como Funciona?
+                    </button>
+                </div>
                 {cartItems.length === 0 ? (
                     <p className="empty-cart-message">Seu carrinho está vazio.</p>
                 ) : (
@@ -276,8 +314,11 @@ const CartPage: React.FC = () => {
                                     marginBottom: '20px', border: '1px solid #ccc', borderRadius: '8px',
                                     padding: '15px', background: '#fff', boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
                                 }}>
-                                    <h3 style={{ borderBottom: '2px solid #007bff', paddingBottom: '10px', marginTop: 0, color: '#007bff' }}>
-                                        {deliveryType === 'entrega' ? `🚚 Viagem ${index + 1}` : `🏪 Retirada ${index + 1}`}: Dia {date}
+                                    <h3 style={{ borderBottom: '2px solid #007bff', paddingBottom: '10px', marginTop: 0, color: '#007bff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {deliveryType === 'entrega' 
+                                            ? <><Truck size={20} /> Viagem {index + 1}: Dia {date}</>
+                                            : <><Store size={20} /> Retirada {index + 1}: Dia {date}</>
+                                        }
                                     </h3>
 
                                     <ul className="cart-list" style={{ marginTop: '15px' }}>
@@ -320,8 +361,8 @@ const CartPage: React.FC = () => {
                                         onChange={() => setDeliveryType('retirada')}
                                         style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
                                     />
-                                    <label htmlFor="retirada" style={{ marginLeft: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', color: '#333' }}>
-                                        🏪 Retirar na Loja
+                                    <label htmlFor="retirada" style={{ marginLeft: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Store size={20} color="#007bff"/> Retirar na Loja
                                     </label>
                                 </div>
                                 
@@ -361,8 +402,8 @@ const CartPage: React.FC = () => {
                                         onChange={() => setDeliveryType('entrega')}
                                         style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
                                     />
-                                    <label htmlFor="entrega" style={{ marginLeft: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', color: '#333' }}>
-                                        🚚 Entrega no Local
+                                    <label htmlFor="entrega" style={{ marginLeft: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Truck size={20} color="#28a745"/> Entrega no Local
                                     </label>
                                 </div>
                             </div>
@@ -438,7 +479,7 @@ const CartPage: React.FC = () => {
                                     marginBottom: '10px',
                                     border: '1px solid #c3e6cb'
                                 }}>
-                                    <p style={{ margin: 0, fontWeight: 'bold' }}>🎁 Fidelidade Ativada!</p>
+                                    <p style={{ margin: 0, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}><Gift size={18}/> Fidelidade Ativada!</p>
                                     <p style={{ margin: 0, fontSize: '0.9rem' }}>
                                         A cada {loyaltyConfig?.num} pedidos você ganha {loyaltyConfig?.pct}% de desconto. 
                                         Como este é o seu {completedOrders + 1}º pedido, o benefício foi aplicado!
@@ -488,6 +529,55 @@ const CartPage: React.FC = () => {
                 isOpen={showAuthModal} 
                 onClose={() => setShowAuthModal(false)} 
             />
+
+            {/* MODAL MANUAL */}
+            {showManual && (
+                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, animation: "fadeIn 0.2s ease" }} onClick={() => setShowManual(false)}>
+                    <div style={{ backgroundColor: "#fff", borderRadius: "16px", width: "90%", maxWidth: "600px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "90vh" }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 30px", borderBottom: "1px solid #f1f5f9" }}>
+                            <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px", color: "#1e293b" }}>
+                                <HelpCircle size={22} color="#2563eb" /> Como funciona o Carrinho?
+                            </h3>
+                            <button onClick={() => setShowManual(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center" }}><X size={22} /></button>
+                        </div>
+
+                        <div style={{ padding: "30px", overflowY: "auto", flexGrow: 1 }}>
+                            <div style={{ color: "#475569", lineHeight: "1.6" }}>
+                                <p style={{ marginBottom: "25px", fontSize: "1rem" }}>
+                                    Revise os itens que você selecionou e escolha como prefere receber seus equipamentos:
+                                </p>
+
+                                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}><Store size={14}/></div>
+                                    <div>
+                                        <strong>Retirar na Loja:</strong>
+                                        <p style={{ margin: "5px 0 0 0" }}>Você não paga taxa de frete. Basta comparecer ao nosso endereço na data combinada para a retirada dos equipamentos.</p>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+                                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#28a745", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}><Truck size={14}/></div>
+                                    <div>
+                                        <strong>Entrega no Local (Frete):</strong>
+                                        <p style={{ margin: "5px 0 0 0" }}>Nós levamos até a sua obra! Insira o CEP e o sistema calculará a taxa de frete automaticamente baseada na distância em KM da nossa loja até você.</p>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#fffbf1", borderRadius: "12px", border: "1px solid #fef08a" }}>
+                                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#eab308", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}><Info size={14}/></div>
+                                    <div>
+                                        <strong>Datas Múltiplas (Viagens):</strong>
+                                        <p style={{ margin: "5px 0 0 0" }}>Se você alugou equipamentos para datas de início diferentes, nós precisaremos fazer viagens separadas para entregar cada um. O sistema identificará isso automaticamente e multiplicará o valor da viagem de entrega pelo número de dias distintos.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            `}</style>
         </div>
     );
 };

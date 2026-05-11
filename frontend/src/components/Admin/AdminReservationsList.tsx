@@ -7,6 +7,7 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import { ptBR } from "date-fns/locale/pt-BR";
 import "react-datepicker/dist/react-datepicker.css";
 import { AlertTriangle, Clock, Calendar, CalendarClock, ClipboardCheck, FileSignature, FileCheck, Wallet, CreditCard, AlertOctagon, CheckCircle, XCircle, Siren, CircleDollarSign, Truck, RotateCcw, ClipboardList, History, HelpCircle, X, ChevronRight, Search } from "lucide-react";
+import { useToast } from '../../context/ToastContext';
 
 registerLocale("pt-BR", ptBR);
 
@@ -45,6 +46,7 @@ const CustomDatePickerHeader = ({ date, changeYear, changeMonth, decreaseMonth, 
 };
 
 const AdminReservationsList: React.FC = () => {
+  const toast = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const { token, hasPermission, user } = useAuth();
   const [showManual, setShowManual] = useState(false);
@@ -98,7 +100,7 @@ const AdminReservationsList: React.FC = () => {
   const cancelledOrders = filteredOrders.filter((o) => o.status === "cancelada").sort(sortByIdDesc);
   const handleAction = async (url: string, confirmMsg: string) => {
     if (!window.confirm(confirmMsg)) return;
-    try { const config = { headers: { Authorization: `Bearer ${token}` } }; await axios.put(`${import.meta.env.VITE_API_URL}${url}`, {}, config); fetchAllOrders(); } catch (e) { alert("Erro ao processar."); }
+    try { const config = { headers: { Authorization: `Bearer ${token}` } }; await axios.put(`${import.meta.env.VITE_API_URL}${url}`, {}, config); fetchAllOrders(); } catch (e) { toast.error("Erro ao processar."); }
   };
   const PagedTable = ({ orderList, headers, action }: { orderList: Order[]; headers: { key: keyof Order; label: string }[]; action: (order: Order) => React.ReactNode; }) => {
     const [page, setPage] = useState(1);

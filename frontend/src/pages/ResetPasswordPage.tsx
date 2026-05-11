@@ -39,7 +39,7 @@ const ResetPasswordPage = () => {
 
   useEffect(() => {
     if (confirmSenha && novaSenha !== confirmSenha) {
-        setErrors({ match: "Senhas não coincidem, por favor" });
+        setErrors({ match: "Senhas não coincidem" });
     } else {
         setErrors({});
     }
@@ -48,7 +48,7 @@ const ResetPasswordPage = () => {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (novaSenha !== confirmSenha) {
-        setMsg("❌ As senhas não coincidem, por favor verifique.");
+        setMsg("❌ As senhas não coincidem.");
         setIsError(true);
         return;
     }

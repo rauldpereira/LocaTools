@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 interface ItemReserva {
     id: number;
@@ -19,6 +20,7 @@ interface PrejuizoModalProps {
 }
 
 const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess }) => {
+  const toast = useToast();
     const { token } = useAuth();
 
     const [tipo, setTipo] = useState('ROUBO');
@@ -28,7 +30,7 @@ const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!valor) return alert("Digite o valor do prejuízo.");
+        if (!valor) return toast.error("Digite o valor do prejuízo.");
         if (!confirm("Tem certeza? Isso pode baixar o estoque e finalizar o item.")) return;
 
         setLoading(true);
@@ -42,11 +44,11 @@ const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess 
                 observacao
             }, config);
 
-            alert("Prejuízo registrado com sucesso.");
+            toast.success("Prejuízo registrado com sucesso.");
             onSuccess();
         } catch (error: any) {
             console.error("Erro ao registrar:", error);
-            alert("Erro: " + (error.response?.data?.error || "Falha desconhecida."));
+            toast.error("Erro: " + (error.response?.data?.error || "Falha desconhecida."));
         } finally {
             setLoading(false);
         }

@@ -45,7 +45,7 @@ const Register: React.FC = () => {
 
   useEffect(() => {
     if (confirmarSenha && senha !== confirmarSenha) {
-        setErrors(prev => ({ ...prev, match: "Senhas não coincidem, por favor" }));
+        setErrors(prev => ({ ...prev, match: "Senhas não coincidem." }));
     } else {
         setErrors(prev => {
             const { match, ...rest } = prev;
@@ -81,7 +81,7 @@ const Register: React.FC = () => {
     }
 
     if (senha !== confirmarSenha) {
-      setMensagem("As senhas não coincidem, por favor verifique.");
+      setMensagem("As senhas não coincidem.");
       return;
     }
 

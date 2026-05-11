@@ -1,3 +1,4 @@
+import { useToast } from '../context/ToastContext';
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext'; 
@@ -46,6 +47,7 @@ interface EditModalProps {
 }
 
 const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onClose, onSuccess }) => {
+  const toast = useToast();
     const { token } = useAuth();
     const [activeTab, setActiveTab] = useState<'dados' | 'avarias'>('dados');
     const [categories, setCategories] = useState<Category[]>([]);
@@ -211,7 +213,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
             }, 2000);
         } catch (error) {
             console.error(error);
-            alert('Erro ao salvar equipamento.');
+            toast.error('Erro ao salvar equipamento.');
         } finally {
             setIsSubmitting(false);
         }
@@ -234,7 +236,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
             await axios.put(`${import.meta.env.VITE_API_URL}/api/tipos-avaria/${avariaToUpdate.id}`, payload, config);
             setSuccessMsg('Avaria atualizada!');
             setTimeout(() => setSuccessMsg(''), 3000);
-        } catch (error) { alert('Erro ao atualizar avaria.'); }
+        } catch (error) { toast.error('Erro ao atualizar avaria.'); }
     };
 
     const handleAddAvaria = async () => {
@@ -247,7 +249,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
             setSuccessMsg('Nova avaria adicionada!');
             setTimeout(() => setSuccessMsg(''), 3000);
             fetchData();
-        } catch (error) { alert('Erro ao adicionar avaria.'); }
+        } catch (error) { toast.error('Erro ao adicionar avaria.'); }
     };
 
     const handleDeleteAvaria = async (id: number) => {
@@ -256,7 +258,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
             const config = { headers: { Authorization: `Bearer ${token}` } };
             await axios.delete(`${import.meta.env.VITE_API_URL}/api/tipos-avaria/${id}`, config);
             fetchData();
-        } catch (error) { alert('Erro ao apagar avaria.'); }
+        } catch (error) { toast.error('Erro ao apagar avaria.'); }
     };
 
 

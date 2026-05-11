@@ -4,6 +4,7 @@ import axios from 'axios';
 import 'react-calendar/dist/Calendar.css';
 import '../../styles/CalendarCommon.css';
 import { CheckCircle } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 interface Reservation {
     id: number;
@@ -26,6 +27,7 @@ interface UnitCalendarProps {
 }
 
 const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token, onUpdate, isPicker, onSelectRange }) => {
+  const toast = useToast();
 
     const [pendingSelection, setPendingSelection] = useState<{ start: Date, end: Date } | null>(null);
     const [maintenanceReason, setMaintenanceReason] = useState('');
@@ -83,7 +85,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
             });
 
             if (hasConflict) {
-                alert('⚠️ Atenção: O período selecionado entra em conflito com uma máquina já alugada ou em manutenção. Escolha datas livres!');
+                toast.error('⚠️ Atenção: O período selecionado entra em conflito com uma máquina já alugada ou em manutenção. Escolha datas livres!');
                 setPickerSelection(null);
                 if (onSelectRange) onSelectRange(null as any, null as any);
                 return;
@@ -116,10 +118,10 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                         });
                         setSuccessMessage('🔓 Desbloqueado!');
                         onUpdate();
-                    } catch (error) { alert('Erro ao desbloquear.'); }
+                    } catch (error) { toast.error('Erro ao desbloquear.'); }
                 }
             } else {
-                alert('Esta data está alugada para um cliente (Reserva #' + existingBlock.id + '). Não pode alterar por aqui.');
+                toast.error('Esta data está alugada para um cliente (Reserva #' + existingBlock.id + '). Não pode alterar por aqui.');
             }
             return;
         }
@@ -158,7 +160,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                     setPendingSelection(null);
                 }
             } else {
-                alert(error.response?.data?.error || 'Erro ao bloquear datas.');
+                toast.error(error.response?.data?.error || 'Erro ao bloquear datas.');
                 setPendingSelection(null);
             }
         }

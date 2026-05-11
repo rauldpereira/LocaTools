@@ -1,3 +1,4 @@
+import { useToast } from '../context/ToastContext';
 import React, { useRef, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import axios from "axios";
@@ -7,7 +8,7 @@ import {
   X,
   Download,
   FileCheck
-} from "lucide-react";
+} from 'lucide-react';
 
 interface ItemReserva {
   id: number;
@@ -60,6 +61,7 @@ interface StoreConfig {
 }
 
 const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess }) => {
+  const toast = useToast();
   const sigCanvasCliente = useRef<SignatureCanvas>(null);
   const sigCanvasEntregador = useRef<SignatureCanvas>(null);
   
@@ -117,19 +119,19 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
 
   const handleSignContract = async () => {
     if (!token) {
-        return alert("Erro: Sessão expirada. Atualize a página e tente novamente.");
+        return toast.error("Erro: Sessão expirada. Atualize a página e tente novamente.");
     }
 
     if (sigCanvasEntregador.current?.isEmpty()) {
-      return alert("A assinatura do entregador é OBRIGATÓRIA.");
+      return toast.error("A assinatura do entregador é OBRIGATÓRIA.");
     }
 
     if (!nomeRecebedor.trim()) {
-      return alert("Por favor, informe o nome de quem está recebendo o equipamento.");
+      return toast.error("Por favor, informe o nome de quem está recebendo o equipamento.");
     }
 
     if (sigCanvasCliente.current?.isEmpty()) {
-      return alert("A assinatura do recebedor é OBRIGATÓRIA.");
+      return toast.error("A assinatura do recebedor é OBRIGATÓRIA.");
     }
 
     setSigning(true);
@@ -154,7 +156,7 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
       onSuccess(); 
     } catch (error) {
       console.error("Erro no servidor:", error);
-      alert("Erro ao salvar assinaturas. Verifique o console.");
+      toast.error("Erro ao salvar assinaturas. Verifique o console.");
     } finally {
       setSigning(false);
     }
@@ -181,7 +183,7 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Erro ao baixar contrato:", error);
-      alert("Erro ao gerar PDF do contrato.");
+      toast.error("Erro ao gerar PDF do contrato.");
     } finally {
       setDownloading(false);
     }
@@ -435,7 +437,6 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
             </div>
             <div>
               <p><strong>Data:</strong> {new Date().toLocaleDateString('pt-BR')}</p>
-              <p><strong>Situação:</strong> {order.status === 'aguardando_assinatura' ? 'AGUARDANDO_ASSINATURA' : order.status.toUpperCase()}</p>
               <p><strong>Retirada em:</strong> Loja física (Rua Engenheiro Orlando Drumond Murgel, 154, Parque São Domingos, Pindamonhangaba - SP, 12410-310)</p>
             </div>
           </div>

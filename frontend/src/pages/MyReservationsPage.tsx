@@ -3,6 +3,16 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { parseDateStringAsLocal } from "../utils/dateUtils";
+import { Package } from "lucide-react";
+
+interface ItemReserva {
+  id: number;
+  Unidade: {
+    Equipamento: {
+      nome: string;
+    };
+  };
+}
 
 interface Order {
   id: number;
@@ -24,6 +34,7 @@ interface Order {
   valor_reembolsado?: string;
   updatedAt?: string;
   tipo_entrega?: string;
+  ItemReservas?: ItemReserva[];
 }
 
 const SkeletonCard = () => (
@@ -167,7 +178,10 @@ const MyReservationsPage: React.FC = () => {
       const dateMatch = parseDateStringAsLocal(order.data_inicio)
         .toLocaleDateString()
         .includes(search);
-      return idMatch || dateMatch;
+      const itemsMatch = order.ItemReservas?.some((item) =>
+        item.Unidade?.Equipamento?.nome.toLowerCase().includes(search)
+      );
+      return idMatch || dateMatch || itemsMatch;
     })
     .sort((a, b) => {
       if (sortBy === "updated_desc") {
@@ -235,14 +249,14 @@ const MyReservationsPage: React.FC = () => {
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <input
               type="text"
-              placeholder="Nº do Pedido ou Data"
+              placeholder="Buscar por ID, data ou equipamento..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
                 padding: "10px 15px",
                 border: "1px solid #d1d5db",
                 borderRadius: "8px",
-                minWidth: "220px",
+                minWidth: "450px",
                 outline: "none",
                 fontSize: "0.95rem"
               }}
@@ -473,6 +487,16 @@ const MyReservationsPage: React.FC = () => {
                         {parseDateStringAsLocal(order.data_fim).toLocaleDateString()}
                       </span>
                     </div>
+                    {order.ItemReservas && order.ItemReservas.length > 0 && (
+                      <div style={{ marginTop: "10px" }}>
+                        <strong style={{ fontSize: "0.9rem" }}>Itens:</strong>
+                        <ul style={{ margin: "4px 0 0 0", paddingLeft: "18px", fontSize: "0.85rem", color: "#64748b" }}>
+                          {order.ItemReservas.map(item => (
+                             <li key={item.id}>{item.Unidade?.Equipamento?.nome}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: "right", alignSelf: "center" }}>
                     <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>Valor Total</p>
@@ -614,7 +638,7 @@ const MyReservationsPage: React.FC = () => {
 
             <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '15px', borderRadius: '8px', marginBottom: '25px', textAlign: 'left', fontSize: '0.85rem', color: '#64748b' }}>
               <strong style={{ color: '#475569', display: 'block', marginBottom: '5px' }}>Sobre o Reembolso:</strong>
-              Caso o pagamento já tenha sido aprovado, o estorno do valor (descontando eventuais taxas da política de cancelamento) dependerá exclusivamente da administradora do seu cartão de crédito para aparecer na fatura.
+              Caso o pagamento já tenha sido aprovado, o estorno do valor (descontando eventuais taxas previstas na política de cancelamento) poderá levar alguns dias para aparecer na fatura, conforme os prazos da administradora do cartão de crédito.
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>

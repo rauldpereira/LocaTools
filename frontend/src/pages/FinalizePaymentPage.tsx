@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import PrejuizoModal from '../components/Admin/PrejuizoModal'; 
+import { useToast } from '../context/ToastContext';
 
 interface TipoAvaria {
     id: number;
@@ -74,6 +75,7 @@ const parseDateStringAsLocal = (dateString: string) => {
 };
 
 const FinalizePaymentPage: React.FC = () => {
+  const toast = useToast();
     const { orderId } = useParams<{ orderId: string }>();
     const navigate = useNavigate();
     const { token } = useAuth();
@@ -204,11 +206,11 @@ const FinalizePaymentPage: React.FC = () => {
                 lateFee: multaAtraso
             };
             await axios.put(`${backendUrl}/api/reservations/${orderId}/confirm-manual-payment`, body, config);
-            alert("Pagamento confirmado e ordem finalizada!");
+            toast.error("Pagamento confirmado e ordem finalizada!");
             navigate('/admin');
         } catch (error) {
             console.error("Erro ao confirmar:", error);
-            alert("Falha ao finalizar ordem.");
+            toast.error("Falha ao finalizar ordem.");
         } finally {
             setLoading(false);
         }
@@ -225,11 +227,11 @@ const FinalizePaymentPage: React.FC = () => {
                 lateFee: multaAtraso
             };
             await axios.put(`${backendUrl}/api/reservations/${orderId}/finish-with-debt`, body, config);
-            alert("Ordem encerrada com pendências financeiras.");
+            toast.error("Ordem encerrada com pendências financeiras.");
             navigate('/admin');
         } catch (error) {
             console.error("Erro ao finalizar com dívida:", error);
-            alert("Falha ao encerrar ordem.");
+            toast.error("Falha ao encerrar ordem.");
         } finally {
             setLoading(false);
         }

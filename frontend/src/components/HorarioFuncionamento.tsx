@@ -1,7 +1,8 @@
+import { useToast } from '../context/ToastContext';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import {
+import { 
   Clock,
   Calendar,
   CheckCircle,
@@ -29,6 +30,7 @@ const DIAS_ORDENADOS = [
 ];
 
 const AdminHorariosPage: React.FC = () => {
+  const toast = useToast();
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -80,7 +82,7 @@ const AdminHorariosPage: React.FC = () => {
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (error) {
       console.error(error);
-      alert('Erro ao salvar horários.');
+      toast.error('Erro ao salvar horários.');
     } finally {
       setLoading(false);
     }

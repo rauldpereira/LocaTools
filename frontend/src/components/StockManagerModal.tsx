@@ -1,3 +1,4 @@
+import { useToast } from '../context/ToastContext';
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -64,6 +65,7 @@ const TransplantModal: React.FC<{
   onConfirm: (reallocations: { id_reserva: number; id_nova_unidade: number }[]) => void;
   loading: boolean;
 }> = ({ conflicts, onClose, onConfirm, loading }) => {
+  const toast = useToast();
   const [selections, setSelections] = useState<{ [key: number]: number }>({});
 
   const handleSelect = (reservaId: number, unidadeId: number) => {
@@ -77,7 +79,7 @@ const TransplantModal: React.FC<{
     }));
 
     const missing = reallocations.some(r => !r.id_nova_unidade);
-    if (missing) return alert("Por favor, selecione uma máquina substituta para TODAS as reservas antes de confirmar.");
+    if (missing) return toast.error("Por favor, selecione uma máquina substituta para TODAS as reservas antes de confirmar.");
 
     onConfirm(reallocations);
   };
@@ -169,7 +171,7 @@ const UnitItem: React.FC<{
   onUpdate: () => void,
   onOpenBalcao: (unitId: number) => void
 }> = ({ unit, tiposAvaria, token, onDelete, onUpdate, onOpenBalcao }) => {
-
+  const toast = useToast();
   const [status, setStatus] = useState(unit.status);
   const [showCalendar, setShowCalendar] = useState(false);
   const [checkedAvarias, setCheckedAvarias] = useState<{ [key: number]: boolean }>(() => {
@@ -243,7 +245,7 @@ const UnitItem: React.FC<{
       await saveUnitData(config);
       
     } catch (error) {
-      alert('Erro ao checar conflitos ou salvar.');
+      toast.error('Erro ao checar conflitos ou salvar.');
       setIsSaving(false);
     }
   };
@@ -263,7 +265,7 @@ const UnitItem: React.FC<{
         setIsEditingSerial(false);
         onUpdate();
     } catch (error: any) {
-        alert(error.response?.data?.error || 'Erro ao salvar a unidade.');
+        toast.error(error.response?.data?.error || 'Erro ao salvar a unidade.');
     } finally {
         setIsSaving(false);
     }
@@ -277,7 +279,7 @@ const UnitItem: React.FC<{
       await saveUnitData(config);
       setShowTransplantModal(false);
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao Trocar as máquinas.');
+      toast.error(error.response?.data?.error || 'Erro ao Trocar as máquinas.');
     } finally {
       setIsTransplanting(false);
     }
@@ -479,6 +481,7 @@ const UnitItem: React.FC<{
 
 // --- COMPONENTE PRINCIPAL DO MODAL ---
 const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onClose }) => {
+  const toast = useToast();
   const { token } = useAuth();
   const [units, setUnits] = useState<Unit[]>([]);
   const [equipment, setEquipment] = useState<EquipamentoComAvarias | null>(null);
@@ -517,7 +520,7 @@ const StockManagerModal: React.FC<StockModalProps> = ({ equipmentId, isOpen, onC
       setNewSerial('');
       fetchData();
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Erro ao criar');
+      toast.error(e.response?.data?.error || 'Erro ao criar');
     }
   };
 

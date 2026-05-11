@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { Layers, Plus, Trash2, FolderPlus, CheckCircle, AlertTriangle, X, Edit2, Save, Loader2, HelpCircle } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 interface Category {
   id: number;
@@ -9,6 +10,7 @@ interface Category {
 }
 
 const AddCategoryForm: React.FC = () => {
+  const toast = useToast();
   const { token } = useAuth();
   const [name, setName] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
@@ -56,7 +58,7 @@ const AddCategoryForm: React.FC = () => {
       setName('');
       fetchCategories();
     } catch (error) {
-      alert('Erro ao criar categoria.');
+      toast.error('Erro ao criar categoria.');
     } finally {
       setLoading(false);
     }
@@ -110,7 +112,7 @@ const AddCategoryForm: React.FC = () => {
         setEditLoading(false);
       }, 2000);
     } catch (error) {
-      alert('Erro ao atualizar categoria.');
+      toast.error('Erro ao atualizar categoria.');
       setEditLoading(false);
     }
   };

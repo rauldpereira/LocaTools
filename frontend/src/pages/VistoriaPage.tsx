@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { ClipboardCheck, Camera, AlertTriangle, CheckCircle, Package, ArrowLeft, ShieldAlert, FileText, UploadCloud, MessageSquare, AlertCircle, HelpCircle, X } from "lucide-react";
+import { useToast } from '../context/ToastContext';
 
 interface TipoAvaria {
   id: number;
@@ -63,6 +64,7 @@ interface VistoriaDetailState {
 }
 
 const VistoriaPage: React.FC = () => {
+  const toast = useToast();
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -205,7 +207,7 @@ const VistoriaPage: React.FC = () => {
       for (const item of itensPrejuizo) {
         const details = vistoriaDetails[item.Unidade.id];
         if (!details?.valorPrejuizo) {
-          alert(
+          toast.error(
             `Erro: Informe o valor do prejuízo para o item ${item.Unidade.Equipamento.nome}`,
           );
           setLoading(false);
@@ -254,7 +256,7 @@ const VistoriaPage: React.FC = () => {
             !unitDetails.comentarios
           ) {
             isSubmitValid = false;
-            alert(
+            toast.error(
               `Erro na Unidade #${item.Unidade.id}: Você marcou "Outros" mas não preencheu os comentários.`,
             );
           }
@@ -293,7 +295,7 @@ const VistoriaPage: React.FC = () => {
       navigate(`/my-reservations/${order.id}`);
     } catch (error: any) {
       console.error("Erro ao salvar:", error);
-      alert(
+      toast.error(
         "Erro ao processar: " +
         (error.response?.data?.error || "Tente novamente."),
       );

@@ -9,6 +9,7 @@ import autoTable from "jspdf-autotable";
 import ContractModal from "../components/ContractModal";
 import ReturnContractModal from "../components/ReturnContractModal";
 import { ArrowLeft, Download, FileText, FileCode2, Info, CheckCircle, Package, Truck, AlertTriangle, AlertCircle, RefreshCw, XCircle, MapPin, DollarSign, Clock, Check, FileSignature, HelpCircle, CreditCard, ShieldAlert, Store, X, ClipboardCheck } from "lucide-react";
+import { useToast } from '../context/ToastContext';
 
 interface TipoAvaria {
   id: number;
@@ -114,6 +115,7 @@ const parseDateStringAsLocal = (dateString: string) => {
 };
 
 const ReservationDetailsPage: React.FC = () => {
+  const toast = useToast();
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const { token, user, hasPermission } = useAuth();
@@ -449,7 +451,7 @@ const ReservationDetailsPage: React.FC = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      alert("Erro ao baixar contrato.");
+      toast.error("Erro ao baixar contrato.");
     } finally {
       setContractLoading(false);
     }
@@ -475,7 +477,7 @@ const ReservationDetailsPage: React.FC = () => {
       document.body.removeChild(link);
     } catch (error) {
       console.error("Erro ao baixar termo de devolução:", error);
-      alert("Erro ao baixar o termo de devolução.");
+      toast.error("Erro ao baixar o termo de devolução.");
     }
   };
 
@@ -495,7 +497,7 @@ const ReservationDetailsPage: React.FC = () => {
       setShowConfirmReturnModal(false);
     } catch (error) {
       console.error("Erro ao solicitar recolhimento:", error);
-      alert("Erro de conexão ao tentar solicitar. Tente novamente.");
+      toast.error("Erro de conexão ao tentar solicitar. Tente novamente.");
     } finally {
       setIsRequestingReturn(false);
     }
@@ -703,7 +705,7 @@ const ReservationDetailsPage: React.FC = () => {
       setShowRecoverModal(false);
       fetchOrderDetails();
     } catch (error) {
-      alert("Erro ao processar o pagamento.");
+      toast.error("Erro ao processar o pagamento.");
     } finally {
       setIsRecovering(false);
     }

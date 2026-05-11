@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 interface Category {
   id: number;
@@ -9,6 +10,7 @@ interface Category {
 }
 
 const EquipmentForm: React.FC = () => {
+  const toast = useToast();
   const { token } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [nome, setNome] = useState('');
@@ -99,7 +101,7 @@ const EquipmentForm: React.FC = () => {
 
       await axios.post(`${import.meta.env.VITE_API_URL}/api/equipment`, formData, config);
 
-      alert('Equipamento cadastrado com sucesso!');
+      toast.success('Equipamento cadastrado com sucesso!');
 
       setNome(''); setDescricao(''); setPrecoDiaria(''); 
       setPrecoSemanal(''); setPrecoQuinzenal(''); setPrecoMensal('');
@@ -108,7 +110,7 @@ const EquipmentForm: React.FC = () => {
 
     } catch (error) {
       console.error(error);
-      alert('Erro ao cadastrar.');
+      toast.error('Erro ao cadastrar.');
     } finally {
       setLoading(false);
     }

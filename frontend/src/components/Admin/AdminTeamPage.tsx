@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
@@ -48,6 +49,7 @@ interface UsuarioEquipe {
 }
 
 const AdminTeamPage: React.FC = () => {
+  const toast = useToast();
   const { token, user: currentUser } = useAuth();
   const [equipe, setEquipe] = useState<UsuarioEquipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,7 +238,7 @@ const AdminTeamPage: React.FC = () => {
   // --- BLOQUEIO ---
   const abrirModalBloquear = (usuario: UsuarioEquipe) => {
     if (usuario.id === currentUser?.id) {
-       alert("Você não pode bloquear a sua própria conta!");
+       toast.error("Você não pode bloquear a sua própria conta!");
        return;
     }
     setUsuarioEditando(usuario);
@@ -409,7 +411,7 @@ const AdminTeamPage: React.FC = () => {
                 {dadosEdicao.novaSenha ? (
                   <div style={{ color: '#10b981', fontWeight: "bold", fontSize: "0.9rem" }}>✅ Senha será resetada para os 6 dígitos do CPF. <button type="button" onClick={() => setDadosEdicao({...dadosEdicao, novaSenha: ''})} style={{ color: "#ef4444", border: "none", background: "none", cursor: "pointer", textDecoration: "underline", marginLeft: "10px" }}>Desfazer</button></div>
                 ) : (
-                  <button type="button" onClick={() => { const c = dadosEdicao.cpf.replace(/\D/g, ''); if(c.length===11) setDadosEdicao({...dadosEdicao, novaSenha: c.substring(0,6)}); else alert("Preencha o CPF!"); }} style={{ backgroundColor: "#fff", border: "1px solid #cbd5e1", padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}><RefreshCw size={14} /> Resetar p/ 6 dígitos do CPF</button>
+                  <button type="button" onClick={() => { const c = dadosEdicao.cpf.replace(/\D/g, ''); if(c.length===11) setDadosEdicao({...dadosEdicao, novaSenha: c.substring(0,6)}); else toast.error("Preencha o CPF!"); }} style={{ backgroundColor: "#fff", border: "1px solid #cbd5e1", padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontWeight: "600", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}><RefreshCw size={14} /> Resetar p/ 6 dígitos do CPF</button>
                 )}
               </div>
               <button type="submit" disabled={opLoading} style={submitBtnStyle}>{opLoading ? <Loader2 size={18} className="spin-animation" /> : <Save size={18} />} {opLoading ? 'Salvando...' : 'Salvar Alterações'}</button>
