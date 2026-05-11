@@ -2343,7 +2343,7 @@ const ReservationDetailsPage: React.FC = () => {
           <div style={{ ...manualContentStyle, maxWidth: '650px', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
             <div style={manualHeaderStyle}>
               <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px", color: "#1e293b" }}>
-                <HelpCircle size={22} color="#2563eb" /> Manual: {isAdmin || isFuncionario ? 'Gestão do Pedido (Equipe)' : 'Acompanhamento do Pedido'}
+                <HelpCircle size={22} color="#2563eb" /> Manual do Usuário: {isAdmin || isFuncionario ? 'Gestão do Pedido (Equipe)' : 'Acompanhamento do Pedido'}
               </h3>
               <button onClick={() => setShowManual(false)} style={manualCloseBtnStyle}><X size={22} /></button>
             </div>
@@ -2395,6 +2395,19 @@ const ReservationDetailsPage: React.FC = () => {
                   <div>
                     <strong>Documentos e Contratos:</strong>
                     <p style={{ margin: "5px 0 0 0" }}>{isAdmin || isFuncionario ? 'O sistema gera o DFE (Documento Fiscal Eletrônico) e o XML automaticamente após o faturamento.' : 'Baixe seu contrato assinado e o documento fiscal de locação (DFE) a qualquer momento.'}</p>
+                  </div>
+                </div>
+
+                <div style={{ ...manualStepStyle, backgroundColor: "#fef2f2", borderColor: "#fecaca" }}>
+                  <div style={{ ...stepNumStyle, backgroundColor: "#ef4444" }}>
+                     <Info size={14} color="#fff" />
+                  </div>
+                  <div>
+                    <strong style={{ color: "#991b1b" }}>Atenção - Múltiplos Itens:</strong>
+                    <p style={{ margin: "5px 0 0 0", color: "#7f1d1d" }}>
+                        Para contratos com dois ou mais equipamentos juntos, a <strong>remarcação de datas ou adiamento</strong> afetará todos os itens simultaneamente.<br/><br/>
+                        Além disso, o plano de locação inicial será replicado: se o pedido original foi feito em um plano de 7 dias, a remarcação ou extensão do contrato também ocorrerá sempre em blocos de 7 dias. Para locações independentes, recomendamos a criação de pedidos separados.
+                    </p>
                   </div>
                 </div>
               </div>

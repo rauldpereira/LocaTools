@@ -416,7 +416,7 @@ const AdminStoreConfig: React.FC = () => {
           <div style={{ ...manualContentStyle, maxWidth: '650px', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
             <div style={manualHeaderStyle}>
               <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px", color: "#1e293b" }}>
-                <HelpCircle size={22} color="#2563eb" /> Manual: Configurações do Sistema
+                <HelpCircle size={22} color="#2563eb" /> Manual do Usuário: Configurações do Sistema
               </h3>
               <button onClick={() => setShowManual(false)} style={manualCloseBtnStyle}><X size={22} /></button>
             </div>

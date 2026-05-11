@@ -570,6 +570,17 @@ const CartPage: React.FC = () => {
                                         <p style={{ margin: "5px 0 0 0" }}>Se você alugou equipamentos para datas de início diferentes, nós precisaremos fazer viagens separadas para entregar cada um. O sistema identificará isso automaticamente e multiplicará o valor da viagem de entrega pelo número de dias distintos.</p>
                                     </div>
                                 </div>
+
+                                <div style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "15px", backgroundColor: "#fef2f2", borderRadius: "12px", border: "1px solid #fecaca" }}>
+                                    <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ef4444", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem", flexShrink: 0 }}><Info size={14}/></div>
+                                    <div>
+                                        <strong>Atenção ao Alugar Múltiplos Itens:</strong>
+                                        <p style={{ margin: "5px 0 0 0" }}>
+                                            Ao alugar dois ou mais equipamentos juntos no mesmo pedido, saiba que para uma futura <strong>remarcação de datas ou adiamento do contrato</strong>, todos os itens serão remarcados juntos.<br/><br/>
+                                            Além disso, o plano de locação será replicado: se você marcou um equipamento por um período de 7 dias, a remarcação ou extensão do contrato também ocorrerá sempre em blocos de 7 dias. Para locações independentes, recomendamos realizar pedidos separados.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
