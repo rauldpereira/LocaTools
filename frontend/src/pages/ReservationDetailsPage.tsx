@@ -4,11 +4,10 @@ import axios, { type AxiosRequestConfig } from "axios";
 import { useAuth } from "../context/AuthContext";
 import RescheduleModal from "../components/RescheduleModal";
 import HorarioFuncionamento from "../components/HorarioFuncionamentoDisplay";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import ContractModal from "../components/ContractModal";
 import ReturnContractModal from "../components/ReturnContractModal";
-import { ArrowLeft, Download, FileText, FileCode2, Info, CheckCircle, Package, Truck, AlertTriangle, AlertCircle, RefreshCw, XCircle, MapPin, DollarSign, Clock, Check, FileSignature, HelpCircle, CreditCard, ShieldAlert, Store, X, ClipboardCheck } from "lucide-react";
+import { generateNfseHtml } from '../assets/nfse_html_generator';
+import { ArrowLeft, Download, FileText, Info, CheckCircle, Package, Truck, AlertTriangle, AlertCircle, RefreshCw, XCircle, MapPin, DollarSign, Clock, Check, FileSignature, HelpCircle, CreditCard, ShieldAlert, Store, X, ClipboardCheck } from "lucide-react";
 import { useToast } from '../context/ToastContext';
 
 interface TipoAvaria {
@@ -176,259 +175,51 @@ const ReservationDetailsPage: React.FC = () => {
     : 0;
 
 
-  //  DOCUMENTO FISCAL DE LOCAÇÃO DE BENS MÓVEIS (DFE Pós-Reforma)
-  const handleDownloadDFE = () => {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleDownloadDFE = async () => {
     if (!order) return;
-    const doc = new jsPDF();
-    const m = 10;
-    let y = 10;
-
-    const numDfe = String(order.id).padStart(6, "0");
-    const dataEmissao = new Date().toLocaleDateString("pt-BR");
-    const uuidDocumento = crypto.randomUUID().toUpperCase();
-    const ambiente = "HOMOLOGAÇÃO (SIMULAÇÃO)";
-
-    const dInicio = parseDateStringAsLocal(order.data_inicio);
-    const dFim = parseDateStringAsLocal(order.data_fim);
-    const diffTime = Math.abs(dFim.getTime() - dInicio.getTime());
-    const totalDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    const labelDias = totalDias === 1 ? "dia" : "dias";
-
-    // CABEÇALHO
-    doc.rect(m, y, 190, 30);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Documento Fiscal de Locação de Bens Móveis", m + 50, y + 8);
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.text(`ID ÚNICO (UUID): ${uuidDocumento}`, m + 50, y + 14);
-    doc.text(`AMBIENTE: ${ambiente}   |   TIPO: LOCACAO`, m + 50, y + 20);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Nº: ${numDfe}   |   SÉRIE: A1   |   EMISSÃO: ${dataEmissao}`, m + 50, y + 26);
-
-    y += 35;
-    // EMITENTE
-    doc.rect(m, y, 190, 22);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("EMITENTE (LOCADOR)", m + 2, y + 5);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Razão Social: LOCATOOLS EQUIPAMENTOS LTDA`, m + 2, y + 11);
-    doc.text(`CNPJ: 12.345.678/0001-99   |   Município: Pindamonhangaba - SP`, m + 2, y + 17);
-
-    y += 25;
-    // TOMADOR
-    doc.rect(m, y, 190, 22);
-    doc.setFont("helvetica", "bold");
-    doc.text("CLIENTE (LOCATÁRIO)", m + 2, y + 5);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    const identificacaoTomador = order.Usuario?.cpf || order.Usuario?.cnpj || "Não informado";
-    doc.text(`Nome/Razão Social: ${order.Usuario?.nome || "Cliente Padrão"}`, m + 2, y + 11);
-    doc.text(`CPF/CNPJ: ${identificacaoTomador}   |   E-mail: ${order.Usuario?.email || "N/A"}`, m + 2, y + 17);
-
-    y += 25;
-    // ITENS
-    const dataInicioStr = dInicio.toLocaleDateString("pt-BR");
-    const dataFimStr = dFim.toLocaleDateString("pt-BR");
-
-    const tableData = order.ItemReservas.map((item, idx) => [
-      (idx + 1).toString(),
-      `${item.Unidade.Equipamento.nome} (Patrimônio #${item.Unidade.id})\nPeríodo: ${dataInicioStr} a ${dataFimStr} (${totalDias} ${labelDias})`,
-      "1",
-      `R$ ${(Number(order.valor_total) / order.ItemReservas.length).toFixed(2)}`,
-      `R$ ${(Number(order.valor_total) / order.ItemReservas.length).toFixed(2)}`
-    ]);
-
-    autoTable(doc, {
-      startY: y,
-      head: [["Item", "Descrição", "Qtde", "V. Unit", "Total"]],
-      body: tableData,
-      theme: "grid",
-      styles: { fontSize: 7, cellPadding: 2.5 },
-      headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold", halign: "center" },
-      columnStyles: {
-        0: { cellWidth: 12, halign: "center" },
-        1: { cellWidth: 103 },
-        2: { cellWidth: 15, halign: "center" },
-        3: { cellWidth: 30, halign: "center" },
-        4: { cellWidth: 30, halign: "center" }
-      }
-    });
-
-    y = (doc as any).lastAutoTable.finalY + 10;
-
-    // VALORES E CLASSIFICAÇÃO
-    doc.rect(m, y, 90, 35);
-    doc.setFont("helvetica", "bold");
-    doc.text("VALORES", m + 2, y + 5);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Valor Bruto: R$ ${valorTotalAjustado.toFixed(2)}`, m + 2, y + 12);
-    doc.text(`Desconto: R$ 0,00`, m + 2, y + 18);
-    doc.setFont("helvetica", "bold");
-    doc.text(`VALOR LÍQUIDO: R$ ${valorTotalAjustado.toFixed(2)}`, m + 2, y + 28);
-
-    doc.rect(m + 100, y, 90, 35);
-    doc.setFont("helvetica", "bold");
-    doc.text("CLASSIFICAÇÃO FISCAL", m + 102, y + 5);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Natureza: Locação de Bens Móveis`, m + 102, y + 12);
-    doc.text(`CTN: 99.01.01`, m + 102, y + 18);
-    doc.text(`NBS: 111`, m + 102, y + 24);
-
-    y += 40;
-    // TRIBUTOS
-    doc.rect(m, y, 190, 25);
-    doc.setFont("helvetica", "bold");
-    doc.text("TRIBUTOS", m + 2, y + 5);
-    doc.setFont("helvetica", "normal");
-    doc.text(`ISS: Não Incidente`, m + 2, y + 10);
-    doc.text(`IBS: Não incidente (fase atual)`, m + 2, y + 15);
-    doc.text(`CBS: Não incidente (fase atual)`, m + 2, y + 20);
-
-    y += 30;
-    // OBSERVAÇÕES
-    doc.setFont("helvetica", "bold");
-    doc.text("OBSERVAÇÕES", m, y);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    const obsText = "Documento emitido em ambiente de homologação (simulação). Operação de locação de bens móveis, sem prestação de serviço, conforme legislação vigente e em conformidade com a fase de transição da reforma tributária (LC 214/2025).";
-    doc.text(obsText, m, y + 5, { maxWidth: 190 });
-
-    doc.save(`DFE_Locacao_${numDfe}.pdf`);
-  };
-
-  //  GERADOR DO XML DFE (Seguindo o padrão JSON solicitado)
-  const handleDownloadXmlDFE = () => {
-    if (!order) return;
-    const numDfe = String(order.id).padStart(6, "0");
-    const dataEmissao = new Date().toISOString();
-    const uuidDocumento = crypto.randomUUID().toUpperCase();
-
-    const dInicio = parseDateStringAsLocal(order.data_inicio);
-    const dFim = parseDateStringAsLocal(order.data_fim);
-    const diffTime = Math.abs(dFim.getTime() - dInicio.getTime());
-    const totalDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    const labelDias = totalDias === 1 ? "dia" : "dias";
-    
-    const dfeData = {
-      documentoFiscal: {
-        uuid: uuidDocumento,
-        numero: numDfe,
-        serie: "A1",
-        dataEmissao: dataEmissao,
-        tipoDocumento: "LOCACAO",
-        ambiente: "HOMOLOGACAO",
-        status: "EMITIDO"
-      },
-      emitente: {
-        razaoSocial: "LocaTools Equipamentos LTDA",
-        cnpj: "12345678000199",
-        inscricaoMunicipal: "12345",
-        endereco: {
-          logradouro: "Rua dos Ipes",
-          numero: "123",
-          bairro: "Centro",
-          municipio: "Pindamonhangaba",
-          uf: "SP",
-          cep: "12400000"
+    setIsGeneratingPdf(true);
+    try {
+      const rawHtml = generateNfseHtml(order, lojaConfig);
+      
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'absolute';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      iframe.style.width = '595pt';
+      iframe.style.height = '1500pt'; // Give it plenty of room to render without scrollbars
+      document.body.appendChild(iframe);
+      
+      const doc = iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(rawHtml);
+        doc.close();
+        
+        await new Promise(r => setTimeout(r, 800)); // wait for rendering
+        
+        const html2canvas = (await import('html2canvas')).default;
+        const { default: jsPDF } = await import('jspdf');
+        
+        const element = doc.querySelector('.page') as HTMLElement;
+        if (element) {
+          const ptHeight = parseFloat(element.style.height) || 841.89;
+          const canvas = await html2canvas(element, { scale: 2 });
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF('p', 'pt', [595.28, ptHeight]);
+          pdf.addImage(imgData, 'PNG', 0, 0, 595.28, ptHeight);
+          pdf.save(`NFSe_${order.id}.pdf`);
         }
-      },
-      tomador: {
-        nome: order.Usuario?.nome || "Cliente (Locatário)",
-        cpfCnpj: order.Usuario?.cpf || order.Usuario?.cnpj || "00000000000",
-        tipo: order.Usuario?.cnpj ? "PJ" : "PF"
-      },
-      itens: order.ItemReservas.map(item => ({
-        descricao: `${item.Unidade.Equipamento.nome} (Patrimônio #${item.Unidade.id})`,
-        periodo: {
-          inicio: dInicio.toISOString().split('T')[0],
-          fim: dFim.toISOString().split('T')[0],
-          quantidadeDias: totalDias,
-          unidade: labelDias
-        },
-        quantidade: 1,
-        valorUnitario: (Number(order.valor_total) / order.ItemReservas.length).toFixed(2),
-        valorTotal: (Number(order.valor_total) / order.ItemReservas.length).toFixed(2)
-      })),
-      valores: {
-        valorBruto: valorTotalAjustado.toFixed(2),
-        desconto: "0.00",
-        valorLiquido: valorTotalAjustado.toFixed(2)
-      },
-      classificacaoFiscal: {
-        naturezaOperacao: "Locação de bens móveis",
-        ctn: "99.01.01",
-        nbs: "111"
-      },
-      tributos: {
-        iss: "Não incidente",
-        ibs: "Não incidente (fase atual)",
-        cbs: "Não incidente (fase atual)"
-      },
-      observacoes: "Documento emitido em ambiente de homologação (simulação). Locação de bens móveis sem prestação de serviço, conforme LC 214/2025.",
-      controle: {
-        dataGeracao: dataEmissao
+        document.body.removeChild(iframe);
+        toast.success("Nota Fiscal baixada com sucesso.");
       }
-    };
-
-    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<DFE>
-  <DocumentoFiscal>
-    <UUID>${dfeData.documentoFiscal.uuid}</UUID>
-    <TipoDocumento>${dfeData.documentoFiscal.tipoDocumento}</TipoDocumento>
-    <Ambiente>${dfeData.documentoFiscal.ambiente}</Ambiente>
-    <Numero>${dfeData.documentoFiscal.numero}</Numero>
-    <Serie>${dfeData.documentoFiscal.serie}</Serie>
-    <DataEmissao>${dfeData.documentoFiscal.dataEmissao}</DataEmissao>
-    <Status>${dfeData.documentoFiscal.status}</Status>
-  </DocumentoFiscal>
-  <Emitente>
-    <RazaoSocial>${dfeData.emitente.razaoSocial}</RazaoSocial>
-    <Cnpj>${dfeData.emitente.cnpj}</Cnpj>
-    <Endereco>
-      <Municipio>${dfeData.emitente.endereco.municipio}</Municipio>
-      <UF>${dfeData.emitente.endereco.uf}</UF>
-    </Endereco>
-  </Emitente>
-  <Tomador>
-    <Nome>${dfeData.tomador.nome}</Nome>
-    <CpfCnpj>${dfeData.tomador.cpfCnpj}</CpfCnpj>
-  </Tomador>
-  <Itens>
-    ${dfeData.itens.map(i => `
-    <Item>
-      <Descricao>${i.descricao}</Descricao>
-      <PeriodoLocacao>
-        <InicioISO>${i.periodo.inicio}</InicioISO>
-        <FimISO>${i.periodo.fim}</FimISO>
-        <Quantidade>${i.periodo.quantidadeDias}</Quantidade>
-        <Unidade>${i.periodo.unidade}</Unidade>
-      </PeriodoLocacao>
-      <ValorTotal>${i.valorTotal}</ValorTotal>
-    </Item>`).join('')}
-  </Itens>
-  <Tributacao>
-    <ISS>${dfeData.tributos.iss}</ISS>
-    <IBS>${dfeData.tributos.ibs}</IBS>
-    <CBS>${dfeData.tributos.cbs}</CBS>
-  </Tributacao>
-  <Observacoes>${dfeData.observacoes}</Observacoes>
-  <Controle>
-    <DataGeracao>${dfeData.controle.dataGeracao}</DataGeracao>
-  </Controle>
-</DFE>`;
-
-    const blob = new Blob([xmlContent], { type: "application/xml" });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `DFE_XML_${numDfe}.xml`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar o PDF da NFS-e.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const handleDownloadContract = async () => {
@@ -461,7 +252,7 @@ const ReservationDetailsPage: React.FC = () => {
     try {
       const config = {
         headers: { Authorization: `Bearer ${token}` },
-        responseType: "blob" as "json", // Blob porque é arquivo PDF
+        responseType: "blob" as "json",
       };
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/reservations/return-contract/${orderId}`,
@@ -492,8 +283,6 @@ const ReservationDetailsPage: React.FC = () => {
       );
 
       setOrder((prev) => prev ? { ...prev, solicitou_devolucao: true } : prev);
-
-      // Fecha o modal de confirmação
       setShowConfirmReturnModal(false);
     } catch (error) {
       console.error("Erro ao solicitar recolhimento:", error);
@@ -801,7 +590,6 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          {/* BOTÃO DE AJUDA */}
           <button
             onClick={() => setShowManual(true)}
             title="Manual do Usuário"
@@ -812,19 +600,14 @@ const ReservationDetailsPage: React.FC = () => {
             <HelpCircle size={24} />
           </button>
 
-          {/* BOTÕES DE EMISSÃO */}
           {order.status !== "pendente" && order.status !== "cancelada" && (
             <div style={{ display: "flex", gap: "8px", padding: "6px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-              <button onClick={handleDownloadDFE} style={btnDocStyleGov} title="Baixar Documento Fiscal Eletrônico">
-                <FileText size={16} /> DFE (PDF)
-              </button>
-              <button onClick={handleDownloadXmlDFE} style={btnDocStyleGov} title="Baixar Arquivo XML">
-                <FileCode2 size={16} /> XML
+              <button onClick={handleDownloadDFE} disabled={isGeneratingPdf} style={{ ...btnDocStyleGov, opacity: isGeneratingPdf ? 0.7 : 1, cursor: isGeneratingPdf ? 'wait' : 'pointer' }} title="Baixar Documento Fiscal Eletrônico">
+                <FileText size={16} /> {isGeneratingPdf ? "Gerando PDF..." : "Nota Fiscal"}
               </button>
             </div>
           )}
 
-          {/* MAQUIAGEM VISUAL DA TAG DE STATUS */}
           {(() => {
             let badgeText = order.status.replace(/_/g, " ").toUpperCase();
             let badgeColor = "#64748b";
@@ -942,7 +725,6 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {/* LINHA DO TEMPO (TIMELINE) */}
       {order.status !== "cancelada" && (
         <div style={{
           display: "flex",
@@ -952,7 +734,6 @@ const ReservationDetailsPage: React.FC = () => {
           padding: "0 10px",
           position: "relative"
         }}>
-          {/* Linha de fundo */}
           <div style={{
             position: "absolute",
             top: "15px",
@@ -978,16 +759,13 @@ const ReservationDetailsPage: React.FC = () => {
             if (order.solicitou_devolucao || order.status === "aguardando_assinatura_devolucao" || order.status === "aguardando_pagamento_final") currentIndex = 4;
             if (order.status === "finalizada") currentIndex = 5;
 
-            // Lógica de atraso
             const today = new Date();
             today.setHours(0,0,0,0);
             const dInicio = parseDateStringAsLocal(order.data_inicio);
             const dFim = parseDateStringAsLocal(order.data_fim);
             
             let isLate = false;
-            // Atraso na Entrega (Index 2): Hoje > Início e ainda não saiu
             if (index === 2 && today > dInicio && currentIndex < 2) isLate = true;
-            // Atraso na Devolução (Index 4): Hoje > Fim e ainda está "Em Uso"
             if (index === 4 && today > dFim && currentIndex < 4) isLate = true;
 
             const isCompleted = index < currentIndex;
@@ -1005,7 +783,6 @@ const ReservationDetailsPage: React.FC = () => {
                 zIndex: 1,
                 position: "relative"
               }}>
-                {/* Círculo do Step */}
                 <div style={{
                   width: "32px",
                   height: "32px",
@@ -1024,7 +801,6 @@ const ReservationDetailsPage: React.FC = () => {
                   {isLate ? <AlertTriangle size={16} /> : (isCompleted ? <Check size={18} /> : step.icon)}
                 </div>
                 
-                {/* Nome do Step */}
                 <span style={{
                   fontSize: "0.7rem",
                   fontWeight: (isActive || isLate) ? "bold" : "500",
@@ -1038,7 +814,6 @@ const ReservationDetailsPage: React.FC = () => {
                   {isLate ? <><AlertTriangle size={12} /> ATRASO NA DEVOLUÇÃO</> : step.label}
                 </span>
 
-                {/* Linha de progresso ativa */}
                 {index < array.length - 1 && index < currentIndex && (
                   <div style={{
                     position: "absolute",
@@ -1112,7 +887,6 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {/* PAINEL DE AÇÕES DA EQUIPE */}
       {podeVerPainelAcoes && (
         <div
           style={{
@@ -1217,7 +991,6 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {/* BOTÃO DE SOLICITAR RECOLHIMENTO */}
       {!isAdmin &&
         !isFuncionario &&
         order.status === "em_andamento" &&
@@ -1270,7 +1043,6 @@ const ReservationDetailsPage: React.FC = () => {
           </div>
         )}
 
-      {/* MODAL DE CONFIRMAÇÃO */}
       {showConfirmReturnModal && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -1323,7 +1095,6 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {/* BLOCO DE DÍVIDAS / PREJUÍZO */}
       {podeVerFinanceiro && itensComPrejuizo.length > 0 && (
         <div
           style={{
@@ -1557,8 +1328,8 @@ const ReservationDetailsPage: React.FC = () => {
                   onClick={handleDownloadContract}
                   disabled={contractLoading}
                   style={{
-                    padding: "10px 20px", border: "2px solid #2c3e50", backgroundColor: "white", color: "#2c3e50", borderRadius: "6px", cursor: "pointer", fontWeight: "bold",
-                    display: "flex", alignItems: "center", gap: "8px"
+                    padding: "10px 20px", border: "none", backgroundColor: "#0284c7", color: "white", borderRadius: "6px", cursor: contractLoading ? "wait" : "pointer", fontWeight: "bold",
+                    display: "flex", alignItems: "center", gap: "8px", boxShadow: "0 2px 4px rgba(2,132,199,0.3)"
                   }}
                 >
                   <Download size={16} /> {contractLoading ? "Gerando PDF..." : "Baixar Contrato"}
@@ -1611,7 +1382,6 @@ const ReservationDetailsPage: React.FC = () => {
         </button>
       )}
 
-      {/* AVISO PARA O CLIENTE NA ENTREGA/RETIRADA */}
       {!isAdmin &&
         !isFuncionario &&
         order.status === "aguardando_assinatura" && (
@@ -1632,7 +1402,6 @@ const ReservationDetailsPage: React.FC = () => {
           </div>
         )}
 
-      {/* AVISO PARA O CLIENTE NA DEVOLUÇÃO */}
       {!isAdmin &&
         !isFuncionario &&
         order.status === "aguardando_assinatura_devolucao" && (
@@ -1767,7 +1536,6 @@ const ReservationDetailsPage: React.FC = () => {
               <strong>R$ {valorTotalAjustado.toFixed(2)}</strong>
             </div>
 
-            {/* Só mostra detalhamento de sinal se NÃO for pagamento integral (100%) */}
             {Math.abs(valorTotalAjustado - Number(order.valor_sinal)) > 0.01 ? (
               <>
                 <div
@@ -1808,7 +1576,6 @@ const ReservationDetailsPage: React.FC = () => {
                 )}
               </>
             ) : (
-              // Se for INTEGRAL, apenas confirma que está tudo pago
               (order.status !== "pendente" && order.status !== "cancelada") && (
                 <div style={{
                   marginTop: "10px",
@@ -1829,7 +1596,6 @@ const ReservationDetailsPage: React.FC = () => {
               )
             )}
 
-            {/* HISTÓRICO DE PAGAMENTOS */}
             {order.Pagamentos && order.Pagamentos.length > 0 && (
               <div style={{ marginTop: "20px", borderTop: "1px solid #eee", paddingTop: "15px" }}>
                 <h4 style={{ margin: "0 0 10px 0", color: "#2c3e50", fontSize: "1rem" }}>Histórico de Pagamentos</h4>
@@ -1926,7 +1692,6 @@ const ReservationDetailsPage: React.FC = () => {
             </div>
 
             <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "flex-start" }}>
-              {/* DATAS DA LOCAÇÃO */}
               <div style={{ display: "flex", gap: "30px", padding: "20px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px dashed #cbd5e1", flex: 1, minWidth: "250px" }}>
                 <div>
                   <span style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Data de Saída</span>
@@ -1938,7 +1703,6 @@ const ReservationDetailsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* HORÁRIOS DA LOJA (DENTRO DOS DADOS LOGÍSTICOS E LADO A LADO) */}
               <div style={{ flex: 1, minWidth: "300px" }}>
                 <HorarioFuncionamento />
               </div>
@@ -2061,7 +1825,6 @@ const ReservationDetailsPage: React.FC = () => {
               )
             )}
 
-            {/* AVISO DE DÍVIDA PARA O CLIENTE */}
             {user?.tipo_usuario !== "admin" && order.status === "PREJUIZO" && (
               <div
                 style={{
@@ -2173,7 +1936,6 @@ const ReservationDetailsPage: React.FC = () => {
         />
       )}
 
-      {/* MODAL DE RECUPERAÇÃO DE DÍVIDA */}
       {showRecoverModal && (
         <div
           style={{
@@ -2337,7 +2099,6 @@ const ReservationDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL MANUAL */}
       {showManual && (
         <div style={manualOverlayStyle} onClick={() => setShowManual(false)}>
           <div style={{ ...manualContentStyle, maxWidth: '650px', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
@@ -2394,7 +2155,7 @@ const ReservationDetailsPage: React.FC = () => {
                   <div style={stepNumStyle}>{isAdmin || isFuncionario ? '5' : '4'}</div>
                   <div>
                     <strong>Documentos e Contratos:</strong>
-                    <p style={{ margin: "5px 0 0 0" }}>{isAdmin || isFuncionario ? 'O sistema gera o DFE (Documento Fiscal Eletrônico) e o XML automaticamente após o faturamento.' : 'Baixe seu contrato assinado e o documento fiscal de locação (DFE) a qualquer momento.'}</p>
+                    <p style={{ margin: "5px 0 0 0" }}>{isAdmin || isFuncionario ? 'O sistema gera a Nota Fiscal em PDF automaticamente após a aprovação da reserva.' : 'Baixe seu contrato assinado e a Nota Fiscal de locação a qualquer momento.'}</p>
                   </div>
                 </div>
 

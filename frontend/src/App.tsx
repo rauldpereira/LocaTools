@@ -18,6 +18,7 @@ import PaymentPage from './pages/PaymentPage';
 import MyReservationsPage from './pages/MyReservationsPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import ReservationDetailsPage from './pages/ReservationDetailsPage';
+import NFSeViewPage from './pages/NFSeViewPage';
 import VistoriaPage from './pages/VistoriaPage';
 import FinalizePaymentPage from './pages/FinalizePaymentPage';
 import AdminReportsPage from './pages/AdminReportsPage';
@@ -56,6 +57,7 @@ function App() {
                   <Route path="my-reservations" element={<MyReservationsPage />} />
                   <Route path="payment/success/:orderId" element={<PaymentSuccessPage />} />
                   <Route path="my-reservations/:orderId" element={<ReservationDetailsPage />} />
+                  <Route path="admin/nfse/:orderId" element={<NFSeViewPage />} />
                   <Route path="admin/vistoria/:orderId" element={<VistoriaPage />} />
                   <Route path="admin/finalize-payment/:orderId" element={<FinalizePaymentPage />} />
                   <Route path="admin/reports" element={<AdminReportsPage />} />

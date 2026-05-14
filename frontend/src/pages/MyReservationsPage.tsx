@@ -3,7 +3,7 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { parseDateStringAsLocal } from "../utils/dateUtils";
-import { Package, HelpCircle, X, Clock, Calendar, Truck, FileSignature, CheckCircle, Search, FileText, XOctagon } from "lucide-react";
+import { HelpCircle, X, Search, FileText, XOctagon, CheckCircle } from "lucide-react";
 
 interface ItemReserva {
   id: number;
