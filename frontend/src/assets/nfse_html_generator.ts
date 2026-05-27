@@ -13,17 +13,14 @@ const buildNfse = (order: any, storeConfig: any, city: 'PINDA' | 'TAUBATE') => {
   
   const dInicio = new Date(order.data_inicio);
   const dFim = new Date(order.data_fim);
-  const diffTime = Math.abs(dFim.getTime() - dInicio.getTime());
-  const totalDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-  const labelDias = totalDias === 1 ? "dia" : "dias";
-  
+
   const itemsDesc = order.ItemReservas?.map((i: any) => `${i.Unidade.Equipamento.nome}`).join(", ") || "bens móveis";
   const hasAndaime = itemsDesc.toLowerCase().includes("andaime");
   const cnae = hasAndaime ? "7732-2/02" : "7732-2/01";
   const descricaoCompleta = `Locação de ${itemsDesc}, sem operador, referente ao período de ${dInicio.toLocaleDateString('pt-BR')} a ${dFim.toLocaleDateString('pt-BR')}. CNAE ${cnae}`;
   const chavePix = `Chave PIX: ${storeConfig?.email_contato || "financeiro@locatools.com.br"}`;
 
-  const valorTotal = Number(order.valor_total); // Sem multas, NFSe baseada apenas no valor da locação
+  const valorTotal = Number(order.valor_total);
   const valorStr = formatCurrency(valorTotal);
 
   const formatCPF = (val: string) => {
@@ -306,20 +303,14 @@ body { background:#fff; font-family:'Arial',Helvetica,sans-serif; }
 
   replaceField("12402-010", "-");
 
-  // Move intermediario up
   html = html.replace(new RegExp('<div style="position:absolute;top:275\\.07pt;left:178\\.07pt;[^>]+>INTERMEDIÁRIO DO SERVIÇO NÃO IDENTIFICADO NA NFS-e<\\/div>'), '<div style="position:absolute;top:272.5pt;left:178.07pt;font-size:8.5pt;font-weight:normal;white-space:nowrap;line-height:1;">INTERMEDIÁRIO DO SERVIÇO NÃO IDENTIFICADO NA NFS-e</div>');
-
-  // Fazer linhas horizontais internas tocarem as margens laterais (bordas) - REMOVIDO PARA NAO TOCAR
-  // html = html.replace(/left:10\\.77pt;width:566\\.93pt/g, 'left:5.00pt;width:585.00pt');
   
-  // Servico: Código Tributação
   html = html.replace(
     new RegExp('<!-- EDITÁVEL -->(<div style="[^"]*)white-space:nowrap([^"]*">)\\s*99\\.01\\.01 - Serviços sem a incidência\\s*<\\/div>'),
     '<!-- EDITÁVEL -->$1white-space:normal;max-width:135pt;line-height:1.2$299.04.01 — Locação de Bens Móveis</div>'
   );
   replaceField("de ISSQN e ICMS", "");
   
-  // Servico: Descricao
   html = html.replace(
     new RegExp('<!-- EDITÁVEL -->(<div style="[^"]*)white-space:nowrap([^"]*">)\\s*Serviço prestado a limpeza referente ao mês abril 2026 no valor R\\$2\\.033,00\\s*<\\/div>'),
     '<!-- EDITÁVEL -->$1white-space:normal;max-width:540pt;line-height:1.2$2' + descricaoCompleta + '</div>'

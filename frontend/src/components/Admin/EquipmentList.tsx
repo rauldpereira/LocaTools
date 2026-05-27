@@ -78,7 +78,8 @@ const EquipmentList: React.FC = () => {
         try {
             const parsed = JSON.parse(urlImagem);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                return `${import.meta.env.VITE_API_URL}${parsed[0]}`;
+              const firstImage = parsed[0];
+              return firstImage.startsWith('http') ? firstImage : `${import.meta.env.VITE_API_URL}${firstImage}`;
             }
         } catch (e) {
             if (urlImagem.startsWith('http')) return urlImagem;

@@ -13,7 +13,7 @@ export interface FreightConfig {
 export const freightService = {
   // Pega a config atual
   getConfig: async () => {
-    const token = localStorage.getItem('token'); // Se seu app usa token, manda ele
+    const token = localStorage.getItem('token');
     const response = await axios.get<FreightConfig>(`${API_URL}/frete/config`, {
         headers: { Authorization: `Bearer ${token}` }
     });
@@ -29,7 +29,7 @@ export const freightService = {
     return response.data;
   },
 
-  // Calcula frete (pra usar no carrinho depois)
+  // Calcula frete
   calculateFreight: async (endereco_destino: string) => {
     const response = await axios.post(`${API_URL}/frete/calcular`, { endereco_destino });
     return response.data;

@@ -86,6 +86,20 @@ const loginUser = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
+
+    const refreshToken = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' } 
+    );
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 
+    });
+
     res.status(200).json({
       message: 'Login bem-sucedido.',
       token,
@@ -471,6 +485,34 @@ const resetPasswordFromLink = async (req, res) => {
   }
 };
 
+const refreshToken = async (req, res) => {
+  const token = req.cookies.refreshToken;
+  if (!token) return res.status(401).json({ error: 'Refresh token não fornecido.' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await Usuario.findByPk(decoded.id);
+    if (!user || user.ativo === false) {
+      return res.status(403).json({ error: 'Sessão inválida ou usuário desativado.' });
+    }
+
+    const newAccessToken = jwt.sign(
+      { id: user.id, nome: user.nome, tipo_usuario: user.tipo_usuario, precisa_trocar_senha: user.precisa_trocar_senha },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.status(200).json({ token: newAccessToken });
+  } catch (error) {
+    return res.status(403).json({ error: 'Refresh token inválido ou expirado.' });
+  }
+};
+
+const logoutUser = (req, res) => {
+  res.clearCookie('refreshToken');
+  res.status(200).json({ message: 'Logout efetuado com sucesso.' });
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -484,5 +526,7 @@ module.exports = {
   createFuncionario,
   updateFuncionarioDados,
   deleteUser,
-  toggleAtivo
+  toggleAtivo,
+  refreshToken,
+  logoutUser
 };

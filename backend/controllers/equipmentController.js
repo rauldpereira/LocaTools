@@ -278,7 +278,7 @@ const updateEquipment = async (req, res) => {
     res.status(200).json({ message: "Atualizado com sucesso!", equipamento });
   } catch (error) {
     console.error("Erro ao atualizar:", error);
-    res.status(500).json({ error: "Erro interno." });
+    res.status(500).json({ error: "Erro interno.", details: error.message, stack: error.stack });
   }
 };
 

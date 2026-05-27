@@ -56,10 +56,18 @@ io.on('connection', (socket) => {
   });
 });
 
-app.use(cors());
+const cookieParser = require('cookie-parser');
+const auditMiddleware = require('./middlewares/auditMiddleware');
+
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'], // Add other frontend URLs as needed
+  credentials: true,
+}));
+app.use(cookieParser());
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(auditMiddleware);
 
 iniciarCronJobs();
 
@@ -86,8 +94,8 @@ app.get('/', (req, res) => {
 });
 
 iniciarRoboDeLembretes();
-console.log('⏱️ Serviço de CRON (Lembretes Automáticos) ativado.');
+console.log('Serviço de CRON (Lembretes Automáticos) ativado.');
 
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT} com WebSocket ativado!`);
+  console.log(`Servidor rodando na porta ${PORT} com WebSocket ativado!`);
 });

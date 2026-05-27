@@ -122,13 +122,15 @@ const MaintenanceDashboard: React.FC = () => {
                           imgUrl = urlImagem;
                        }
                    }
+                   
+                   const fullImgUrl = imgUrl ? (imgUrl.startsWith('http') ? imgUrl : `${import.meta.env.VITE_API_URL}${imgUrl}`) : '';
 
                    return (
                     <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', transition: "background 0.2s" }} className="table-row-hover">
                       <td style={tdStyle}>
                           <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
                               <div style={{ width: 40, height: 40, borderRadius: 8, overflow: "hidden", border: "1px solid #f1f5f9" }}>
-                                {imgUrl ? <img src={`${import.meta.env.VITE_API_URL}${imgUrl}`} alt="" style={{ width: "100%", height: "100%", objectFit:'cover' }} /> : <div style={{ width: "100%", height: "100%", backgroundColor: "#e2e8f0" }}></div>}
+                                {fullImgUrl ? <img src={fullImgUrl} alt="" style={{ width: "100%", height: "100%", objectFit:'cover' }} /> : <div style={{ width: "100%", height: "100%", backgroundColor: "#e2e8f0" }}></div>}
                               </div>
                               <strong style={{ color: "#1e293b" }}>{equipamentoNome}</strong>
                           </div>

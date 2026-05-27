@@ -89,7 +89,7 @@ const EquipmentDetailsPage: React.FC = () => {
           try {
             const parsed = JSON.parse(data.url_imagem);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              const fullUrls = parsed.map((url: string) => `${import.meta.env.VITE_API_URL}${url}`);
+              const fullUrls = parsed.map((url: string) => url.startsWith('http') ? url : `${import.meta.env.VITE_API_URL}${url}`);
               setGallery(fullUrls);
               setMainImage(fullUrls[0]);
             }

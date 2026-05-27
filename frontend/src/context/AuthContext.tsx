@@ -39,7 +39,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(prevUser => (prevUser ? { ...prevUser, ...newUser } : null));
     };
 
-    const logout = (redirectToLogin = false) => {
+    const logout = async (redirectToLogin = false) => {
+        try {
+            await axios.post(`${import.meta.env.VITE_API_URL}/api/logout`, {}, { withCredentials: true });
+        } catch (error) {
+            console.error('Erro ao fazer logout no servidor', error);
+        }
+
         delete axios.defaults.headers.common['Authorization'];
         localStorage.removeItem('token');
         setToken(null);
@@ -59,16 +65,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     useEffect(() => {
+        axios.defaults.withCredentials = true;
+
         const interceptor = axios.interceptors.response.use(
             response => response, 
-            error => {
-                // Ignora o 401 se a URL da requisição tiver 'login' ou 'register'
-                const url = error.config?.url || '';
-                const isAuthRoute = url.includes('/login') || url.includes('/register');
+            async error => {
+                const originalRequest = error.config;
+                const url = originalRequest?.url || '';
+                const isAuthRoute = url.includes('/login') || url.includes('/register') || url.includes('/refresh-token');
 
-                if (error.response?.status === 401 && !isAuthRoute) {
-                    console.warn('⚠️ Token expirado ou inválido. Redirecionando para o login...');
-                    logout(true); // Aciona o logout forçado!
+                if (error.response?.status === 401 && !isAuthRoute && !originalRequest._retry) {
+                    originalRequest._retry = true;
+                    try {
+                        const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/refresh-token`);
+                        const newToken = data.token;
+                        
+                        localStorage.setItem('token', newToken);
+                        setToken(newToken);
+                        axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+                        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+                        
+                        return axios(originalRequest);
+                    } catch (refreshError) {
+                        console.warn('⚠️ Sessão expirada. Redirecionando para o login...');
+                        logout(true);
+                        return Promise.reject(refreshError);
+                    }
                 }
                 return Promise.reject(error);
             }
