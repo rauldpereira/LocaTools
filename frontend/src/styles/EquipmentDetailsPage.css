@@ -139,7 +139,8 @@
   padding: 2.5rem;
   border-radius: 12px;
   box-shadow: 0 4px 25px rgba(0,0,0,0.1);
-  height: 600px;
+  min-height: 600px;
+  height: auto;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
