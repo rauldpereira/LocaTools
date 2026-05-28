@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Link, useLocation } from 'react-router-dom';
 import { useSearch } from '../context/SearchContext';
 import { HelpCircle, X, ShoppingCart, CalendarSearch, FileSignature } from 'lucide-react';
+import CustomDropdown from '../components/CustomDropdown';
 
 interface Categoria {
   id: number;
@@ -125,32 +126,31 @@ const Home: React.FC = () => {
         </button>
       </header>
 
-      {/* BARRA DE FILTROS REFINADA */}
+      {/* BARRA DE FILTROS */}
       <div className="filter-bar">
         <div className="filter-group">
           <label className="filter-label">Filtrar por Categoria</label>
-          <select 
+          <CustomDropdown 
             value={selectedCategory} 
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">Todas as Categorias</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.nome}</option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedCategory(val)}
+            options={[
+              { value: "all", label: "Todas as Categorias" },
+              ...categories.map(cat => ({ value: cat.id, label: cat.nome }))
+            ]}
+            searchable={true}
+          />
         </div>
 
         <div className="filter-group">
           <label className="filter-label">Ordenar por Preço</label>
-          <select 
+          <CustomDropdown 
             value={sortOrder} 
-            onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
-            className="filter-select"
-          >
-            <option value="asc">Menor Preço</option>
-            <option value="desc">Maior Preço</option>
-          </select>
+            onChange={(val) => setSortOrder(val as "asc" | "desc")}
+            options={[
+              { value: "asc", label: "Menor Preço" },
+              { value: "desc", label: "Maior Preço" }
+            ]}
+          />
         </div>
       </div>
 
