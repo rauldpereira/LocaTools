@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Link, useLocation } from 'react-router-dom';
 import { useSearch } from '../context/SearchContext';
@@ -40,6 +40,10 @@ const Home: React.FC = () => {
 
   const [showManual, setShowManual] = useState(false);
 
+  //  Scroll Infinito (Client-side)
+  const [visibleCount, setVisibleCount] = useState<number>(12);
+  const loaderRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const catId = queryParams.get('category');
@@ -73,6 +77,11 @@ const Home: React.FC = () => {
     fetchData();
   }, []);
 
+  // Reseta a quantidade visível sempre que os filtros mudarem
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [searchTerm, selectedCategory, sortOrder]);
+
   const processarImagemParaExibicao = (urlImagem: string | null) => {
     if (!urlImagem) return 'https://via.placeholder.com/150';
     try {
@@ -100,6 +109,26 @@ const Home: React.FC = () => {
       if (sortOrder === "desc") return b.preco_diaria - a.preco_diaria;
       return 0;
     });
+
+  const displayedEquipment = filteredEquipment.slice(0, visibleCount);
+
+  // Lógica do Scroll Infinito
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 12);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [loading, displayedEquipment.length]);
 
   if (loading) return <div className="home-container" style={{ textAlign: 'center' }}>Carregando equipamentos...</div>;
 
@@ -155,8 +184,8 @@ const Home: React.FC = () => {
       </div>
 
       <div className="equipment-grid">
-        {filteredEquipment.length > 0 ? (
-          filteredEquipment.map((item) => (
+        {displayedEquipment.length > 0 ? (
+          displayedEquipment.map((item) => (
             <Link key={item.id} to={`/equipment/${item.id}`} className="equipment-card">
               <div className="card-image">
                 <img src={processarImagemParaExibicao(item.url_imagem || null)} alt={item.nome} />
@@ -183,6 +212,12 @@ const Home: React.FC = () => {
           </div>
         )}
       </div>
+
+      {displayedEquipment.length < filteredEquipment.length && (
+        <div ref={loaderRef} style={{ height: "40px", margin: "20px 0", display: "flex", justifyContent: "center", alignItems: "center" }}>
+          <span style={{ color: "#64748b" }}>Carregando mais equipamentos...</span>
+        </div>
+      )}
 
       {/* MODAL MANUAL */}
       {showManual && (() => {
