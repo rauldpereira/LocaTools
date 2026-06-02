@@ -106,6 +106,10 @@
     gap: 8px;
 }
 
+.availability-dropdown-full {
+    width: 100% !important;
+}
+
 .availability-modal-label {
     font-weight: bold;
     font-size: 0.85rem;

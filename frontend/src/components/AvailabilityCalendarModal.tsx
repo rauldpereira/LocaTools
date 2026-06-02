@@ -4,6 +4,7 @@ import Calendar from 'react-calendar';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import HorarioFuncionamento from './HorarioFuncionamentoDisplay';
+import CustomDropdown from './CustomDropdown';
 import '../styles/CalendarCommon.css';
 import '../styles/AvailabilityCalendarModal.css';
 import { useToast } from '../context/ToastContext';
@@ -210,6 +211,8 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
     const getTileClassName = ({ date, view }: { date: Date, view: string }) => {
         if (view !== 'month') return null;
         const dayString = toISODate(date);
+        
+        const availabilityEstoque = availabilityData[dayString];
 
         // Dias de outros meses
         if (date.getMonth() !== currentMonthView.getMonth()) {
@@ -226,7 +229,6 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
         }
 
         const diaStatusAdmin = statusDias.get(dayString);
-        const availabilityEstoque = availabilityData[dayString];
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -387,16 +389,17 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                     <label className="availability-modal-label">
                         Plano de Locação:
                     </label>
-                    <select 
-                        value={rentalPeriod} 
-                        onChange={(e) => setRentalPeriod(e.target.value as any)}
-                        className="availability-modal-select"
-                    >
-                        <option value="diaria">Diária (Livre) - {Number(equipment.preco_diaria).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/dia</option>
-                        {equipment.preco_semanal && <option value="semanal">Semanal (7 dias) - {Number(equipment.preco_semanal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>}
-                        {equipment.preco_quinzenal && <option value="quinzenal">Quinzena (15 dias) - {Number(equipment.preco_quinzenal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>}
-                        {equipment.preco_mensal && <option value="mensal">Mensal (30 dias) - {Number(equipment.preco_mensal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>}
-                    </select>
+                    <CustomDropdown
+                        className="availability-dropdown-full"
+                        value={rentalPeriod}
+                        onChange={(val) => setRentalPeriod(val as any)}
+                        options={[
+                            { value: "diaria", label: `Diária (Livre) - ${Number(equipment.preco_diaria).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/dia` },
+                            ...(equipment.preco_semanal ? [{ value: "semanal", label: `Semanal (7 dias) - ${Number(equipment.preco_semanal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` }] : []),
+                            ...(equipment.preco_quinzenal ? [{ value: "quinzenal", label: `Quinzena (15 dias) - ${Number(equipment.preco_quinzenal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` }] : []),
+                            ...(equipment.preco_mensal ? [{ value: "mensal", label: `Mensal (30 dias) - ${Number(equipment.preco_mensal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` }] : [])
+                        ]}
+                    />
                 </div>
 
                 <div className="availability-modal-calendar-wrapper">

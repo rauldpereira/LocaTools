@@ -50,6 +50,7 @@ const AdminReservationsList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const { token, hasPermission, user } = useAuth();
   const [showManual, setShowManual] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, url: string, msg: string}>({isOpen: false, url: "", msg: ""});
   const [filterId, setFilterId] = useState("");
   const [filterStartDate, setFilterStartDate] = useState<Date | null>(null);
   const [filterEndDate, setFilterEndDate] = useState<Date | null>(null);
@@ -98,9 +99,20 @@ const AdminReservationsList: React.FC = () => {
   const ordersEmPrejuizo = filteredOrders.filter((o) => o.status === "PREJUIZO").sort(sortByIdDesc);
   const finalizedOrders = filteredOrders.filter((o) => o.status === "finalizada").sort(sortByIdDesc);
   const cancelledOrders = filteredOrders.filter((o) => o.status === "cancelada").sort(sortByIdDesc);
-  const handleAction = async (url: string, confirmMsg: string) => {
-    if (!window.confirm(confirmMsg)) return;
-    try { const config = { headers: { Authorization: `Bearer ${token}` } }; await axios.put(`${import.meta.env.VITE_API_URL}${url}`, {}, config); fetchAllOrders(); } catch (e) { toast.error("Erro ao processar."); }
+  
+  const handleAction = (url: string, confirmMsg: string) => {
+    setConfirmModal({ isOpen: true, url, msg: confirmMsg });
+  };
+
+  const confirmAction = async () => {
+    const { url } = confirmModal;
+    setConfirmModal({ isOpen: false, url: "", msg: "" });
+    if (!url) return;
+    try { 
+      const config = { headers: { Authorization: `Bearer ${token}` } }; 
+      await axios.put(`${import.meta.env.VITE_API_URL}${url}`, {}, config); 
+      fetchAllOrders(); 
+    } catch (e) { toast.error("Erro ao processar."); }
   };
   const PagedTable = ({ orderList, headers, action }: { orderList: Order[]; headers: { key: keyof Order; label: string }[]; action: (order: Order) => React.ReactNode; }) => {
     const [page, setPage] = useState(1);
@@ -176,6 +188,27 @@ const AdminReservationsList: React.FC = () => {
                 <div style={manualStepStyle}><div style={stepNumStyle}>3</div><div><strong style={{ color: "#1e293b" }}>Assinaturas e Financeiro:</strong><p style={{ margin: "5px 0 0 0" }}>Acompanhe pagamentos de sinal e contratos pendentes.</p></div></div>
                 <div style={manualStepStyle}><div style={stepNumStyle}>4</div><div><strong style={{ color: "#1e293b" }}>Histórico e Buscas:</strong><p style={{ margin: "5px 0 0 0" }}>Use os filtros no topo para achar reservas antigas rapidamente.</p></div></div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmModal.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, animation: 'fadeIn 0.2s ease' }} onClick={() => setConfirmModal({isOpen: false, url: "", msg: ""})}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '16px', width: '90%', maxWidth: '400px', padding: '25px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
+              <AlertTriangle size={24} color="#f59e0b" />
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Confirmação</h3>
+            </div>
+            <p style={{ margin: 0, color: '#475569', fontSize: '1rem', lineHeight: '1.5' }}>
+              {confirmModal.msg}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+              <button onClick={() => setConfirmModal({isOpen: false, url: "", msg: ""})} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', color: '#64748b', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fff'}>
+                Cancelar
+              </button>
+              <button onClick={confirmAction} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#2563eb', color: '#fff', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}>
+                Confirmar
+              </button>
             </div>
           </div>
         </div>

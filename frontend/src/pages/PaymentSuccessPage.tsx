@@ -244,7 +244,7 @@ const PaymentSuccessPage: React.FC = () => {
                     {/* 3. Saldo Devedor (Se for parcial) */}
                     {isPartialPayment && saldoRestante > 0 && (
                         <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fff7ed', borderRadius: '8px', border: '1px solid #ffedd5', color: '#9a3412', fontSize: '0.9rem', textAlign: 'center', fontWeight: '600' }}>
-                            Saldo de R$ {saldoRestante.toFixed(2)} a pagar na entrega/devolução.
+                            Saldo de R$ {saldoRestante.toFixed(2)} a pagar na devolução.
                         </div>
                     )}
                 </div>

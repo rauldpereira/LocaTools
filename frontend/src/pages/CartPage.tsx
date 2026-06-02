@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import AuthModal from '../components/AuthModal';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Truck, Store, Gift, HelpCircle, X, CheckCircle, Info } from 'lucide-react';
+import { Truck, Store, Gift, HelpCircle, X, CheckCircle, Info, MapPin } from 'lucide-react';
 import '../styles/CartPage.css';
 
 const parseDateStringAsLocal = (dateString: string) => {
@@ -131,7 +131,8 @@ const CartPage: React.FC = () => {
         if (cepLimpo.length !== 8) return;
 
         try {
-            const { data } = await axios.get(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+            const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+            const data = await response.json();
             if (!data.erro) {
                 setAddress(prev => ({
                     ...prev,
@@ -346,40 +347,50 @@ const CartPage: React.FC = () => {
                             {/* RETIRADA */}
                             <div style={{ 
                                 marginBottom: '15px', 
-                                border: deliveryType === 'retirada' ? '2px solid #007bff' : '1px solid #ccc',
-                                borderRadius: '8px',
-                                padding: '15px',
-                                backgroundColor: deliveryType === 'retirada' ? '#f0f7ff' : '#fff',
+                                border: deliveryType === 'retirada' ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                                borderRadius: '12px',
+                                padding: '16px 20px',
+                                backgroundColor: deliveryType === 'retirada' ? '#eff6ff' : '#fff',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s ease-in-out'
+                                transition: 'all 0.2s ease-in-out',
+                                boxShadow: deliveryType === 'retirada' ? '0 4px 6px -1px rgba(37, 99, 235, 0.1)' : '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
                             }} onClick={() => setDeliveryType('retirada')}>
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <input
-                                        type="radio" id="retirada" name="delivery"
-                                        value="retirada"
-                                        checked={deliveryType === 'retirada'}
-                                        onChange={() => setDeliveryType('retirada')}
-                                        style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
-                                    />
-                                    <label htmlFor="retirada" style={{ marginLeft: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Store size={20} color="#007bff"/> Retirar na Loja
-                                    </label>
+                                    <div style={{ 
+                                        width: '24px', height: '24px', borderRadius: '50%', 
+                                        border: deliveryType === 'retirada' ? '6px solid #2563eb' : '2px solid #cbd5e1',
+                                        backgroundColor: '#fff', marginRight: '15px', transition: 'all 0.2s',
+                                        flexShrink: 0
+                                    }}></div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
+                                        <Store size={24} color={deliveryType === 'retirada' ? '#2563eb' : '#64748b'} />
+                                        <div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: deliveryType === 'retirada' ? '#1e293b' : '#475569' }}>Retirar na Loja</div>
+                                            <div style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '2px' }}>Grátis - Retire o equipamento no nosso endereço</div>
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 {/* CAIXA DE ENDEREÇO  */}
                                 {deliveryType === 'retirada' && (
                                     <div style={{ 
-                                        marginTop: '12px', 
-                                        marginLeft: '25px', 
-                                        padding: '12px', 
-                                        backgroundColor: '#e6f2ff', 
-                                        borderRadius: '6px',
-                                        borderLeft: '4px solid #007bff'
+                                        marginTop: '15px', 
+                                        marginLeft: '39px', 
+                                        padding: '12px 15px', 
+                                        backgroundColor: '#fff', 
+                                        borderRadius: '8px',
+                                        border: '1px dashed #bfdbfe',
+                                        display: 'flex',
+                                        gap: '10px',
+                                        alignItems: 'flex-start'
                                     }}>
-                                        <p style={{ margin: 0, color: '#0056b3', fontWeight: '600', fontSize: '0.9rem' }}>ENDEREÇO PARA RETIRADA:</p>
-                                        <p style={{ margin: '5px 0 0 0', color: '#333', fontSize: '0.95rem', lineHeight: '1.4' }}>
-                                            {lojaAddress.replace('Nosso endereço: ', '')} 
-                                        </p>
+                                        <MapPin size={18} color="#2563eb" style={{ marginTop: '2px', flexShrink: 0 }} />
+                                        <div>
+                                            <p style={{ margin: 0, color: '#1e40af', fontWeight: '600', fontSize: '0.85rem' }}>ENDEREÇO PARA RETIRADA</p>
+                                            <p style={{ margin: '3px 0 0 0', color: '#334155', fontSize: '0.95rem', lineHeight: '1.4' }}>
+                                                {lojaAddress.replace('Nosso endereço: ', '')} 
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -387,54 +398,96 @@ const CartPage: React.FC = () => {
                             {/* ENTREGA */}
                             <div style={{ 
                                 marginBottom: '10px', 
-                                border: deliveryType === 'entrega' ? '2px solid #28a745' : '1px solid #ccc',
-                                borderRadius: '8px',
-                                padding: '15px',
-                                backgroundColor: deliveryType === 'entrega' ? '#f2fdf5' : '#fff',
+                                border: deliveryType === 'entrega' ? '2px solid #28a745' : '1px solid #e2e8f0',
+                                borderRadius: '12px',
+                                padding: '16px 20px',
+                                backgroundColor: deliveryType === 'entrega' ? '#f0fdf4' : '#fff',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s ease-in-out'
+                                transition: 'all 0.2s ease-in-out',
+                                boxShadow: deliveryType === 'entrega' ? '0 4px 6px -1px rgba(40, 167, 69, 0.1)' : '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
                             }} onClick={() => setDeliveryType('entrega')}>
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <input
-                                        type="radio" id="entrega" name="delivery"
-                                        value="entrega"
-                                        checked={deliveryType === 'entrega'}
-                                        onChange={() => setDeliveryType('entrega')}
-                                        style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
-                                    />
-                                    <label htmlFor="entrega" style={{ marginLeft: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Truck size={20} color="#28a745"/> Entrega no Local
-                                    </label>
+                                    <div style={{ 
+                                        width: '24px', height: '24px', borderRadius: '50%', 
+                                        border: deliveryType === 'entrega' ? '6px solid #28a745' : '2px solid #cbd5e1',
+                                        backgroundColor: '#fff', marginRight: '15px', transition: 'all 0.2s',
+                                        flexShrink: 0
+                                    }}></div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
+                                        <Truck size={24} color={deliveryType === 'entrega' ? '#28a745' : '#64748b'} />
+                                        <div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: deliveryType === 'entrega' ? '#1e293b' : '#475569' }}>Entrega no Local</div>
+                                            <div style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '2px' }}>Receba o equipamento diretamente na sua obra</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* FORMULÁRIO DE ENTREGA */}
                             {deliveryType === 'entrega' && (
                                 <div style={{
-                                    marginTop: '15px', padding: '20px', backgroundColor: '#f8f9fa',
-                                    borderRadius: '8px', border: '1px solid #e9ecef'
+                                    marginTop: '15px', padding: '24px', backgroundColor: '#fff',
+                                    borderRadius: '12px', border: '1px solid #e2e8f0',
+                                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
                                 }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                    <h4 style={{ margin: '0 0 16px 0', color: '#1e293b', fontSize: '1rem' }}>Endereço de Entrega</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                         <div style={{ gridColumn: '1 / -1' }}>
+                                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 'bold', color: '#64748b' }}>CEP</label>
                                             <input
-                                                name="cep" value={address.cep} onChange={handleAddressChange} onBlur={handleCepBlur}
-                                                placeholder="CEP (Digite para buscar)" maxLength={9} required
-                                                style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+                                                name="cep" value={address.cep} onChange={handleAddressChange}
+                                                placeholder="00000-000" maxLength={9} required
+                                                style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                                                onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                                                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; handleCepBlur(); }}
                                             />
                                         </div>
 
-                                        <input name="rua" value={address.rua} onChange={handleAddressChange} placeholder="Rua / Avenida" required style={{ gridColumn: '1 / -1', padding: '10px' }} />
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 'bold', color: '#64748b' }}>Rua / Avenida</label>
+                                            <input name="rua" value={address.rua} onChange={handleAddressChange} placeholder="Ex: Av. Paulista" required 
+                                                style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }} 
+                                                onFocus={(e) => e.target.style.borderColor = '#2563eb'} onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                                            />
+                                        </div>
 
-                                        <input id="input-numero" name="numero" value={address.numero} onChange={handleAddressChange} placeholder="Número" required style={{ padding: '10px' }} />
-                                        <input name="bairro" value={address.bairro} onChange={handleAddressChange} placeholder="Bairro" required style={{ padding: '10px' }} />
-                                        <input name="cidade" value={address.cidade} onChange={handleAddressChange} placeholder="Cidade" required style={{ padding: '10px' }} />
-                                        <input name="estado" value={address.estado} onChange={handleAddressChange} placeholder="UF" maxLength={2} required style={{ padding: '10px' }} />
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 'bold', color: '#64748b' }}>Número</label>
+                                            <input id="input-numero" name="numero" value={address.numero} onChange={handleAddressChange} placeholder="123" required 
+                                                style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }} 
+                                                onFocus={(e) => e.target.style.borderColor = '#2563eb'} onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 'bold', color: '#64748b' }}>Bairro</label>
+                                            <input name="bairro" value={address.bairro} onChange={handleAddressChange} placeholder="Centro" required 
+                                                style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }} 
+                                                onFocus={(e) => e.target.style.borderColor = '#2563eb'} onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                                            />
+                                        </div>
 
-                                        <input
-                                            type="text" placeholder="Complemento (Ex: Apto 42, Bloco B)"
-                                            value={complemento} onChange={(e) => setComplemento(e.target.value)}
-                                            style={{ flex: 2, padding: '8px' }}
-                                        />
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 'bold', color: '#64748b' }}>Cidade</label>
+                                            <input name="cidade" value={address.cidade} onChange={handleAddressChange} placeholder="São Paulo" required 
+                                                style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }} 
+                                                onFocus={(e) => e.target.style.borderColor = '#2563eb'} onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 'bold', color: '#64748b' }}>UF</label>
+                                            <input name="estado" value={address.estado} onChange={handleAddressChange} placeholder="SP" maxLength={2} required 
+                                                style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }} 
+                                                onFocus={(e) => e.target.style.borderColor = '#2563eb'} onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                                            />
+                                        </div>
+
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 'bold', color: '#64748b' }}>Complemento (Opcional)</label>
+                                            <input type="text" placeholder="Ex: Apto 42, Bloco B" value={complemento} onChange={(e) => setComplemento(e.target.value)}
+                                                style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }} 
+                                                onFocus={(e) => e.target.style.borderColor = '#2563eb'} onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                                            />
+                                        </div>
                                     </div>
 
                                     <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
