@@ -180,16 +180,15 @@ const iniciarRoboDeLembretes = () => {
 
         await notificarUsuario(
           os.id_usuario,
-          "🚨 Hoje é o dia da devolução!",
+          "Hoje é o dia da devolução!",
           `Sua reserva #${os.id} encerra hoje. ${acaoDevHoje}`,
           `/my-reservations/${os.id}`,
         );
 
-        // 🎯 Tiro Certeiro
         const permissaoAlvoDevHoje = os.tipo_entrega === "entrega" ? "fazer_vistoria" : "gerenciar_reservas";
         await notificarPorPermissao(
           permissaoAlvoDevHoje,
-          "🚨 Recebimento Hoje",
+          "Recebimento Hoje",
           `A reserva #${os.id} vence hoje e deve ser ${verboDevolucaoHoje}. Fique atento.`,
           `/admin`,
         );

@@ -95,7 +95,7 @@ const prejuizoController = {
               } else {
                   // Não tem máquina pra repor!
                   await futuro.update({
-                      observacao: `🚨 ALERTA CRÍTICO: A máquina #${item.Unidade.id} sofreu perda total e NÃO HÁ SUBSTITUTAS. Cancele este item com o cliente!`
+                      observacao: `ALERTA CRÍTICO: A máquina #${item.Unidade.id} sofreu perda total e NÃO HÁ SUBSTITUTAS. Cancele este item com o cliente!`
                   }, { transaction });
               }
           }

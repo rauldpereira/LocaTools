@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import PrejuizoModal from '../components/Admin/PrejuizoModal'; 
 import { useToast } from '../context/ToastContext';
+import { AlertTriangle, Clock, FileText, CheckCircle, Plus, ShieldAlert, DollarSign, ArrowLeft, Info, Package } from 'lucide-react';
 
 interface TipoAvaria {
     id: number;
@@ -88,6 +89,7 @@ const FinalizePaymentPage: React.FC = () => {
 
     const [multaAtraso, setMultaAtraso] = useState(0);
     const [diasAtraso, setDiasAtraso] = useState(0);
+    const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, action: string, msg: string}>({isOpen: false, action: "", msg: ""});
 
     const backendUrl = import.meta.env.VITE_API_URL;
 
@@ -193,47 +195,62 @@ const FinalizePaymentPage: React.FC = () => {
     const valorFinal = valorRestante + calculatedFee + outrosFee + taxaRemarcacao + totalPrejuizos + multaAtraso;
 
     const handleManualConfirmation = async () => {
-        if (!order) return;
-        const totalExtras = calculatedFee + outrosFee + totalPrejuizos;
-
-        if (!window.confirm(`Confirmar recebimento de R$ ${valorFinal.toFixed(2)} e finalizar ordem?`)) return;
-
-        setLoading(true);
-        try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            const body = { 
-                damageFee: totalExtras,
-                lateFee: multaAtraso
-            };
-            await axios.put(`${backendUrl}/api/reservations/${orderId}/confirm-manual-payment`, body, config);
-            toast.error("Pagamento confirmado e ordem finalizada!");
-            navigate('/admin');
-        } catch (error) {
-            console.error("Erro ao confirmar:", error);
-            toast.error("Falha ao finalizar ordem.");
-        } finally {
-            setLoading(false);
-        }
+        setConfirmModal({
+            isOpen: true,
+            action: "payment",
+            msg: `Confirmar recebimento de R$ ${valorFinal.toFixed(2)} e finalizar ordem?`
+        });
     };
 
     const handleFinishWithDebt = async () => {
-        if (!window.confirm("ATENÇÃO: Você está encerrando SEM confirmar o pagamento total.\n\nO pedido ficará com status 'PREJUÍZO' e o valor ficará como pendência. Deseja continuar?")) return;
+        setConfirmModal({
+            isOpen: true,
+            action: "debt",
+            msg: "ATENÇÃO: Você está encerrando SEM confirmar o pagamento total.\n\nO pedido ficará com status 'PREJUÍZO' e o valor ficará como pendência. Deseja continuar?"
+        });
+    };
 
-        setLoading(true);
-        try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            const body = { 
-                damageFee: (calculatedFee + outrosFee),
-                lateFee: multaAtraso
-            };
-            await axios.put(`${backendUrl}/api/reservations/${orderId}/finish-with-debt`, body, config);
-            toast.error("Ordem encerrada com pendências financeiras.");
-            navigate('/admin');
-        } catch (error) {
-            console.error("Erro ao finalizar com dívida:", error);
-            toast.error("Falha ao encerrar ordem.");
-        } finally {
-            setLoading(false);
+    const executeAction = async () => {
+        const { action } = confirmModal;
+        setConfirmModal({ isOpen: false, action: "", msg: "" });
+
+        if (action === "payment") {
+            if (!order) return;
+            const totalExtras = calculatedFee + outrosFee + totalPrejuizos;
+
+            setLoading(true);
+            try {
+                const config = { headers: { Authorization: `Bearer ${token}` } };
+                const body = {
+                    damageFee: totalExtras,
+                    lateFee: multaAtraso
+                };
+                await axios.put(`${backendUrl}/api/reservations/${orderId}/confirm-manual-payment`, body, config);
+                toast.success("Pagamento confirmado e ordem finalizada!");
+                navigate('/admin');
+            } catch (error) {
+                console.error("Erro ao confirmar:", error);
+                toast.error("Falha ao finalizar ordem.");
+            } finally {
+                setLoading(false);
+            }
+        } else if (action === "debt") {
+            setLoading(true);
+            try {
+                const config = { headers: { Authorization: `Bearer ${token}` } };
+                const body = { 
+                    damageFee: (calculatedFee + outrosFee),
+                    lateFee: multaAtraso
+                };
+                await axios.put(`${backendUrl}/api/reservations/${orderId}/finish-with-debt`, body, config);
+                toast.error("Ordem encerrada com pendências financeiras.");
+                navigate('/admin');
+            } catch (error) {
+                console.error("Erro ao finalizar com dívida:", error);
+                toast.error("Falha ao encerrar ordem.");
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -242,69 +259,100 @@ const FinalizePaymentPage: React.FC = () => {
     const temAvariaOutrosGlobal = inspectionNotes.some(n => n.marcouOutros);
 
     return (
-        <div style={{ padding: '2rem', marginTop: '60px', maxWidth: '800px', margin: '0 auto' }}>
-            <h1>Finalizar Pedido #{orderId}</h1>
+        <div style={{ maxWidth: '850px', margin: '90px auto 50px auto', padding: '0 20px', animation: "fadeIn 0.3s ease", color: "#1e293b" }}>
+            
+            <div style={{ display: "flex", alignItems: "center", gap: "15px", marginBottom: "30px" }}>
+                <button onClick={() => navigate(-1)} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "50%", padding: "10px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
+                    <ArrowLeft size={24} />
+                </button>
+                <div style={{ backgroundColor: "#ecfdf5", padding: "15px", borderRadius: "14px" }}>
+                    <DollarSign size={32} color="#10b981" />
+                </div>
+                <div style={{ flex: 1 }}>
+                    <h1 style={{ margin: 0, color: "#1e293b", fontSize: "1.8rem", fontWeight: 800 }}>
+                        Fechamento Financeiro
+                    </h1>
+                    <p style={{ margin: "5px 0 0 0", color: "#64748b", fontWeight: "600", fontSize: "1rem" }}>
+                        Pedido #{orderId}
+                    </p>
+                </div>
+            </div>
             
             {order.status === 'PREJUIZO' && (
-                <div style={{backgroundColor: '#ffe6e6', padding: '15px', border: '1px solid red', borderRadius: '5px', marginBottom: '2rem'}}>
-                    <h3 style={{color: 'red', margin: '0 0 10px 0'}}>⚠️ Atenção: Este pedido possui Ocorrência/Prejuízo registrado</h3>
-                    <p style={{margin: 0}}>O valor dos itens perdidos foi adicionado ao total abaixo.</p>
+                <div style={{ display: "flex", gap: "15px", alignItems: "center", backgroundColor: '#fef2f2', padding: '15px 20px', border: '1px solid #fca5a5', borderRadius: '12px', marginBottom: '25px', boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)" }}>
+                    <ShieldAlert size={32} color="#ef4444" style={{ flexShrink: 0 }} />
+                    <div>
+                        <h3 style={{ color: '#b91c1c', margin: '0 0 5px 0', fontSize: "1.1rem" }}>Atenção: Este pedido possui Ocorrência/Prejuízo registrado</h3>
+                        <p style={{ margin: 0, color: "#991b1b", fontSize: "0.95rem" }}>O valor dos itens perdidos/avariados foi adicionado ao total abaixo.</p>
+                    </div>
                 </div>
             )}
 
             {diasAtraso > 0 && (
-                <div style={{marginBottom: '2rem', padding: '1rem', backgroundColor: '#fff3cd', border: '1px solid #ffeeba', borderRadius: '8px', color: '#856404'}}>
-                    <h3 style={{marginTop: 0, display:'flex', alignItems:'center'}}>⚠️ Atraso na Devolução Detectado</h3>
-                    <p>Este pedido deveria ter sido devolvido em <strong>{parseDateStringAsLocal(order.data_fim).toLocaleDateString()}</strong>.</p>
-                    <p>Atraso calculado: <strong>{diasAtraso} dias</strong>.</p>
-                    <p style={{fontSize: '1.1rem'}}>Multa sugerida (Art. 575 CC): <strong>R$ {multaAtraso.toFixed(2)}</strong></p>
-                    
-                    <div style={{marginTop: '10px', fontSize: '0.9rem', fontStyle: 'italic'}}>
-                        * Este valor já foi adicionado automaticamente ao total abaixo.
+                <div style={{ display: "flex", gap: "15px", alignItems: "flex-start", marginBottom: '25px', padding: '20px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '12px', color: '#b45309', boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)" }}>
+                    <Clock size={32} color="#d97706" style={{ flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                        <h3 style={{ marginTop: 0, marginBottom: "10px", fontSize: "1.1rem", color: "#d97706" }}>Atraso na Devolução Detectado</h3>
+                        <p style={{ margin: "0 0 5px 0" }}>Este pedido deveria ter sido devolvido em <strong>{parseDateStringAsLocal(order.data_fim).toLocaleDateString()}</strong>.</p>
+                        <p style={{ margin: "0 0 10px 0" }}>Atraso calculado: <strong>{diasAtraso} dias</strong>.</p>
+                        <p style={{ fontSize: '1.1rem', margin: 0 }}>Multa sugerida (Art. 575 CC): <strong>R$ {multaAtraso.toFixed(2)}</strong></p>
+                        <div style={{ marginTop: '10px', fontSize: '0.85rem', fontStyle: 'italic', opacity: 0.8 }}>
+                            * Este valor já foi adicionado automaticamente ao resumo final.
+                        </div>
                     </div>
                 </div>
             )}
 
-            <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginBottom: '2rem' }}>
-                <h3>Itens do Pedido</h3>
-                {order.ItemReservas.map(item => (
-                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #eee' }}>
-                        <div>
-                            <strong>{item.Unidade.Equipamento.nome}</strong> <span style={{color: '#666', fontSize: '0.9rem'}}>(ID: {item.Unidade.id})</span>
-                            {item.prejuizo && (
-                                <div style={{color: '#dc3545', fontSize: '0.9rem', marginTop: '5px'}}>
-                                    <strong>🚨 {item.prejuizo.tipo}:</strong> R$ {Number(item.prejuizo.valor_prejuizo).toFixed(2)}
-                                </div>
+            <div style={{ border: '1px solid #cbd5e1', padding: '25px', borderRadius: '16px', marginBottom: '30px', backgroundColor: "#fff", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ margin: "0 0 20px 0", color: "#1e293b", display: "flex", alignItems: "center", gap: "8px", fontSize: "1.3rem" }}>
+                    <Package size={22} color="#64748b" /> Itens do Pedido
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+                    {order.ItemReservas.map(item => (
+                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', border: '1px solid #e2e8f0', borderRadius: "12px", backgroundColor: "#f8fafc" }}>
+                            <div>
+                                <strong style={{ color: "#334155", fontSize: "1.05rem" }}>{item.Unidade.Equipamento.nome}</strong> 
+                                <span style={{ color: '#94a3b8', fontSize: '0.9rem', marginLeft: "8px", fontWeight: "bold" }}>(ID: {item.Unidade.id})</span>
+                                {item.prejuizo && (
+                                    <div style={{ color: '#ef4444', fontSize: '0.9rem', marginTop: '5px', display: "flex", alignItems: "center", gap: "5px", fontWeight: "600" }}>
+                                        <AlertTriangle size={14} />
+                                        <span>{item.prejuizo.tipo}: R$ {Number(item.prejuizo.valor_prejuizo).toFixed(2)}</span>
+                                    </div>
+                                )}
+                            </div>
+                            {item.status === 'FINALIZADO_COM_PREJUIZO' ? (
+                                <span style={{ color: '#ef4444', fontWeight: 'bold', border: '1px solid #fecaca', backgroundColor: "#fef2f2", padding: '6px 10px', borderRadius: '8px', fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "5px" }}>
+                                    <ShieldAlert size={14} /> OCORRÊNCIA REGISTRADA
+                                </span>
+                            ) : (
+                                <button onClick={() => setSelectedItemForPrejuizo(item)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: "bold", display: "flex", alignItems: "center", gap: "6px", transition: "0.2s" }} onMouseOver={e => e.currentTarget.style.backgroundColor = "#dc2626"} onMouseOut={e => e.currentTarget.style.backgroundColor = "#ef4444"}>
+                                    <ShieldAlert size={16} /> Registrar Ocorrência
+                                </button>
                             )}
                         </div>
-                        {item.status === 'FINALIZADO_COM_PREJUIZO' ? (
-                            <span style={{color: 'red', fontWeight: 'bold', border: '1px solid red', padding: '2px 5px', borderRadius: '4px'}}>OCORRÊNCIA REGISTRADA</span>
-                        ) : (
-                            <button onClick={() => setSelectedItemForPrejuizo(item)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer' }}>
-                                🚨 Registrar Prejuízo
-                            </button>
-                        )}
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
 
             {/* RELATÓRIO DA VISTORIA */}
-            <div className="damage-assessment" style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', backgroundColor: temAvariaOutrosGlobal ? '#fff5f5' : 'white' }}>
-                <h3 style={{ color: temAvariaOutrosGlobal ? '#c62828' : '#333' }}>Relatório da Vistoria de Devolução</h3>
+            <div style={{ border: '1px solid #cbd5e1', padding: '25px', borderRadius: '16px', marginBottom: '30px', backgroundColor: temAvariaOutrosGlobal ? '#fff5f5' : '#fff', boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)" }}>
+                <h3 style={{ margin: "0 0 20px 0", color: temAvariaOutrosGlobal ? '#b91c1c' : '#1e293b', display: "flex", alignItems: "center", gap: "8px", fontSize: "1.3rem" }}>
+                    <FileText size={22} color={temAvariaOutrosGlobal ? '#b91c1c' : '#64748b'} /> Relatório da Vistoria de Devolução
+                </h3>
                 
                 {inspectionNotes.length > 0 ? (
                     <div>
                         {inspectionNotes.map((note, idx) => (
-                            <div key={idx} style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#fdfdfd', border: '1px solid #ccc', borderRadius: '8px' }}>
-                                <h4 style={{ margin: '0 0 10px 0', color: '#0056b3' }}>{note.nomeEquipamento} <span style={{color:'#666', fontSize:'0.9rem'}}>(ID: {note.idUnidade})</span></h4>
+                            <div key={idx} style={{ marginBottom: '20px', padding: '20px', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px' }}>
+                                <h4 style={{ margin: '0 0 15px 0', color: '#334155', fontSize: "1.1rem" }}>{note.nomeEquipamento} <span style={{color:'#94a3b8', fontSize:'0.9rem'}}>(ID: {note.idUnidade})</span></h4>
                                 
                                 {/* AVARIAS NOVAS (SÃO COBRADAS) */}
                                 {note.novasAvarias.length > 0 && (
-                                    <div style={{ marginBottom: '10px' }}>
-                                        <strong style={{ color: '#dc3545' }}>🚨 Avarias Novas (A Cobrar):</strong>
-                                        <ul style={{ margin: '5px 0', paddingLeft: '20px', color: '#dc3545', fontWeight: 'bold' }}>
+                                    <div style={{ marginBottom: '15px' }}>
+                                        <strong style={{ color: '#ef4444', display: "flex", alignItems: "center", gap: "5px" }}><Plus size={16}/> Avarias Novas (A Cobrar):</strong>
+                                        <ul style={{ margin: '8px 0', paddingLeft: '25px', color: '#ef4444', fontWeight: 'bold' }}>
                                             {note.novasAvarias.map((a, i) => (
-                                                <li key={i}>{a.descricao} - R$ {Number(a.preco).toFixed(2)}</li>
+                                                <li key={i} style={{ marginBottom: "5px" }}>{a.descricao} - R$ {Number(a.preco).toFixed(2)}</li>
                                             ))}
                                         </ul>
                                     </div>
@@ -312,38 +360,38 @@ const FinalizePaymentPage: React.FC = () => {
 
                                 {/* AVARIAS VELHAS (NÃO SÃO COBRADAS) */}
                                 {note.avariasAntigas.length > 0 && (
-                                    <div style={{ marginBottom: '10px' }}>
-                                        <strong style={{ color: '#6c757d' }}>✅ Avarias Pré-existentes (Já estavam na Saída):</strong>
-                                        <ul style={{ margin: '5px 0', paddingLeft: '20px', color: '#6c757d', fontStyle: 'italic' }}>
+                                    <div style={{ marginBottom: '15px' }}>
+                                        <strong style={{ color: '#64748b', display: "flex", alignItems: "center", gap: "5px" }}><CheckCircle size={16}/> Avarias Pré-existentes (Já estavam na Saída):</strong>
+                                        <ul style={{ margin: '8px 0', paddingLeft: '25px', color: '#64748b', fontStyle: 'italic' }}>
                                             {note.avariasAntigas.map((a, i) => (
-                                                <li key={i}>{a.descricao} - Não cobrar (R$ 0,00)</li>
+                                                <li key={i} style={{ marginBottom: "5px" }}>{a.descricao} - Não cobrar (R$ 0,00)</li>
                                             ))}
                                         </ul>
                                     </div>
                                 )}
 
                                 {note.marcouOutros && (
-                                    <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px', fontWeight: 'bold' }}>
-                                        ⚠️ A opção "Outros" foi MARCADA. Leia o comentário abaixo e adicione o valor no campo de Taxa Extra.
+                                    <div style={{ marginBottom: '15px', padding: '12px 15px', backgroundColor: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', borderRadius: '8px', fontWeight: 'bold', display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <AlertTriangle size={18} /> A opção "Outros" foi MARCADA. Leia o comentário abaixo e adicione o valor no campo de Taxa Extra.
                                     </div>
                                 )}
 
-                                <div style={{ padding: '10px', backgroundColor: '#f8f9fa', borderLeft: '4px solid #6c757d', fontSize: '0.95rem', color: '#333' }}>
-                                    <strong>💬 Observações do Vistoriador:</strong><br/>
-                                    <span style={{ fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>{note.comentarios || "Nenhum comentário deixado."}</span>
+                                <div style={{ padding: '15px', backgroundColor: '#fff', borderLeft: '4px solid #94a3b8', borderRadius: "0 8px 8px 0", fontSize: '0.95rem', color: '#334155', borderTop: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" }}>
+                                    <strong style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "8px" }}><Info size={16}/> Observações do Vistoriador:</strong>
+                                    <span style={{ fontStyle: 'italic', whiteSpace: 'pre-wrap', color: "#475569" }}>{note.comentarios || "Nenhum comentário deixado."}</span>
                                 </div>
                             </div>
                         ))}
                         
-                        <p style={{fontWeight: 'bold', textAlign: 'right', fontSize: '1.1rem'}}>Subtotal Avarias Tabeladas: R$ {calculatedFee.toFixed(2)}</p>
+                        <p style={{fontWeight: 'bold', textAlign: 'right', fontSize: '1.1rem', color: "#1e293b", marginTop: "20px"}}>Subtotal Avarias Tabeladas: R$ {calculatedFee.toFixed(2)}</p>
                     </div>
-                ) : <p style={{color: '#666'}}>Nenhuma observação ou avaria registrada na devolução.</p>}
+                ) : <p style={{color: '#64748b', fontStyle: "italic"}}>Nenhuma observação ou avaria registrada na devolução.</p>}
 
-                <hr style={{ margin: '1rem 0', borderColor: '#eee' }} />
+                <hr style={{ margin: '20px 0', borderColor: '#e2e8f0' }} />
                 
-                <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px dashed #ccc' }}>
-                    <label style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 'bold', color: '#0056b3'}}>
-                        Adicionar Valor Manual (Outros / Taxa Extra):
+                <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                    <label style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 'bold', color: '#3b82f6', flexWrap: "wrap", gap: "10px"}}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><Plus size={18} /> Adicionar Valor Manual (Outros / Taxa Extra):</span>
                         <div style={{display: 'flex', alignItems: 'center'}}>
                             R$ 
                             <input
@@ -351,86 +399,92 @@ const FinalizePaymentPage: React.FC = () => {
                                 value={outrosFee}
                                 onChange={(e) => setOutrosFee(Number(e.target.value))}
                                 min="0"
-                                style={{marginLeft: '10px', padding: '8px', width: '120px', textAlign: 'right', fontSize: '1.1rem', fontWeight: 'bold', border: '2px solid #007bff', borderRadius: '6px'}}
+                                style={{marginLeft: '10px', padding: '10px 15px', width: '130px', textAlign: 'right', fontSize: '1.1rem', fontWeight: 'bold', border: '2px solid #3b82f6', borderRadius: '8px', outline: "none", color: "#1e293b"}}
                             />
                         </div>
                     </label>
-                    <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '8px', marginBottom: 0 }}>
+                    <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '10px', marginBottom: 0, fontStyle: "italic" }}>
                         * Use este campo se o vistoriador marcou "Outros" ou se houver alguma negociação extra.
                     </p>
                 </div>
             </div>
 
-            <div className="summary" style={{ border: '2px solid #333', padding: '1.5rem', borderRadius: '8px', backgroundColor: '#fdfdfd' }}>
-                <h2 style={{marginTop: 0, borderBottom: '2px solid #333', color: "#000", paddingBottom: '10px'}}>Resumo Final</h2>
-                <div style={{fontSize: '1.1rem', lineHeight: '1.8'}}>
-                    <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                        <span style={{color: "#000"}}>Valor Restante do Aluguel:</span>
-                        <span style={{color: "#000"}}>R$ {valorRestante.toFixed(2)}</span>
+            <div style={{ border: '1px solid #cbd5e1', padding: '25px', borderRadius: '16px', backgroundColor: '#fff', boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)" }}>
+                <h2 style={{ marginTop: 0, borderBottom: '2px solid #e2e8f0', color: "#1e293b", paddingBottom: '15px', fontSize: "1.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    Resumo Final
+                </h2>
+                <div style={{ fontSize: '1.1rem', lineHeight: '2' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: "#475569", fontWeight: "600" }}>
+                        <span>Valor Restante do Aluguel:</span>
+                        <span>R$ {valorRestante.toFixed(2)}</span>
                     </div>
                     {taxaRemarcacao > 0 && (
-                        <div style={{display: 'flex', justifyContent: 'space-between', color: '#e67e22'}}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d97706', fontWeight: "600" }}>
                             <span>Taxa de Remarcação:</span>
                             <span>+ R$ {taxaRemarcacao.toFixed(2)}</span>
                         </div>
                     )}
                     {(calculatedFee + outrosFee) > 0 && (
-                        <div style={{display: 'flex', justifyContent: 'space-between', color: '#dc3545'}}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', fontWeight: "600" }}>
                             <span>Avarias e Extras:</span>
                             <span>+ R$ {(calculatedFee + outrosFee).toFixed(2)}</span>
                         </div>
                     )}
                     {totalPrejuizos > 0 && (
-                        <div style={{display: 'flex', justifyContent: 'space-between', color: '#b00020', fontWeight: 'bold'}}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c', fontWeight: 'bold' }}>
                             <span>Roubos / Extravios / Ocorrências:</span>
                             <span>+ R$ {totalPrejuizos.toFixed(2)}</span>
                         </div>
                     )}
                     {multaAtraso > 0 && (
-                        <div style={{display: 'flex', justifyContent: 'space-between', color: '#d35400', fontWeight: 'bold', backgroundColor:'#fff3cd', padding:'0 5px'}}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ea580c', fontWeight: 'bold', backgroundColor: '#fef3c7', padding: '5px 10px', borderRadius: "8px", marginTop: "5px" }}>
                             <span>Multa por Atraso ({diasAtraso} dias):</span>
                             <span>+ R$ {multaAtraso.toFixed(2)}</span>
                         </div>
                     )}
 
-                    <hr style={{margin: '10px 0'}} />
-                    <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745'}}>
+                    <hr style={{ margin: '20px 0', borderColor: "#e2e8f0" }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.1rem', fontWeight: '900', color: '#10b981' }}>
                         <span>TOTAL A RECEBER:</span>
-                        <span>R$ {valorFinal.toFixed(2)}</span>
+                        <span style={{ fontSize: '1.3rem' }}>R$ {valorFinal.toFixed(2)}</span>
                     </div>
                 </div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '30px' }}>
                 <button 
                     onClick={handleFinishWithDebt} 
                     disabled={loading}
                     style={{ 
-                        padding: '1rem', fontSize: '1rem', fontWeight: 'bold',
-                        backgroundColor: 'white', color: '#e67e22', 
-                        border: '2px solid #e67e22', borderRadius: '8px', cursor: 'pointer',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                        padding: '20px', fontSize: '1.1rem', fontWeight: 'bold',
+                        backgroundColor: 'white', color: '#ea580c', 
+                        border: '2px solid #ea580c', borderRadius: '14px', cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: "8px", transition: "0.2s"
                     }}
+                    onMouseOver={e => e.currentTarget.style.backgroundColor = "#fff7ed"}
+                    onMouseOut={e => e.currentTarget.style.backgroundColor = "white"}
                 >
-                    <span style={{fontSize: '1.5rem', marginBottom: '5px'}}>⚠️</span>
+                    <AlertTriangle size={32} />
                     Encerrar com Pendência
-                    <span style={{fontSize: '0.8rem', fontWeight: 'normal'}}>(Gerar Dívida / Não Pago)</span>
+                    <span style={{fontSize: '0.85rem', fontWeight: '600', color: "#f97316"}}>(Gerar Dívida / Não Pago)</span>
                 </button>
 
                 <button 
                     onClick={handleManualConfirmation} 
                     disabled={loading}
                     style={{ 
-                        padding: '1rem', fontSize: '1rem', fontWeight: 'bold',
-                        backgroundColor: '#28a745', color: 'white', 
-                        border: 'none', borderRadius: '8px', cursor: 'pointer',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        padding: '20px', fontSize: '1.1rem', fontWeight: 'bold',
+                        backgroundColor: '#10b981', color: 'white', 
+                        border: 'none', borderRadius: '14px', cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: "8px",
+                        boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.4)', transition: "0.2s"
                     }}
+                    onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                    onMouseOut={e => e.currentTarget.style.transform = "translateY(0)"}
                 >
-                    <span style={{fontSize: '1.5rem', marginBottom: '5px'}}>✅</span>
+                    <CheckCircle size={32} />
                     Confirmar Recebimento Total
-                    <span style={{fontSize: '0.8rem', fontWeight: 'normal'}}>(R$ {valorFinal.toFixed(2)})</span>
+                    <span style={{fontSize: '0.85rem', fontWeight: '600', opacity: 0.9}}>(R$ {valorFinal.toFixed(2)})</span>
                 </button>
             </div>
 
@@ -440,6 +494,28 @@ const FinalizePaymentPage: React.FC = () => {
                     onClose={() => setSelectedItemForPrejuizo(null)}
                     onSuccess={() => { setSelectedItemForPrejuizo(null); fetchOrderDetails(); }}
                 />
+            )}
+
+            {confirmModal.isOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, animation: 'fadeIn 0.2s ease' }} onClick={() => setConfirmModal({isOpen: false, action: "", msg: ""})}>
+                    <div style={{ backgroundColor: '#fff', borderRadius: '16px', width: '90%', maxWidth: '400px', padding: '25px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
+                            <AlertTriangle size={24} color={confirmModal.action === "debt" ? "#e67e22" : "#28a745"} />
+                            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Confirmação</h3>
+                        </div>
+                        <p style={{ margin: 0, color: '#475569', fontSize: '1rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                            {confirmModal.msg}
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                            <button onClick={() => setConfirmModal({isOpen: false, action: "", msg: ""})} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', color: '#64748b', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fff'}>
+                                Cancelar
+                            </button>
+                            <button onClick={executeAction} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', backgroundColor: confirmModal.action === "debt" ? '#e67e22' : '#28a745', color: '#fff', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

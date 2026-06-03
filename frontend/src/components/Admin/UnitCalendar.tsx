@@ -3,7 +3,7 @@ import Calendar from 'react-calendar';
 import axios from 'axios';
 import 'react-calendar/dist/Calendar.css';
 import '../../styles/CalendarCommon.css';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 interface Reservation {
@@ -32,6 +32,7 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
     const [pendingSelection, setPendingSelection] = useState<{ start: Date, end: Date } | null>(null);
     const [maintenanceReason, setMaintenanceReason] = useState('');
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, action: string, msg: string, payload?: any}>({isOpen: false, action: "", msg: "", payload: null});
     
     const [pickerSelection, setPickerSelection] = useState<[Date, Date] | null>(null);
 
@@ -111,15 +112,12 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
 
         if (existingBlock) {
             if (existingBlock.status === 'manutencao') {
-                if (window.confirm('Desbloquear esta data de manutenção?')) {
-                    try {
-                        await axios.delete(`${import.meta.env.VITE_API_URL}/api/units/maintenance/${existingBlock.id}`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
-                        setSuccessMessage('🔓 Desbloqueado!');
-                        onUpdate();
-                    } catch (error) { toast.error('Erro ao desbloquear.'); }
-                }
+                setConfirmModal({
+                    isOpen: true,
+                    action: "unblock",
+                    msg: "Desbloquear esta data de manutenção?",
+                    payload: existingBlock.id
+                });
             } else {
                 toast.error('Esta data está alugada para um cliente (Reserva #' + existingBlock.id + '). Não pode alterar por aqui.');
             }
@@ -154,15 +152,32 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
             onUpdate();
         } catch (error: any) {
             if (error.response?.status === 409 && error.response?.data?.requiresConfirmation) {
-                if (window.confirm(error.response.data.message)) {
-                    confirmMaintenanceBlock(true);
-                } else {
-                    setPendingSelection(null);
-                }
+                setConfirmModal({
+                    isOpen: true,
+                    action: "force_block",
+                    msg: error.response.data.message
+                });
             } else {
                 toast.error(error.response?.data?.error || 'Erro ao bloquear datas.');
                 setPendingSelection(null);
             }
+        }
+    };
+
+    const executeConfirmAction = async () => {
+        const { action, payload } = confirmModal;
+        setConfirmModal({ isOpen: false, action: "", msg: "", payload: null });
+
+        if (action === "unblock" && token) {
+            try {
+                await axios.delete(`${import.meta.env.VITE_API_URL}/api/units/maintenance/${payload}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSuccessMessage('🔓 Desbloqueado!');
+                onUpdate();
+            } catch (error) { toast.error('Erro ao desbloquear.'); }
+        } else if (action === "force_block") {
+            confirmMaintenanceBlock(true);
         }
     };
 
@@ -251,10 +266,37 @@ const UnitCalendar: React.FC<UnitCalendarProps> = ({ unitId, reservations, token
                     </div>
                 </div>
             )}
+
+            {confirmModal.isOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, animation: 'fadeIn 0.2s ease' }} onClick={() => setConfirmModal({isOpen: false, action: "", msg: "", payload: null})}>
+                    <div style={{ backgroundColor: '#fff', borderRadius: '16px', width: '90%', maxWidth: '400px', padding: '25px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
+                            <AlertTriangle size={24} color="#f59e0b" />
+                            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Confirmação</h3>
+                        </div>
+                        <p style={{ margin: 0, color: '#475569', fontSize: '1rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                            {confirmModal.msg}
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                            <button onClick={() => setConfirmModal({isOpen: false, action: "", msg: "", payload: null})} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', color: '#64748b', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                Cancelar
+                            </button>
+                            <button onClick={executeConfirmAction} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#2563eb', color: '#fff', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 @keyframes slideDown {
                     from { opacity: 0; transform: translateY(-20px); }
                     to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
                 }
             `}</style>
         </div>

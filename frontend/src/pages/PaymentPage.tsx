@@ -376,7 +376,7 @@ const PaymentPage: React.FC = () => {
                 `}</style>
                 <div className="order-summary" style={{ border: '1px solid #eee', padding: '25px', borderRadius: '12px', marginBottom: '25px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#000' }}>
                     <h4 style={{marginTop: 0, color: isDivida ? '#c62828' : '#000', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        {isDivida ? '🚨 Acerto de Pendências' : `Resumo do Pedido (${idList.length} ${textoLogistica})`}
+                        {isDivida ? 'Acerto de Pendências' : `Resumo do Pedido (${idList.length} ${textoLogistica})`}
                     </h4>
 
                     {isDivida ? (

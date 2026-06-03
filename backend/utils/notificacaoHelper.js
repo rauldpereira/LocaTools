@@ -14,7 +14,7 @@ const notificacaoHelper = {
       }
 
     } catch (error) {
-      console.error('🚨 Erro ao notificar usuário:', error);
+      console.error('Erro ao notificar usuário:', error);
     }
   },
 
@@ -56,7 +56,7 @@ const notificacaoHelper = {
       
       await Promise.all(promessas);
     } catch (error) {
-      console.error('🚨 Erro ao notificar operação:', error);
+      console.error('Erro ao notificar operação:', error);
     }
   },
 
@@ -96,7 +96,7 @@ const notificacaoHelper = {
       
       await Promise.all(promessas);
     } catch (error) {
-      console.error(`🚨 Erro ao notificar a permissão [${permissaoNecessaria}]:`, error);
+      console.error(`Erro ao notificar a permissão [${permissaoNecessaria}]:`, error);
     }
   }
 };

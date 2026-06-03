@@ -4,6 +4,7 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { ClipboardCheck, Camera, AlertTriangle, CheckCircle, Package, ArrowLeft, ShieldAlert, FileText, UploadCloud, MessageSquare, AlertCircle, HelpCircle, X } from "lucide-react";
 import { useToast } from '../context/ToastContext';
+import CustomDropdown from "../components/CustomDropdown";
 
 interface TipoAvaria {
   id: number;
@@ -12,6 +13,7 @@ interface TipoAvaria {
 }
 
 interface Equipamento {
+  id: number;
   nome: string;
   TipoAvarias: TipoAvaria[];
 }
@@ -233,6 +235,44 @@ const VistoriaPage: React.FC = () => {
 
         let isSubmitValid = true;
 
+        for (const item of itensVistoria) {
+          const unitDetails = vistoriaDetails[item.Unidade.id];
+          if (unitDetails?.checkedAvarias?.[-1]) {
+            if (!unitDetails.comentarios) {
+              isSubmitValid = false;
+              toast.error(
+                `Erro na Unidade #${item.Unidade.id}: Você marcou "Outros" mas não preencheu os comentários.`,
+              );
+              continue;
+            }
+            try {
+              const { data: newAvaria } = await axios.post(
+                `${import.meta.env.VITE_API_URL}/api/tipos-avaria`,
+                {
+                  id_equipamento: item.Unidade.Equipamento.id,
+                  descricao: "Outros",
+                  preco: 0,
+                },
+                config,
+              );
+              delete unitDetails.checkedAvarias[-1];
+              unitDetails.checkedAvarias[newAvaria.id] = true;
+              item.Unidade.Equipamento.TipoAvarias.push(newAvaria);
+            } catch (e) {
+              console.error("Failed to create Outros avaria", e);
+              isSubmitValid = false;
+              toast.error(
+                `Erro ao registrar avaria 'Outros' para a unidade #${item.Unidade.id}.`,
+              );
+            }
+          }
+        }
+
+        if (!isSubmitValid) {
+          setLoading(false);
+          return;
+        }
+
         const detalhesPayload = itensVistoria.map((item) => {
           const unitDetails = vistoriaDetails[item.Unidade.id];
           const avariasEncontradas = Object.keys(
@@ -365,7 +405,8 @@ const VistoriaPage: React.FC = () => {
 
         const avariaOutros = equipamento.TipoAvarias.find(
           (a) => a.descricao.toLowerCase() === "outros",
-        );
+        ) || { id: -1, descricao: "Outros", preco: "0" };
+        
         const avariasNormais = equipamento.TipoAvarias.filter(
           (a) => a.descricao.toLowerCase() !== "outros",
         );
@@ -478,14 +519,14 @@ const VistoriaPage: React.FC = () => {
                   <label style={{ display: "block", fontWeight: "800", color: "#475569", marginBottom: "8px", fontSize: "0.9rem", textTransform: "uppercase" }}>
                     Condição Geral do Equipamento
                   </label>
-                  <select
+                  <CustomDropdown
                     value={details?.condicao || "ok"}
-                    onChange={(e) => handleDetailChange(unitId, "condicao", e.target.value)}
-                    style={{ width: "100%", padding: "12px 15px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "1rem", outline: "none", color: "#1e293b", backgroundColor: "#fff" }}
-                  >
-                    <option value="ok">OK / Bom Estado</option>
-                    <option value="danificado">Danificado / Avariado</option>
-                  </select>
+                    onChange={(val) => handleDetailChange(unitId, "condicao", val as string)}
+                    options={[
+                      { value: "ok", label: "OK / Bom Estado" },
+                      { value: "danificado", label: "Danificado / Avariado" }
+                    ]}
+                  />
                 </div>
 
                 <div style={{ marginBottom: "25px" }}>
@@ -556,15 +597,15 @@ const VistoriaPage: React.FC = () => {
                   <label style={{ display: "block", fontWeight: "800", color: "#475569", marginBottom: "8px", fontSize: "0.85rem", textTransform: "uppercase" }}>
                     Motivo da Ocorrência
                   </label>
-                  <select
+                  <CustomDropdown
                     value={details?.tipoPrejuizo || "EXTRAVIO"}
-                    onChange={(e) => handleDetailChange(unitId, "tipoPrejuizo", e.target.value)}
-                    style={{ width: "100%", padding: "12px 15px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "1rem", outline: "none", color: "#1e293b", backgroundColor: "#fff" }}
-                  >
-                    <option value="EXTRAVIO">Não Devolvido / Roubo (Baixa de Estoque)</option>
-                    <option value="AVARIA">Avaria Total / Perda Total (Baixa de Estoque)</option>
-                    <option value="CALOTE">Inadimplência (Devolveu, mas não pagou)</option>
-                  </select>
+                    onChange={(val) => handleDetailChange(unitId, "tipoPrejuizo", val as string)}
+                    options={[
+                      { value: "EXTRAVIO", label: "Não Devolvido / Roubo (Baixa de Estoque)" },
+                      { value: "AVARIA", label: "Avaria Total / Perda Total (Baixa de Estoque)" },
+                      { value: "CALOTE", label: "Inadimplência (Devolveu, mas não pagou)" }
+                    ]}
+                  />
                 </div>
 
                 <div>

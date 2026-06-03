@@ -241,6 +241,7 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
   const [units, setUnits] = useState<Unit[]>([]);
   const [equipment, setEquipment] = useState<EquipamentoComAvarias | null>(null);
   const [loading, setLoading] = useState(true);
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, actionId: number | null, msg: string}>({isOpen: false, actionId: null, msg: ""});
 
   const fetchModalData = async () => {
     if (!isOpen) return;
@@ -265,10 +266,21 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
   }, [equipmentId, isOpen, token]);
 
   const handleDeleteUnit = async (unitId: number) => {
-    if (!window.confirm(`Deseja realmente excluir permanentemente a unidade #${unitId}?`)) return;
+    setConfirmModal({
+      isOpen: true,
+      actionId: unitId,
+      msg: `Deseja realmente excluir permanentemente a unidade #${unitId}?`
+    });
+  };
+
+  const confirmDeleteUnit = async () => {
+    const { actionId } = confirmModal;
+    setConfirmModal({ isOpen: false, actionId: null, msg: "" });
+    if (!actionId) return;
+
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/units/${unitId}`, config);
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/units/${actionId}`, config);
       fetchModalData();
     } catch (error) {
       console.error('Erro ao excluir unidade:', error);
@@ -327,6 +339,28 @@ const UnitsModal: React.FC<UnitsModalProps> = ({ equipmentId, isOpen, onClose })
             )}
         </div>
       </div>
+
+      {confirmModal.isOpen && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3100, animation: 'fadeIn 0.2s ease' }} onClick={() => setConfirmModal({isOpen: false, actionId: null, msg: ""})}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '16px', width: '80%', maxWidth: '350px', padding: '25px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
+              <AlertTriangle size={24} color="#ef4444" />
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Confirmação</h3>
+            </div>
+            <p style={{ margin: 0, color: '#475569', fontSize: '1rem', lineHeight: '1.5' }}>
+              {confirmModal.msg}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+              <button onClick={() => setConfirmModal({isOpen: false, actionId: null, msg: ""})} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', color: '#64748b', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+                Cancelar
+              </button>
+              <button onClick={confirmDeleteUnit} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#ef4444', color: '#fff', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

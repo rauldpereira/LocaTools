@@ -136,7 +136,6 @@ const ReservationDetailsPage: React.FC = () => {
   const [showConfirmReturnModal, setShowConfirmReturnModal] = useState(false);
   const [isRequestingReturn, setIsRequestingReturn] = useState(false);
   const [showManual, setShowManual] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
 
   const fetchOrderDetails = async () => {
     if (!token || !orderId) return;
@@ -489,8 +488,7 @@ const ReservationDetailsPage: React.FC = () => {
         config,
       );
 
-      setSuccessMessage("Pagamento da pendência registrado com sucesso!");
-      setTimeout(() => setSuccessMessage(""), 4000);
+      toast.success("Pagamento da pendência registrado com sucesso!");
       setShowRecoverModal(false);
       fetchOrderDetails();
     } catch (error) {
@@ -545,25 +543,6 @@ const ReservationDetailsPage: React.FC = () => {
         animation: "fadeIn 0.3s ease"
       }}
     >
-      {successMessage && (
-        <div style={{
-          backgroundColor: "#ecfdf5",
-          color: "#047857",
-          padding: "15px",
-          borderRadius: "8px",
-          marginBottom: "20px",
-          border: "1px solid #a7f3d0",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          fontWeight: "bold",
-          animation: "slideDown 0.3s ease"
-        }}>
-          <CheckCircle size={20} />
-          {successMessage}
-        </div>
-      )}
-
       <div
         style={{
           display: "flex",

@@ -49,6 +49,8 @@ interface EditModalProps {
 const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onClose, onSuccess }) => {
   const toast = useToast();
     const { token } = useAuth();
+    
+    const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, actionId: number | null, msg: string}>({isOpen: false, actionId: null, msg: ""});
     const [activeTab, setActiveTab] = useState<'dados' | 'avarias'>('dados');
     const [categories, setCategories] = useState<Category[]>([]);
     const [formData, setFormData] = useState({
@@ -253,10 +255,21 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
     };
 
     const handleDeleteAvaria = async (id: number) => {
-        if (!window.confirm('Apagar esta avaria?')) return;
+        setConfirmModal({
+            isOpen: true,
+            actionId: id,
+            msg: "Apagar esta avaria?"
+        });
+    };
+
+    const confirmDeleteAvaria = async () => {
+        const { actionId } = confirmModal;
+        setConfirmModal({ isOpen: false, actionId: null, msg: "" });
+        if (!actionId) return;
+
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`${import.meta.env.VITE_API_URL}/api/tipos-avaria/${id}`, config);
+            await axios.delete(`${import.meta.env.VITE_API_URL}/api/tipos-avaria/${actionId}`, config);
             fetchData();
         } catch (error) { toast.error('Erro ao apagar avaria.'); }
     };
@@ -302,6 +315,28 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
                 {successMsg && (
                     <div style={{ margin: "0 25px 20px 25px", padding: "12px 16px", backgroundColor: "#ecfdf5", border: "1px solid #10b981", borderRadius: "10px", color: "#047857", fontWeight: "700", display: "flex", alignItems: "center", gap: "10px", animation: "fadeIn 0.3s ease" }}>
                         <CheckCircle size={18} /> {successMsg}
+                    </div>
+                )}
+
+                {confirmModal.isOpen && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3100, animation: 'fadeIn 0.2s ease' }} onClick={() => setConfirmModal({isOpen: false, actionId: null, msg: ""})}>
+                        <div style={{ backgroundColor: '#fff', borderRadius: '16px', width: '80%', maxWidth: '350px', padding: '25px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
+                                <AlertTriangle size={24} color="#ef4444" />
+                                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Confirmação</h3>
+                            </div>
+                            <p style={{ margin: 0, color: '#475569', fontSize: '1rem', lineHeight: '1.5' }}>
+                                {confirmModal.msg}
+                            </p>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                                <button onClick={() => setConfirmModal({isOpen: false, actionId: null, msg: ""})} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', color: '#64748b', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                    Cancelar
+                                </button>
+                                <button onClick={confirmDeleteAvaria} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#ef4444', color: '#fff', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                    Excluir
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
