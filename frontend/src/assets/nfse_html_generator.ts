@@ -124,7 +124,7 @@ body { background:#fff; font-family:'Arial',Helvetica,sans-serif; }
 <div style="position:absolute;top:253.21pt;left:14.17pt;font-size:7.6pt;font-weight:normal;white-space:nowrap;line-height:1;">Endereço</div>
 <div style="position:absolute;top:253.21pt;left:297.64pt;font-size:7.6pt;font-weight:normal;white-space:nowrap;line-height:1;">Município</div>
 <div style="position:absolute;top:253.21pt;left:439.37pt;font-size:7.6pt;font-weight:normal;white-space:nowrap;line-height:1;">CEP</div>
-<!-- EDITÁVEL --><div style="position:absolute;top:261.26pt;left:14.17pt;font-size:8.5pt;font-weight:normal;white-space:nowrap;line-height:1;">MONSENHOR JOAO JOSE DE AZEVEDO, 35, BLOCO B, CRISPIM</div>
+<!-- EDITÁVEL --><div style="position:absolute;top:261.26pt;left:14.17pt;width:275.47pt;font-size:8.5pt;font-weight:normal;white-space:normal;line-height:1;overflow:hidden;word-wrap:break-word;">MONSENHOR JOAO JOSE DE AZEVEDO, 35, BLOCO B, CRISPIM</div>
 <!-- EDITÁVEL --><div style="position:absolute;top:261.26pt;left:297.64pt;font-size:8.5pt;font-weight:normal;white-space:nowrap;line-height:1;">Pindamonhangaba - SP</div>
 <!-- EDITÁVEL --><div style="position:absolute;top:261.26pt;left:439.37pt;font-size:8.5pt;font-weight:normal;white-space:nowrap;line-height:1;">12402-010</div>
 <div style="position:absolute;top:275.07pt;left:178.07pt;font-size:8.5pt;font-weight:normal;white-space:nowrap;line-height:1;">INTERMEDIÁRIO DO SERVIÇO NÃO IDENTIFICADO NA NFS-e</div>
@@ -333,6 +333,7 @@ body { background:#fff; font-family:'Arial',Helvetica,sans-serif; }
       const pxToPt = 72 / 96;
       const allElements = document.querySelectorAll('div, img');
       
+      let addressVal = null;
       let codTribVal = null;
       let descServVal = null;
 
@@ -341,6 +342,9 @@ body { background:#fff; font-family:'Arial',Helvetica,sans-serif; }
         const top = parseFloat(el.style.top);
         const left = parseFloat(el.style.left);
         // Margem de erro de 1pt para capturar o elemento exato
+        if (Math.abs(top - 261.26) < 1 && Math.abs(left - 14.17) < 1) {
+          addressVal = el;
+        }
         if (Math.abs(top - 308.3) < 1 && Math.abs(left - 14.17) < 1) {
           codTribVal = el;
         }
@@ -349,8 +353,16 @@ body { background:#fff; font-family:'Arial',Helvetica,sans-serif; }
         }
       });
 
+      let shift0 = 0;
       let shift1 = 0;
       let shift2 = 0;
+
+      if (addressVal) {
+        const heightPt = addressVal.getBoundingClientRect().height * pxToPt;
+        if (heightPt > 12) {
+          shift0 = heightPt - 10;
+        }
+      }
 
       if (codTribVal) {
         const heightPt = codTribVal.getBoundingClientRect().height * pxToPt;
@@ -366,8 +378,8 @@ body { background:#fff; font-family:'Arial',Helvetica,sans-serif; }
         }
       }
 
-      if (shift1 > 0 || shift2 > 0) {
-        const totalShift = shift1 + shift2;
+      if (shift0 > 0 || shift1 > 0 || shift2 > 0) {
+        const totalShift = shift0 + shift1 + shift2;
         allElements.forEach(el => {
           if (!el.style.top) return;
           const currentTop = parseFloat(el.style.top);
@@ -381,8 +393,10 @@ body { background:#fff; font-family:'Arial',Helvetica,sans-serif; }
           
           let newTop = currentTop;
           
-          if (currentTop > 315 && currentTop <= 345) {
-             newTop += shift1;
+          if (currentTop > 265 && currentTop <= 315) {
+             newTop += shift0;
+          } else if (currentTop > 315 && currentTop <= 345) {
+             newTop += shift0 + shift1;
           } else if (currentTop > 345) {
              newTop += totalShift;
           }
