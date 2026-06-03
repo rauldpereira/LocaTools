@@ -88,7 +88,7 @@ const ContractModal: React.FC<ContractModalProps> = ({ order, onClose, onSuccess
   };
 
   const formatCPF = (value: string) => {
-    let v = value.replace(/\D/g, "").substring(0, 11);
+    const v = value.replace(/\D/g, "").substring(0, 11);
     if (v.length <= 11) {
       return v
         .replace(/(\d{3})(\d)/, "$1.$2")

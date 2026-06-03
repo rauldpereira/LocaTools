@@ -151,7 +151,7 @@ const PaymentPage: React.FC = () => {
 
         if (isDivida) {
             orders.forEach(order => {
-                let saldoRent = Number(order.valor_total) - Number(order.valor_sinal);
+                const saldoRent = Number(order.valor_total) - Number(order.valor_sinal);
                 totalSaldoAluguel += saldoRent;
                 if (order.ItemReservas) {
                     order.ItemReservas.forEach(item => {

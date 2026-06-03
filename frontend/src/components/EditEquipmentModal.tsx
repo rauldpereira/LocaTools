@@ -155,7 +155,7 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
 
     const parseBrValue = (val: string) => {
         if (!val) return "";
-        let clean = val.replace(/\s/g, ''); 
+        const clean = val.replace(/\s/g, ''); 
         if (clean.includes(',')) {
             return clean.replace(/\./g, '').replace(',', '.');
         }

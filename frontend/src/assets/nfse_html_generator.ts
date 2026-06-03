@@ -259,7 +259,7 @@ body { background:#fff; font-family:'Arial',Helvetica,sans-serif; }
   }
 
   const replaceField = (oldValue: string, newValue: string) => {
-    const escapedOld = oldValue.replace(/[.*+?^\$\{\}()|[\]\\]/g, '\\$&');
+    const escapedOld = oldValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     html = html.replace(new RegExp(`<!-- EDITÁVEL -->(<div[^>]*>)\\s*${escapedOld}\\s*<\\/div>`), `<!-- EDITÁVEL -->$1${newValue}</div>`);
   };
 

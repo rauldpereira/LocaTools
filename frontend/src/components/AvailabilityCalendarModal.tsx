@@ -419,7 +419,7 @@ const AvailabilityCalendarModal: React.FC<{ equipment: any, onClose: () => void 
                                         if (!selectedDate) return;
 
                                         const start = selectedDate;
-                                        let end = new Date(start);
+                                        const end = new Date(start);
                                         if (rentalPeriod === 'semanal') end.setDate(start.getDate() + 6);
                                         else if (rentalPeriod === 'quinzenal') end.setDate(start.getDate() + 14);
                                         else if (rentalPeriod === 'mensal') end.setDate(start.getDate() + 29);

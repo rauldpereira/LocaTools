@@ -34,7 +34,7 @@ const PERMISSOES_DISPONIVEIS = [
   { id: 'gerenciar_estoque', nome: 'Gerenciar Estoque (Equipamentos)', icon: <Package size={16} /> },
   { id: 'receber_pagamentos', nome: 'Operar Caixa e Recebimentos', icon: <CircleDollarSign size={16} /> },
   { id: 'ver_financeiro', nome: 'Relatórios e Dashboards Financeiros', icon: <TrendingUp size={16} /> },
-  { id: 'fazer_vistoria', nome: 'Fazer Vistorias (Pátio/Motorista)', icon: <Camera size={16} /> },
+  { id: 'fazer_vistoria', nome: 'Fazer Vistorias', icon: <Camera size={16} /> },
   { id: 'configuracoes', nome: 'Configurações (Frete, Feriados)', icon: <Settings size={16} /> }
 ];
 

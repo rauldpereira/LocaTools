@@ -46,7 +46,7 @@ const EquipmentForm: React.FC = () => {
 
   const parseBrValue = (val: string) => {
     if (!val) return "";
-    let clean = val.replace(/\s/g, ''); 
+    const clean = val.replace(/\s/g, ''); 
 
     if (clean.includes(',')) {
       return clean.replace(/\./g, '').replace(',', '.');

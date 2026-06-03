@@ -8,6 +8,7 @@ import { ptBR } from "date-fns/locale/pt-BR";
 import "react-datepicker/dist/react-datepicker.css";
 import { AlertTriangle, Clock, Calendar, CalendarClock, ClipboardCheck, FileSignature, FileCheck, Wallet, CreditCard, AlertOctagon, CheckCircle, XCircle, Siren, CircleDollarSign, Truck, RotateCcw, ClipboardList, History, HelpCircle, X, ChevronRight, Search } from "lucide-react";
 import { useToast } from '../../context/ToastContext';
+import CustomDropdown from "../CustomDropdown";
 
 registerLocale("pt-BR", ptBR);
 
@@ -87,11 +88,15 @@ const AdminReservationsList: React.FC = () => {
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   const sortByDateAsc = (a: Order, b: Order) => new Date(a.data_inicio).getTime() - new Date(b.data_inicio).getTime();
   const sortByIdDesc = (a: Order, b: Order) => b.id - a.id;
+  
   const ordersDelayed = filteredOrders.filter((o) => o.status === "aprovada" && parseDateStringAsLocal(o.data_inicio).setHours(0,0,0,0) < hoje.getTime()).sort(sortByDateAsc);
   const ordersDelayedReturn = filteredOrders.filter((o) => o.status === "em_andamento" && parseDateStringAsLocal(o.data_fim).setHours(0,0,0,0) < hoje.getTime()).sort(sortByDateAsc);
+  const ordersReturnToday = filteredOrders.filter((o) => o.status === "em_andamento" && parseDateStringAsLocal(o.data_fim).setHours(0,0,0,0) === hoje.getTime()).sort(sortByDateAsc);
+  
   const ordersToday = filteredOrders.filter((o) => (o.status === "aprovada" || o.status === "saiu_para_entrega") && parseDateStringAsLocal(o.data_inicio).setHours(0,0,0,0) === hoje.getTime()).sort(sortByDateAsc);
   const ordersFuture = filteredOrders.filter((o) => o.status === "aprovada" && parseDateStringAsLocal(o.data_inicio).setHours(0,0,0,0) > hoje.getTime()).sort(sortByDateAsc);
   const ordersInLocacao = filteredOrders.filter((o) => o.status === "em_andamento").sort(sortByDateAsc);
+  
   const ordersAwaitingSignature = filteredOrders.filter((o) => o.status === "aguardando_assinatura").sort(sortByIdDesc);
   const ordersAwaitingReturnSignature = filteredOrders.filter((o) => o.status === "aguardando_assinatura_devolucao").sort(sortByIdDesc);
   const ordersFinalPayment = filteredOrders.filter((o) => o.status === "aguardando_pagamento_final").sort(sortByIdDesc);
@@ -117,15 +122,45 @@ const AdminReservationsList: React.FC = () => {
   const PagedTable = ({ orderList, headers, action }: { orderList: Order[]; headers: { key: keyof Order; label: string }[]; action: (order: Order) => React.ReactNode; }) => {
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(10);
-    const totalPages = Math.ceil(orderList.length / perPage);
-    const data = orderList.slice((page - 1) * perPage, page * perPage);
+    const [sortKey, setSortKey] = useState<keyof Order | null>(null);
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+    const handleSort = (key: keyof Order) => {
+      if (sortKey === key) {
+        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      } else {
+        setSortKey(key);
+        setSortOrder('asc');
+      }
+    };
+
+    const sortedList = [...orderList].sort((a, b) => {
+      if (!sortKey) return 0;
+      let valA: any = a[sortKey];
+      let valB: any = b[sortKey];
+
+      if (typeof sortKey === 'string' && sortKey.includes("data")) {
+        valA = new Date(valA).getTime();
+        valB = new Date(valB).getTime();
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    const totalPages = Math.ceil(sortedList.length / perPage);
+    const data = sortedList.slice((page - 1) * perPage, page * perPage);
     if (orderList.length === 0) return <div style={{ padding: "40px", textAlign: "center", color: "#94a3b8", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>Nenhum registro encontrado.</div>;
     return (
       <div style={{ animation: "fadeIn 0.3s ease" }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", marginBottom: "15px" }}><span style={{ fontSize: "0.85rem", color: "#64748b" }}>Exibir:</span><select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} style={{ padding: "5px 10px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.85rem", color: "#475569", outline: "none", cursor: "pointer" }}><option value={10}>10 linhas</option><option value={25}>25 linhas</option><option value={50}>50 linhas</option><option value={100}>100 linhas</option></select></div>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
+          <span style={{ fontSize: "0.85rem", color: "#64748b" }}>Exibir:</span>
+          <CustomDropdown className="filter-dropdown" value={perPage.toString()} onChange={(val) => { setPerPage(Number(val)); setPage(1); }} options={[{value: "10", label: "10 linhas"}, {value: "25", label: "25 linhas"}, {value: "50", label: "50 linhas"}, {value: "100", label: "100 linhas"}]} />
+        </div>
         <div style={{ overflowX: "auto", backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
-            <thead><tr style={{ backgroundColor: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>{headers.map(h => <th key={h.key as string} style={{ padding: "16px", color: "#64748b", fontWeight: "700", textAlign: "center", textTransform: "uppercase", fontSize: "0.75rem", letterSpacing: "0.05em" }}>{h.label}</th>)}<th style={{ padding: "16px", color: "#64748b", fontWeight: "700", textAlign: "center", textTransform: "uppercase", fontSize: "0.75rem" }}>Ação</th></tr></thead>
+            <thead><tr style={{ backgroundColor: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>{headers.map(h => <th key={h.key as string} onClick={() => handleSort(h.key)} style={{ padding: "16px", color: "#64748b", fontWeight: "700", textAlign: "center", textTransform: "uppercase", fontSize: "0.75rem", letterSpacing: "0.05em", cursor: "pointer", userSelect: "none" }}>{h.label} {sortKey === h.key ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}</th>)}<th style={{ padding: "16px", color: "#64748b", fontWeight: "700", textAlign: "center", textTransform: "uppercase", fontSize: "0.75rem" }}>Ação</th></tr></thead>
             <tbody>{data.map((order) => (<tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s" }} className="table-row-hover">{headers.map(h => { let val: any = order[h.key]; if (typeof h.key === 'string' && h.key.includes("data")) val = parseDateStringAsLocal(val as string).toLocaleDateString(); if (h.key === "id") val = <Link to={`/my-reservations/${order.id}`} style={{ color: "#2563eb", fontWeight: "bold", textDecoration: "none" }}>#{order.id}</Link>; if (h.key === "status") val = <span style={{ fontWeight: "700", color: order.status === "PREJUIZO" ? "#ef4444" : "#475569" }}>{order.status.replace(/_/g, " ").toUpperCase()}</span>; if (h.key === "tipo_entrega") val = <span style={{ color: val === "entrega" ? "#0056b3" : "#2c3e50", fontWeight: "600" }}>{val?.charAt(0).toUpperCase() + val?.slice(1)}</span>; return <td key={h.key as string} style={{ padding: "16px", textAlign: "center" }}>{val}</td>; })}<td style={{ padding: "16px", textAlign: "center" }}>{action(order)}</td></tr>))}</tbody>
           </table>
         </div>
@@ -142,13 +177,13 @@ const AdminReservationsList: React.FC = () => {
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}><label style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#94a3b8", textTransform: "uppercase" }}>Pedido ID</label><div style={{ display: "flex", alignItems: "center", gap: "8px", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0 10px", backgroundColor: "#f8fafc" }}><Search size={16} color="#94a3b8" /><input type="text" placeholder="ID" value={filterId} onChange={(e) => setFilterId(e.target.value)} style={{ border: "none", background: "none", outline: "none", padding: "10px 0", width: "80px", fontSize: "0.9rem" }} /></div></div>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}><label style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#94a3b8", textTransform: "uppercase" }}>Data Início</label><DatePicker selected={filterStartDate} onChange={(d: Date | null) => setFilterStartDate(d)} dateFormat="dd/MM/yyyy" locale="pt-BR" placeholderText="dd/mm/aaaa" todayButton="Hoje" className="custom-datepicker" renderCustomHeader={(props) => <CustomDatePickerHeader {...props} />} /></div>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}><label style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#94a3b8", textTransform: "uppercase" }}>Data Fim</label><DatePicker selected={filterEndDate} onChange={(d: Date | null) => setFilterEndDate(d)} dateFormat="dd/MM/yyyy" locale="pt-BR" placeholderText="dd/mm/aaaa" todayButton="Hoje" className="custom-datepicker" renderCustomHeader={(props) => <CustomDatePickerHeader {...props} />} /></div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}><label style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#94a3b8", textTransform: "uppercase" }}>Tipo</label><select value={filterDeliveryType} onChange={(e) => setFilterDeliveryType(e.target.value)} style={{ padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0", outline: "none", backgroundColor: "#fff", cursor: "pointer", height: "42px", color: "#475569" }}><option value="todos">Todos</option><option value="entrega">Só Entregas</option><option value="retirada">Só Retiradas</option></select></div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "160px" }}><label style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#94a3b8", textTransform: "uppercase" }}>Tipo</label><CustomDropdown className="filter-dropdown" value={filterDeliveryType} onChange={(val) => setFilterDeliveryType(val as string)} options={[{value: "todos", label: "Todos"}, {value: "entrega", label: "Só Entregas"}, {value: "retirada", label: "Só Retiradas"}]} /></div>
         {(filterId || filterStartDate || filterEndDate || filterDeliveryType !== "todos") && (<button onClick={() => { setFilterId(""); setFilterStartDate(null); setFilterEndDate(null); setFilterDeliveryType("todos"); }} style={{ padding: "0 20px", backgroundColor: "#f1f5f9", border: "none", borderRadius: "8px", color: "#ef4444", fontWeight: "bold", cursor: "pointer", height: "42px" }}>Limpar</button>)}
       </div>
       <div style={{ display: "flex", gap: "8px", marginBottom: "25px", overflowX: "auto", paddingBottom: "10px" }}>
         {(podeGerenciarReservas || podeFazerVistoria) && <button onClick={() => { setActiveTab("urgentes"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "urgentes", (ordersDelayed.length + ordersDelayedReturn.length) > 0)}><Siren size={18} /> Urgentes ({ordersDelayed.length + ordersDelayedReturn.length})</button>}
-        {podeReceberPagamentos && <button onClick={() => { setActiveTab("financeiro"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "financeiro", ordersEmPrejuizo.length > 0)}><CircleDollarSign size={18} /> Financeiro</button>}
-        {(podeGerenciarReservas || podeFazerVistoria) && (<React.Fragment><button onClick={() => { setActiveTab("saidas"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "saidas")}><Truck size={18} /> Saídas</button><button onClick={() => { setActiveTab("devolucoes"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "devolucoes")}><RotateCcw size={18} /> Devoluções</button><button onClick={() => { setActiveTab("pendencias"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "pendencias")}><ClipboardList size={18} /> Assinaturas</button></React.Fragment>)}
+        {podeReceberPagamentos && <button onClick={() => { setActiveTab("financeiro"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "financeiro", ordersEmPrejuizo.length > 0)}><CircleDollarSign size={18} /> Financeiro ({ordersAbandoned.length + ordersFinalPayment.length + ordersEmPrejuizo.length})</button>}
+        {(podeGerenciarReservas || podeFazerVistoria) && (<React.Fragment><button onClick={() => { setActiveTab("saidas"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "saidas")}><Truck size={18} /> Saídas ({ordersToday.length})</button><button onClick={() => { setActiveTab("devolucoes"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "devolucoes")}><RotateCcw size={18} /> Devoluções ({ordersReturnToday.length + ordersDelayedReturn.length})</button><button onClick={() => { setActiveTab("pendencias"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "pendencias")}><ClipboardList size={18} /> Assinaturas ({ordersAwaitingSignature.length + ordersAwaitingReturnSignature.length})</button></React.Fragment>)}
         {podeGerenciarReservas && <button onClick={() => { setActiveTab("historico"); setActiveSubTab("sub1"); }} style={getTabStyle(activeTab === "historico")}><History size={18} /> Histórico</button>}
       </div>
       <div style={{ backgroundColor: "#fff", padding: "30px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
@@ -184,7 +219,7 @@ const AdminReservationsList: React.FC = () => {
               <div style={{ color: "#475569", lineHeight: "1.6" }}>
                 <p style={{ marginBottom: "25px", fontSize: "1rem" }}>Acompanhe todo o fluxo das locações, desde o orçamento até a devolução do equipamento.</p>
                 <div style={manualStepStyle}><div style={stepNumStyle}>1</div><div><strong style={{ color: "#1e293b" }}>Painel de Urgências:</strong><p style={{ margin: "5px 0 0 0" }}>Onde tudo que precisa da sua atenção IMEDIATA aparece. Ex: Pedidos atrasados.</p></div></div>
-                <div style={manualStepStyle}><div style={stepNumStyle}>2</div><div><strong style={{ color: "#1e293b" }}>Controle Operacional:</strong><p style={{ margin: "5px 0 0 0" }}>Nas abas de Saídas e Devoluções você gerencia o pátio.</p></div></div>
+                <div style={manualStepStyle}><div style={stepNumStyle}>2</div><div><strong style={{ color: "#1e293b" }}>Controle Operacional:</strong><p style={{ margin: "5px 0 0 0" }}>Nas abas de Saídas e Devoluções você gerencia a entrada e saída de equipamentos.</p></div></div>
                 <div style={manualStepStyle}><div style={stepNumStyle}>3</div><div><strong style={{ color: "#1e293b" }}>Assinaturas e Financeiro:</strong><p style={{ margin: "5px 0 0 0" }}>Acompanhe pagamentos de sinal e contratos pendentes.</p></div></div>
                 <div style={manualStepStyle}><div style={stepNumStyle}>4</div><div><strong style={{ color: "#1e293b" }}>Histórico e Buscas:</strong><p style={{ margin: "5px 0 0 0" }}>Use os filtros no topo para achar reservas antigas rapidamente.</p></div></div>
               </div>
@@ -223,6 +258,7 @@ const AdminReservationsList: React.FC = () => {
         .react-datepicker__header { background-color: #fff; border-bottom: 1px solid #f1f5f9; padding-top: 15px; border-top-left-radius: 12px; border-top-right-radius: 12px; }
         .react-datepicker__day--selected { background-color: #2563eb !important; color: #fff !important; border-radius: 8px; }
         .react-datepicker__today-button { background-color: #fff; border-top: 1px solid #f1f5f9; color: #2563eb; font-weight: bold; padding: 10px; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+        .filter-dropdown .custom-dropdown-header { height: 42px !important; min-height: 42px !important; max-height: 42px !important; padding: 0 12px !important; border-radius: 8px !important; font-size: 0.9rem !important; box-sizing: border-box !important; }
       `}</style>
     </div>
   );
