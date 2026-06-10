@@ -114,7 +114,8 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
     if (cepLimpo.length !== 8) return;
 
     try {
-      const { data } = await axios.get(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await response.json();
       if (!data.erro) {
         setAddress(prev => ({
           ...prev,
@@ -442,7 +443,7 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
                     <label style={labelStyle}>{tipoPessoa === "pf" ? "Nome Completo *" : "Razão Social *"}</label>
                     <div style={{ position: "relative" }}>
                         <User size={16} color="#94a3b8" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
-                        <input required value={nome} onChange={e => setNome(e.target.value)} style={{ ...inputStyle, paddingLeft: "38px" }} />
+                        <input required value={nome} onChange={e => setNome(e.target.value)} style={{ ...inputStyle, paddingLeft: "38px" }} placeholder={tipoPessoa === "pf" ? "Ex: João da Silva" : "Ex: Construtora Silva LTDA"} />
                     </div>
                 </div>
                 <div style={inputGroupStyle}>
@@ -479,7 +480,7 @@ const BalcaoCheckoutModal: React.FC<BalcaoCheckoutModalProps> = ({
                     <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 100px", gap: "15px", marginBottom: "15px" }}>
                         <div style={inputGroupStyle}><label style={labelStyle}>CEP</label><input name="cep" value={address.cep} onChange={handleAddressChange} onBlur={handleCepBlur} style={inputStyle} placeholder="00000-000" /></div>
                         <div style={inputGroupStyle}><label style={labelStyle}>Rua</label><input name="rua" value={address.rua} onChange={handleAddressChange} style={inputStyle} /></div>
-                        <div style={inputGroupStyle}><label style={labelStyle}>Nº</label><input name="numero" value={address.numero} onChange={handleAddressChange} style={inputStyle} /></div>
+                        <div style={inputGroupStyle}><label style={labelStyle}>Nº</label><input id="input-numero" name="numero" value={address.numero} onChange={handleAddressChange} style={inputStyle} /></div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 100px", gap: "15px", marginBottom: "15px" }}>
                         <div style={inputGroupStyle}><label style={labelStyle}>Bairro</label><input name="bairro" value={address.bairro} onChange={handleAddressChange} style={inputStyle} /></div>

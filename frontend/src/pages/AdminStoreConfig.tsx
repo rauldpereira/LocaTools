@@ -126,14 +126,15 @@ const AdminStoreConfig: React.FC = () => {
 
   const buscarCepNoApi = async (cepParaBuscar: string) => {
     try {
-      const response = await axios.get(`https://viacep.com.br/ws/${cepParaBuscar}/json/`);
-      if (response.data.erro) return;
+      const response = await fetch(`https://viacep.com.br/ws/${cepParaBuscar}/json/`);
+      const data = await response.json();
+      if (data.erro) return;
       setAddress(prev => ({
         ...prev,
-        rua: response.data.logradouro,
-        bairro: response.data.bairro,
-        cidade: response.data.localidade,
-        uf: response.data.uf,
+        rua: data.logradouro,
+        bairro: data.bairro,
+        cidade: data.localidade,
+        uf: data.uf,
         cep: cepParaBuscar
       }));
     } catch (error) {

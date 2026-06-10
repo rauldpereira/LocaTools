@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { Image as ImageIcon, CheckCircle, Trash2, Star, ChevronUp } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 interface Category {
@@ -24,6 +24,41 @@ const EquipmentForm: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const [loading, setLoading] = useState(false);
+
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent<HTMLLIElement>, position: number) => {
+    dragItem.current = position;
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLLIElement>, position: number) => {
+    dragOverItem.current = position;
+  };
+
+  const handleDrop = () => {
+    if (dragItem.current !== null && dragOverItem.current !== null) {
+      const newList = [...selectedFiles];
+      const dragItemContent = newList[dragItem.current];
+      newList.splice(dragItem.current, 1);
+      newList.splice(dragOverItem.current, 0, dragItemContent);
+      dragItem.current = null;
+      dragOverItem.current = null;
+      setSelectedFiles(newList);
+    }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setSelectedFiles(selectedFiles.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleMakePrincipal = (index: number) => {
+    if (index === 0) return;
+    const newList = [...selectedFiles];
+    const item = newList.splice(index, 1)[0];
+    newList.unshift(item);
+    setSelectedFiles(newList);
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -252,13 +287,36 @@ const EquipmentForm: React.FC = () => {
             
             {selectedFiles.length > 0 && (
               <div style={{ marginTop: '15px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {selectedFiles.map((f, i) => (
-                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <CheckCircle size={14} color="#10b981" /> {f.name}
-                    </li>
+                    <div 
+                      key={i} 
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, i)}
+                      onDragEnter={(e) => handleDragEnter(e, i)}
+                      onDragEnd={handleDrop}
+                      onDragOver={(e) => e.preventDefault()}
+                      style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '8px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: "0 2px 4px rgba(0,0,0,0.02)", cursor: "grab" }}
+                    >
+                      <div style={{ width: '40px', display: "flex", justifyContent: "center" }}>
+                          {i === 0 ? <Star size={18} color="#f59e0b" fill="#f59e0b" /> : <span style={{ color: "#cbd5e1", fontWeight: "bold" }}>{i + 1}</span>}
+                      </div>
+
+                      <img src={URL.createObjectURL(f)} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', marginRight: '15px', border: '1px solid #f1f5f9' }} alt="Preview" />
+
+                      <div style={{ flex: 1, fontSize: '0.8rem', fontWeight: "600", color: "#475569" }}>
+                          {f.name}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                          {i > 0 && (
+                              <button type="button" onClick={() => handleMakePrincipal(i)} title="Tornar Principal" style={{ padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer', background: 'white', color: "#64748b", display: "flex", alignItems: "center" }}><ChevronUp size={16} /></button>
+                          )}
+                          <button type="button" onClick={() => handleRemoveImage(i)} title="Remover" style={{ padding: '6px', borderRadius: '6px', border: '1px solid #fee2e2', cursor: 'pointer', background: 'white', color: '#ef4444', display: "flex", alignItems: "center" }}><Trash2 size={16} /></button>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>

@@ -1,5 +1,5 @@
 import { useToast } from '../context/ToastContext';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext'; 
 import { 
@@ -68,6 +68,29 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
     const [newAvaria, setNewAvaria] = useState({ descricao: '', preco: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
+
+    const dragItem = useRef<number | null>(null);
+    const dragOverItem = useRef<number | null>(null);
+
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, position: number) => {
+        dragItem.current = position;
+    };
+
+    const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, position: number) => {
+        dragOverItem.current = position;
+    };
+
+    const handleDrop = () => {
+        if (dragItem.current !== null && dragOverItem.current !== null) {
+            const newList = [...imageList];
+            const dragItemContent = newList[dragItem.current];
+            newList.splice(dragItem.current, 1);
+            newList.splice(dragOverItem.current, 0, dragItemContent);
+            dragItem.current = null;
+            dragOverItem.current = null;
+            setImageList(newList);
+        }
+    };
 
     const fetchData = useCallback(async () => {
         if (!equipmentId || !isOpen) return;
@@ -395,7 +418,15 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
                                 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                     {imageList.map((img, index) => (
-                                        <div key={img.id} style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '8px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                                        <div 
+                                            key={img.id} 
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, index)}
+                                            onDragEnter={(e) => handleDragEnter(e, index)}
+                                            onDragEnd={handleDrop}
+                                            onDragOver={(e) => e.preventDefault()}
+                                            style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '8px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: "0 2px 4px rgba(0,0,0,0.02)", cursor: "grab" }}
+                                        >
                                             <div style={{ width: '40px', display: "flex", justifyContent: "center" }}>
                                                 {index === 0 ? <Star size={18} color="#f59e0b" fill="#f59e0b" /> : <span style={{ color: "#cbd5e1", fontWeight: "bold" }}>{index + 1}</span>}
                                             </div>
