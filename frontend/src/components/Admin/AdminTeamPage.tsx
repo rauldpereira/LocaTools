@@ -2,6 +2,7 @@ import { useToast } from '../../context/ToastContext';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import CustomDropdown from '../CustomDropdown';
 import { 
   Users, 
   UserPlus, 
@@ -26,7 +27,9 @@ import {
   Settings,
   Loader2,
   KeyRound,
-  HelpCircle
+  HelpCircle,
+  ArrowUpDown,
+  Filter
 } from 'lucide-react';
 
 const PERMISSOES_DISPONIVEIS = [
@@ -55,6 +58,8 @@ const AdminTeamPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'funcionario'>('all');
 
   // Modais
   const [showManual, setShowManual] = useState(false);
@@ -116,14 +121,19 @@ const AdminTeamPage: React.FC = () => {
     return true;
   };
 
-  const filteredTeam = equipe.filter(member => {
-    const term = searchTerm.toLowerCase();
-    return (
-      member.nome.toLowerCase().includes(term) ||
-      member.email.toLowerCase().includes(term) ||
-      (member.cpf && member.cpf.includes(term))
-    );
-  });
+  const filteredTeam = equipe
+    .filter(member => {
+      const term = searchTerm.toLowerCase();
+      const matchesSearch = member.nome.toLowerCase().includes(term) ||
+                            member.email.toLowerCase().includes(term) ||
+                            (member.cpf && member.cpf.includes(term));
+      const matchesRole = roleFilter === 'all' || member.tipo_usuario === roleFilter;
+      return matchesSearch && matchesRole;
+    })
+    .sort((a, b) => {
+      if (sortOrder === 'asc') return a.nome.localeCompare(b.nome);
+      return b.nome.localeCompare(a.nome);
+    });
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
@@ -283,9 +293,23 @@ const AdminTeamPage: React.FC = () => {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#fff', padding: '10px 15px', borderRadius: '10px', border: '1px solid #e2e8f0', flexGrow: 1, maxWidth: '450px', boxShadow: "0 2px 4px rgba(0,0,0,0.02)", height: '45px', boxSizing: 'border-box' }}>
-          <Search size={18} color="#94a3b8" />
-          <input type="text" placeholder="Buscar por nome, email ou CPF..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', backgroundColor: 'transparent', outline: 'none', width: '100%', fontSize: '0.95rem', color: '#334155' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexGrow: 1, maxWidth: '650px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#fff', padding: '10px 15px', borderRadius: '10px', border: '1px solid #e2e8f0', flexGrow: 1, boxShadow: "0 2px 4px rgba(0,0,0,0.02)", height: '45px', boxSizing: 'border-box' }}>
+            <Search size={18} color="#94a3b8" />
+            <input type="text" placeholder="Buscar por nome, email ou CPF..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', backgroundColor: 'transparent', outline: 'none', width: '100%', fontSize: '0.95rem', color: '#334155' }} />
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CustomDropdown 
+              value={roleFilter} 
+              onChange={(val) => setRoleFilter(val as 'all' | 'admin' | 'funcionario')}
+              options={[
+                { value: "all", label: "Todos os Cargos" },
+                { value: "admin", label: "Administrador" },
+                { value: "funcionario", label: "Funcionário" }
+              ]}
+            />
+          </div>
         </div>
         <button onClick={() => { setOpError(''); setModalCriarAberto(true); }} style={{...primaryBtnStyle, height: '45px'}}><UserPlus size={20} /> Novo Colaborador</button>
       </div>
@@ -300,7 +324,16 @@ const AdminTeamPage: React.FC = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
           <thead>
             <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
-              <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Users size={14}/> Nome</div></th>
+              <th 
+                style={{...thStyle, cursor: 'pointer'}}
+                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                title="Clique para ordenar por nome"
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Users size={14}/> Nome
+                  <ArrowUpDown size={14} color="#94a3b8" />
+                </div>
+              </th>
               <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Mail size={14}/> Email / CPF</div></th>
               <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Briefcase size={14}/> Cargo</div></th>
               <th style={{ ...thStyle, textAlign: 'center' }}>Ações</th>
@@ -363,7 +396,7 @@ const AdminTeamPage: React.FC = () => {
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
-              <h3 style={{ margin: 0, color: '#1e293b' }}>Novo Colaborador</h3>
+              <h3 style={{ margin: 0, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}><UserPlus size={22} color="#2563eb" /> Novo Colaborador</h3>
               <button onClick={() => setModalCriarAberto(false)} style={closeBtnStyle}><X size={20} /></button>
             </div>
             {opError && <div style={errorBoxStyle}><AlertTriangle size={18} /> {opError}</div>}
@@ -375,10 +408,15 @@ const AdminTeamPage: React.FC = () => {
               </div>
               <div><label style={labelStyle}>Senha Inicial</label><input required type="password" value={novoUser.senha} onChange={e => setNovoUser({ ...novoUser, senha: e.target.value })} style={inputStyle} /></div>
               <div><label style={labelStyle}>Nível de Acesso</label>
-                <select value={novoUser.tipo_usuario} onChange={e => setNovoUser({ ...novoUser, tipo_usuario: e.target.value })} style={{ ...inputStyle, fontWeight: 'bold' }}>
-                  <option value="funcionario">Funcionário (Acesso Restrito)</option>
-                  <option value="admin">Administrador (Acesso Total)</option>
-                </select>
+                <CustomDropdown 
+                  className="full-width-dropdown"
+                  value={novoUser.tipo_usuario} 
+                  onChange={(val) => setNovoUser({ ...novoUser, tipo_usuario: val as string })}
+                  options={[
+                    { value: "funcionario", label: "Funcionário (Acesso Restrito)" },
+                    { value: "admin", label: "Administrador (Acesso Total)" }
+                  ]}
+                />
               </div>
               <button type="submit" disabled={opLoading} style={{ ...submitBtnStyle, marginTop: "10px" }}>{opLoading ? <Loader2 size={18} className="spin-animation" /> : <UserPlus size={18} />} {opLoading ? 'Cadastrando...' : 'Cadastrar'}</button>
             </form>
@@ -402,9 +440,21 @@ const AdminTeamPage: React.FC = () => {
                 <div style={{ flex: 1 }}><label style={labelStyle}>CPF</label><input required type="text" placeholder="000.000.000-00" value={dadosEdicao.cpf} onChange={e => setDadosEdicao({ ...dadosEdicao, cpf: applyCpfMask(e.target.value) })} style={inputStyle} /></div>
               </div>
               <div><label style={labelStyle}>Cargo</label>
-                <select value={dadosEdicao.tipo_usuario} onChange={e => setDadosEdicao({ ...dadosEdicao, tipo_usuario: e.target.value })} disabled={dadosEdicao.id === currentUser?.id || dadosEdicao.email === 'admin@locatools.com'} style={inputStyle}>
-                  <option value="funcionario">Funcionário</option><option value="admin">Administrador</option>
-                </select>
+                {dadosEdicao.id === currentUser?.id || dadosEdicao.email === 'admin@locatools.com' ? (
+                  <div style={{ ...inputStyle, backgroundColor: '#f1f5f9', color: '#94a3b8', cursor: 'not-allowed' }}>
+                    {dadosEdicao.tipo_usuario === 'admin' ? 'Administrador (Acesso Total)' : 'Funcionário (Acesso Restrito)'}
+                  </div>
+                ) : (
+                  <CustomDropdown 
+                    className="full-width-dropdown"
+                    value={dadosEdicao.tipo_usuario} 
+                    onChange={(val) => setDadosEdicao({ ...dadosEdicao, tipo_usuario: val as string })}
+                    options={[
+                      { value: "funcionario", label: "Funcionário (Acesso Restrito)" },
+                      { value: "admin", label: "Administrador (Acesso Total)" }
+                    ]}
+                  />
+                )}
               </div>
               <div style={{ padding: '15px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <label style={{ ...labelStyle, marginBottom: "10px" }}><KeyRound size={16} style={{ verticalAlign: "middle", marginRight: "5px" }} /> Senha</label>
@@ -548,6 +598,7 @@ const AdminTeamPage: React.FC = () => {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .spin-animation { animation: spin 1s linear infinite; }
+        .full-width-dropdown { width: 100% !important; max-width: 100% !important; }
       `}</style>
     </div>
   );
