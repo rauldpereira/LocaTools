@@ -2,6 +2,7 @@ import { useToast } from '../context/ToastContext';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import CustomDropdown from './CustomDropdown';
 import { 
   Clock,
   Calendar,
@@ -29,6 +30,12 @@ const DIAS_ORDENADOS = [
   { key: 'domingo', label: 'Domingo' }
 ];
 
+const timeOptions = Array.from({ length: 48 }).map((_, i) => {
+  const h = String(Math.floor(i / 2)).padStart(2, '0');
+  const m = i % 2 === 0 ? '00' : '30';
+  return { value: `${h}:${m}`, label: `${h}:${m}` };
+});
+
 const AdminHorariosPage: React.FC = () => {
   const toast = useToast();
   const { token } = useAuth();
@@ -52,8 +59,8 @@ const AdminHorariosPage: React.FC = () => {
         const existente = dataBanco.find((h: any) => h.dia_semana === dia.key);
         return {
           dia_semana: dia.key,
-          horario_abertura: existente?.horario_abertura || '08:00',
-          horario_fechamento: existente?.horario_fechamento || '18:00',
+          horario_abertura: existente?.horario_abertura ? existente.horario_abertura.substring(0, 5) : '08:00',
+          horario_fechamento: existente?.horario_fechamento ? existente.horario_fechamento.substring(0, 5) : '18:00',
           fechado: existente ? existente.fechado : false
         };
       });
@@ -129,31 +136,33 @@ const AdminHorariosPage: React.FC = () => {
               const estaAberto = !item.fechado;
 
               return (
-                <tr key={item.dia_semana} style={{ borderBottom: '1px solid #f1f5f9', transition: "background 0.2s", opacity: estaAberto ? 1 : 0.6 }} className="table-row-hover">
+                <tr key={item.dia_semana} style={{ borderBottom: '1px solid #f1f5f9', transition: "background 0.2s" }} className="table-row-hover">
                   <td style={{ ...tdStyle, fontWeight: '700', color: estaAberto ? '#1e293b' : '#94a3b8' }}>{labelDia}</td>
 
                   <td style={tdStyle}>
-                    <input
-                      type="time"
-                      value={item.horario_abertura}
-                      disabled={!estaAberto}
-                      onChange={(e) => handleChange(index, 'horario_abertura', e.target.value)}
-                      style={{ ...inputStyle, opacity: estaAberto ? 1 : 0.5 }}
-                    />
+                    <div style={{ opacity: estaAberto ? 1 : 0.5, pointerEvents: estaAberto ? 'auto' : 'none' }}>
+                      <CustomDropdown
+                        className="time-dropdown"
+                        value={item.horario_abertura}
+                        onChange={(val) => handleChange(index, 'horario_abertura', val)}
+                        options={timeOptions}
+                      />
+                    </div>
                   </td>
 
                   <td style={tdStyle}>
-                    <input
-                      type="time"
-                      value={item.horario_fechamento}
-                      disabled={!estaAberto}
-                      onChange={(e) => handleChange(index, 'horario_fechamento', e.target.value)}
-                      style={{ ...inputStyle, opacity: estaAberto ? 1 : 0.5 }}
-                    />
+                    <div style={{ opacity: estaAberto ? 1 : 0.5, pointerEvents: estaAberto ? 'auto' : 'none' }}>
+                      <CustomDropdown
+                        className="time-dropdown"
+                        value={item.horario_fechamento}
+                        onChange={(val) => handleChange(index, 'horario_fechamento', val)}
+                        options={timeOptions}
+                      />
+                    </div>
                   </td>
 
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '10px', padding: "6px 16px", borderRadius: "20px", backgroundColor: estaAberto ? "#f0fdf4" : "#fef2f2", border: `1px solid ${estaAberto ? "#d1fae5" : "#fecaca"}`, transition: "all 0.2s" }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '10px', padding: "6px 16px", borderRadius: "20px", backgroundColor: estaAberto ? "#f0fdf4" : "#fef2f2", border: `1px solid ${estaAberto ? "#d1fae5" : "#ef4444"}`, transition: "all 0.2s" }}>
                       <input
                         type="checkbox"
                         checked={estaAberto}
@@ -280,6 +289,7 @@ const AdminHorariosPage: React.FC = () => {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .spin-animation { animation: spin 1s linear infinite; }
+        .time-dropdown { width: 120px !important; max-width: 120px !important; font-family: monospace; font-weight: bold; }
       `}</style>
     </div>
   );
@@ -287,7 +297,7 @@ const AdminHorariosPage: React.FC = () => {
 
 const thStyle: React.CSSProperties = { padding: '16px', color: '#64748b', fontWeight: '700', textAlign: 'left', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' };
 const tdStyle: React.CSSProperties = { padding: '16px', verticalAlign: 'middle' };
-const inputStyle: React.CSSProperties = { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', width: '110px', fontSize: "0.95rem", color: "#334155", outline: "none" };
+const inputStyle: React.CSSProperties = { padding: '10px 15px', borderRadius: '10px', border: '1px solid #e2e8f0', width: '120px', fontSize: "1rem", color: "#1e293b", outline: "none", backgroundColor: "#f8fafc", fontWeight: "700", fontFamily: "monospace", cursor: "pointer", transition: "all 0.2s" };
 
 const modalOverlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, animation: "fadeIn 0.2s ease" };
 const modalContentStyle: React.CSSProperties = { backgroundColor: '#fff', borderRadius: '16px', width: '90%', maxWidth: '550px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight: '90vh' };
