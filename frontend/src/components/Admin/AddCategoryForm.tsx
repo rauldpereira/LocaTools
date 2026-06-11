@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { Layers, Plus, Trash2, FolderPlus, CheckCircle, AlertTriangle, X, Edit2, Save, Loader2, HelpCircle } from 'lucide-react';
+import { Layers, Plus, Trash2, FolderPlus, CheckCircle, AlertTriangle, X, Edit2, Save, Loader2, HelpCircle, Search, ArrowUpDown } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 interface Category {
@@ -16,6 +16,9 @@ const AddCategoryForm: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<number | null>(null);
@@ -117,15 +120,25 @@ const AddCategoryForm: React.FC = () => {
     }
   };
 
+  const filteredAndSortedCategories = [...categories]
+    .filter(cat => cat.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (sortOrder === 'asc') return a.nome.localeCompare(b.nome);
+      return b.nome.localeCompare(a.nome);
+    });
+
   return (
     <div style={{ animation: "fadeIn 0.3s ease", width: "100%", position: "relative" }}>
       {/* HEADER E FORMULÁRIO DE CRIAÇÃO */}
       <div style={{ marginBottom: "30px", padding: "25px", backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "10px" }}>
-            <FolderPlus size={20} color="#2563eb" /> 
-            Categorias de Equipamentos
-          </h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+          <div>
+            <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "10px" }}>
+              <FolderPlus size={20} color="#2563eb" /> 
+              Adicionar Nova Categoria
+            </h3>
+            <p style={{ margin: "5px 0 0 30px", color: "#64748b", fontSize: "0.9rem" }}>Crie uma nova classificação para organizar seus equipamentos.</p>
+          </div>
           <button 
             onClick={() => setShowManual(true)}
             title="Manual do Usuário"
@@ -175,24 +188,44 @@ const AddCategoryForm: React.FC = () => {
       {/* LISTA DE CATEGORIAS */}
       <div style={{ backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", padding: "30px" }}>
         
-        <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
-          <Layers size={20} color="#64748b" />
-          <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.15rem" }}>Categorias Cadastradas <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "normal" }}>({categories.length})</span></h3>
+        <div style={{ marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "15px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Layers size={20} color="#64748b" />
+            <h3 style={{ margin: 0, color: "#1e293b", fontSize: "1.15rem" }}>Categorias Cadastradas <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "normal" }}>({filteredAndSortedCategories.length})</span></h3>
+          </div>
+
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", minWidth: "250px" }}>
+              <Search size={16} color="#94a3b8" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
+              <input 
+                type="text" 
+                placeholder="Buscar categoria..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{ width: "100%", padding: "10px 15px 10px 38px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.9rem", color: "#334155", outline: "none" }}
+              />
+            </div>
+          </div>
         </div>
 
         <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                <th style={thStyle}>ID</th>
-                <th style={thStyle}>Nome da Categoria</th>
+                <th 
+                  style={{...thStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}} 
+                  onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                  title="Clique para ordenar"
+                >
+                  Nome da Categoria
+                  <ArrowUpDown size={14} color="#94a3b8" />
+                </th>
                 <th style={{...thStyle, textAlign: 'center'}}>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {categories.map((cat) => (
+              {filteredAndSortedCategories.map((cat) => (
                 <tr key={cat.id} style={{ borderBottom: '1px solid #f1f5f9', transition: "background 0.2s" }} className="table-row-hover">
-                  <td style={{ ...tdStyle, color: "#64748b", fontWeight: "600" }}>#{cat.id}</td>
                   <td style={{ ...tdStyle, fontWeight: '700', color: '#1e293b' }}>{cat.nome}</td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
