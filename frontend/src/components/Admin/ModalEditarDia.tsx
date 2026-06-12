@@ -8,6 +8,7 @@ import {
   RefreshCcw, 
   Loader2,
 } from 'lucide-react';
+import CustomDropdown from '../CustomDropdown';
 
 interface IDiaStatus {
     data: string;
@@ -130,16 +131,16 @@ const ModalEditarDia: React.FC<ModalEditarDiaProps> = ({ diaInfo, onClose, onSav
                             <div style={{ animation: "fadeIn 0.2s ease" }}>
                                 <div style={{ marginBottom: "20px" }}>
                                     <label style={labelStyle}>Motivo da Exceção</label>
-                                    <select 
+                                    <CustomDropdown 
                                         value={tipo} 
-                                        onChange={(e) => setTipo(e.target.value as any)} 
-                                        style={inputStyle}
-                                    >
-                                        <option value="feriado">Feriado Nacional/Local</option>
-                                        <option value="parada">Parada Técnica/Manutenção</option>
-                                        <option value="extra">Evento ou Atendimento Extra</option>
-                                        <option value="outro">Outro Motivo</option>
-                                    </select>
+                                        onChange={(val) => setTipo(val as any)} 
+                                        options={[
+                                            { value: "feriado", label: "Feriado Nacional/Local" },
+                                            { value: "parada", label: "Parada Técnica/Manutenção" },
+                                            { value: "extra", label: "Evento ou Atendimento Extra" },
+                                            { value: "outro", label: "Outro Motivo" }
+                                        ]}
+                                    />
                                 </div>
                                 <div style={{ marginBottom: "20px" }}>
                                     <label style={labelStyle}>Descrição (Opcional)</label>

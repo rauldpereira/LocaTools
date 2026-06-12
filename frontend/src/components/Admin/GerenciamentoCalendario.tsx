@@ -51,6 +51,7 @@ const GerenciamentoCalendario: React.FC = () => {
   const [diaSelecionado, setDiaSelecionado] = useState<IDiaStatus | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [confirmImportOpen, setConfirmImportOpen] = useState(false);
+  const [confirmPublishOpen, setConfirmPublishOpen] = useState(false);
 
   const forcarRecarga = () => {
     setActiveStartDate(new Date(activeStartDate.getTime()));
@@ -89,7 +90,8 @@ const GerenciamentoCalendario: React.FC = () => {
     fetchDadosMensais();
   }, [activeStartDate, isLoadingAuth, isLoggedIn]);
 
-  const handleTogglePublishMonth = async () => {
+  const executeTogglePublishMonth = async () => {
+    setConfirmPublishOpen(false);
     const ano = activeStartDate.getFullYear();
     const mes = activeStartDate.getMonth() + 1;
     const novoStatus = !isMonthPublished;
@@ -205,7 +207,7 @@ const GerenciamentoCalendario: React.FC = () => {
           <button onClick={() => setConfirmImportOpen(true)} className="btn-cal-action btn-import">
             <Download size={16} /> Feriados {activeStartDate.getFullYear()}
           </button>
-          <button onClick={handleTogglePublishMonth} className={`btn-cal-action btn-publish ${isMonthPublished ? 'publicado' : 'nao-publicado'}`}>
+          <button onClick={() => setConfirmPublishOpen(true)} className={`btn-cal-action btn-publish ${isMonthPublished ? 'publicado' : 'nao-publicado'}`}>
             {isMonthPublished ? <Lock size={16} /> : <Globe size={16} />}
             {isMonthPublished ? 'Ocultar Mês' : 'Publicar Mês'}
           </button>
@@ -219,11 +221,50 @@ const GerenciamentoCalendario: React.FC = () => {
       {/* MODAL IMPORTAÇÃO */}
       {confirmImportOpen && (
         <div className="manual-overlay" onClick={() => setConfirmImportOpen(false)}>
-          <div className="manual-content" style={{ maxWidth: '400px', textAlign: 'center', padding: '30px' }} onClick={e => e.stopPropagation()}>
-            <div style={{ backgroundColor: "#eff6ff", padding: "15px", borderRadius: "50%", width: "fit-content", margin: "0 auto 15px auto" }}><Download size={32} color="#2563eb" /></div>
-            <h3>Importar Feriados?</h3>
-            <p style={{ color: "#64748b", fontSize: "0.9rem", marginBottom: "25px" }}>Cadastrar feriados nacionais de {activeStartDate.getFullYear()}?</p>
-            <div style={{ display: "flex", gap: "10px" }}><button onClick={() => setConfirmImportOpen(false)} style={btnCancelStyle}>Não</button><button onClick={executeImportarFeriados} style={btnConfirmStyle}>Sim, Importar</button></div>
+          <div className="manual-content" style={{ maxWidth: '400px', borderRadius: '12px', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '24px' }}>
+              <h3 style={{ margin: '0 0 8px 0', color: '#1e293b', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Download size={20} color="#2563eb" /> Importar Feriados
+              </h3>
+              <p style={{ color: "#475569", fontSize: "0.95rem", margin: "0 0 24px 0", lineHeight: "1.5" }}>
+                Deseja carregar e fechar automaticamente os feriados nacionais de <strong>{activeStartDate.getFullYear()}</strong>?
+              </p>
+              <div style={{ display: "flex", justifyContent: 'flex-end', gap: "12px" }}>
+                <button onClick={() => setConfirmImportOpen(false)} style={modalBtnCancelStyle}>
+                  Cancelar
+                </button>
+                <button onClick={executeImportarFeriados} style={modalBtnConfirmStyle}>
+                  Importar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PUBLICAR/OCULTAR MÊS */}
+      {confirmPublishOpen && (
+        <div className="manual-overlay" onClick={() => setConfirmPublishOpen(false)}>
+          <div className="manual-content" style={{ maxWidth: '400px', borderRadius: '12px', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '24px' }}>
+              <h3 style={{ margin: '0 0 8px 0', color: '#1e293b', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {isMonthPublished ? <Lock size={20} color="#ef4444" /> : <Globe size={20} color="#10b981" />}
+                {isMonthPublished ? 'Ocultar Mês' : 'Publicar Mês'}
+              </h3>
+              <p style={{ color: "#475569", fontSize: "0.95rem", margin: "0 0 24px 0", lineHeight: "1.5" }}>
+                Tem certeza que deseja {isMonthPublished ? 'ocultar' : 'publicar'} o mês de <strong>{activeStartDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</strong>?
+                {!isMonthPublished && " Os clientes poderão realizar agendamentos neste período."}
+                {isMonthPublished && " Os clientes não poderão mais realizar agendamentos neste período."}
+              </p>
+              <div style={{ display: "flex", justifyContent: 'flex-end', gap: "12px" }}>
+                <button onClick={() => setConfirmPublishOpen(false)} style={modalBtnCancelStyle}>
+                  Cancelar
+                </button>
+                <button onClick={executeTogglePublishMonth} style={isMonthPublished ? modalBtnDangerStyle : modalBtnSuccessStyle}>
+                  {isMonthPublished ? 'Ocultar' : 'Publicar'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -315,5 +356,10 @@ const btnConfirmStyle: React.CSSProperties = { flex: 1, padding: "12px", borderR
 
 const manualStepStyle: React.CSSProperties = { display: "flex", gap: "15px", marginBottom: "20px", padding: "15px", borderRadius: "12px", backgroundColor: "#f8fafc", border: "1px solid #f1f5f9" };
 const stepNumberStyle: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", fontWeight: "bold", fontSize: "0.85rem", flexShrink: 0 };
+
+const modalBtnCancelStyle: React.CSSProperties = { padding: "10px 18px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#fff", color: "#475569", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s" };
+const modalBtnConfirmStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: "6px", padding: "10px 18px", borderRadius: "8px", border: "none", backgroundColor: "#2563eb", color: "#fff", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s" };
+const modalBtnSuccessStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: "6px", padding: "10px 18px", borderRadius: "8px", border: "none", backgroundColor: "#10b981", color: "#fff", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s" };
+const modalBtnDangerStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: "6px", padding: "10px 18px", borderRadius: "8px", border: "none", backgroundColor: "#ef4444", color: "#fff", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s" };
 
 export default GerenciamentoCalendario;

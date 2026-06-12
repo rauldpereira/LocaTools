@@ -28,8 +28,7 @@ import {
   Loader2,
   KeyRound,
   HelpCircle,
-  ArrowUpDown,
-  Filter
+  ArrowUpDown
 } from 'lucide-react';
 
 const PERMISSOES_DISPONIVEIS = [
