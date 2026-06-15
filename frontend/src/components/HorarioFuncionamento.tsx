@@ -297,7 +297,7 @@ const AdminHorariosPage: React.FC = () => {
 
 const thStyle: React.CSSProperties = { padding: '16px', color: '#64748b', fontWeight: '700', textAlign: 'left', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' };
 const tdStyle: React.CSSProperties = { padding: '16px', verticalAlign: 'middle' };
-const inputStyle: React.CSSProperties = { padding: '10px 15px', borderRadius: '10px', border: '1px solid #e2e8f0', width: '120px', fontSize: "1rem", color: "#1e293b", outline: "none", backgroundColor: "#f8fafc", fontWeight: "700", fontFamily: "monospace", cursor: "pointer", transition: "all 0.2s" };
+
 
 const modalOverlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, animation: "fadeIn 0.2s ease" };
 const modalContentStyle: React.CSSProperties = { backgroundColor: '#fff', borderRadius: '16px', width: '90%', maxWidth: '550px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight: '90vh' };

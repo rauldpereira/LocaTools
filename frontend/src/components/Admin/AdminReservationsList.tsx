@@ -161,7 +161,31 @@ const AdminReservationsList: React.FC = () => {
         <div style={{ overflowX: "auto", backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
             <thead><tr style={{ backgroundColor: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>{headers.map(h => <th key={h.key as string} onClick={() => handleSort(h.key)} style={{ padding: "16px", color: "#64748b", fontWeight: "700", textAlign: "center", textTransform: "uppercase", fontSize: "0.75rem", letterSpacing: "0.05em", cursor: "pointer", userSelect: "none" }}>{h.label} {sortKey === h.key ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}</th>)}<th style={{ padding: "16px", color: "#64748b", fontWeight: "700", textAlign: "center", textTransform: "uppercase", fontSize: "0.75rem" }}>Ação</th></tr></thead>
-            <tbody>{data.map((order) => (<tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s" }} className="table-row-hover">{headers.map(h => { let val: any = order[h.key]; if (typeof h.key === 'string' && h.key.includes("data")) val = parseDateStringAsLocal(val as string).toLocaleDateString(); if (h.key === "id") val = <Link to={`/my-reservations/${order.id}`} style={{ color: "#2563eb", fontWeight: "bold", textDecoration: "none" }}>#{order.id}</Link>; if (h.key === "status") val = <span style={{ fontWeight: "700", color: order.status === "PREJUIZO" ? "#ef4444" : "#475569" }}>{order.status.replace(/_/g, " ").toUpperCase()}</span>; if (h.key === "tipo_entrega") val = <span style={{ color: val === "entrega" ? "#0056b3" : "#2c3e50", fontWeight: "600" }}>{val?.charAt(0).toUpperCase() + val?.slice(1)}</span>; return <td key={h.key as string} style={{ padding: "16px", textAlign: "center" }}>{val}</td>; })}<td style={{ padding: "16px", textAlign: "center" }}>{action(order)}</td></tr>))}</tbody>
+            <tbody>
+              {data.map((order) => {
+                const isDelayedReturn = order.status === "em_andamento" && parseDateStringAsLocal(order.data_fim).setHours(0,0,0,0) < hoje.getTime();
+                const rowBgColor = isDelayedReturn ? "#fee2e2" : "transparent";
+                
+                return (
+                  <tr 
+                    key={order.id} 
+                    style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s", backgroundColor: rowBgColor }} 
+                    className="table-row-hover"
+                  >
+                    {headers.map(h => { 
+                      let val: any = order[h.key]; 
+                      if (typeof h.key === 'string' && h.key.includes("data")) val = parseDateStringAsLocal(val as string).toLocaleDateString(); 
+                      if (h.key === "id") val = <Link to={`/my-reservations/${order.id}`} style={{ color: "#2563eb", fontWeight: "bold", textDecoration: "none" }}>#{order.id}</Link>; 
+                      if (h.key === "status") val = <span style={{ fontWeight: "700", color: order.status === "PREJUIZO" ? "#ef4444" : "#475569" }}>{order.status.replace(/_/g, " ").toUpperCase()}</span>; 
+                      if (h.key === "tipo_entrega") val = <span style={{ color: val === "entrega" ? "#0056b3" : "#2c3e50", fontWeight: "600" }}>{val?.charAt(0).toUpperCase() + val?.slice(1)}</span>; 
+                      if (h.key === "cliente") val = order.Usuario?.nome || "Não informado";
+                      return <td key={h.key as string} style={{ padding: "16px", textAlign: "center" }}>{val}</td>; 
+                    })}
+                    <td style={{ padding: "16px", textAlign: "center" }}>{action(order)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
           </table>
         </div>
         {totalPages > 1 && (<div style={{ display: "flex", justifyContent: "center", gap: "5px", marginTop: "20px" }}>{Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (<button key={n} onClick={() => setPage(n)} style={{ padding: "8px 14px", borderRadius: "6px", border: "1px solid", borderColor: page === n ? "#2563eb" : "#e2e8f0", backgroundColor: page === n ? "#2563eb" : "#fff", color: page === n ? "#fff" : "#64748b", fontWeight: "bold", cursor: "pointer", transition: "all 0.2s" }}>{n}</button>))}</div>)}
@@ -204,7 +228,7 @@ const AdminReservationsList: React.FC = () => {
         {activeTab === "pendencias" && activeSubTab === "sub2" && <PagedTable orderList={ordersAwaitingReturnSignature} headers={[{key:"id", label:"ID"}, {key:"data_fim", label:"Retorno"}]} action={(o) => <Link to={`/my-reservations/${o.id}`}><button style={{backgroundColor:"#10b981", color:"#fff", padding:"8px 12px", border:"none", borderRadius:"6px", fontWeight:"bold", cursor:"pointer"}}>Assinar Final</button></Link>} />}
         {activeTab === "financeiro" && activeSubTab === "sub1" && <PagedTable orderList={ordersAbandoned} headers={[{key:"id", label:"ID"}, {key:"data_inicio", label:"Saída"}]} action={(o) => <Link to={`/my-reservations/${o.id}`}><button style={{backgroundColor:"#f59e0b", color:"#fff", padding:"8px 12px", border:"none", borderRadius:"6px", fontWeight:"bold", cursor:"pointer"}}>Resgatar</button></Link>} />}
         {activeTab === "financeiro" && activeSubTab === "sub2" && <PagedTable orderList={ordersFinalPayment} headers={[{key:"id", label:"ID"}, {key:"status", label:"Status"}]} action={(o) => <Link to={`/admin/finalize-payment/${o.id}`}><button style={{backgroundColor:"#10b981", color:"#fff", padding:"8px 12px", border:"none", borderRadius:"6px", fontWeight:"bold", cursor:"pointer"}}>Cobrar</button></Link>} />}
-        {activeTab === "financeiro" && activeSubTab === "sub3" && <PagedTable orderList={ordersEmPrejuizo} headers={[{key:"id", label:"ID"}, {key:"status", label:"Financeiro"}]} action={(o) => <Link to={`/my-reservations/${o.id}`}><button style={{backgroundColor:"#ef4444", color:"#fff", padding:"8px 12px", border:"none", borderRadius:"6px", fontWeight:"bold", cursor:"pointer"}}>Receber</button></Link>} />}
+        {activeTab === "financeiro" && activeSubTab === "sub3" && <PagedTable orderList={ordersEmPrejuizo} headers={[{key:"id", label:"ID"}, {key:"cliente", label:"Cliente"}, {key:"status", label:"Financeiro"}]} action={(o) => <Link to={`/my-reservations/${o.id}`}><button style={{backgroundColor:"#ef4444", color:"#fff", padding:"8px 12px", border:"none", borderRadius:"6px", fontWeight:"bold", cursor:"pointer"}}>Receber</button></Link>} />}
         {activeTab === "historico" && activeSubTab === "sub1" && <PagedTable orderList={finalizedOrders} headers={[{key:"id", label:"ID"}, {key:"data_fim", label:"Finalização"}]} action={(o) => <Link to={`/my-reservations/${o.id}`}><button style={{border:"1px solid #e2e8f0", color:"#64748b", padding:"8px 12px", borderRadius:"6px", fontWeight:"bold", cursor:"pointer"}}>Ver</button></Link>} />}
         {activeTab === "historico" && activeSubTab === "sub2" && <PagedTable orderList={cancelledOrders} headers={[{key:"id", label:"ID"}, {key:"status", label:"Status"}]} action={(o) => <Link to={`/my-reservations/${o.id}`}><button style={{border:"1px solid #e2e8f0", color:"#64748b", padding:"8px 12px", borderRadius:"6px", fontWeight:"bold", cursor:"pointer"}}>Ver</button></Link>} />}
       </div>

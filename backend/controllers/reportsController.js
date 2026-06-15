@@ -294,11 +294,19 @@ const getFinancialReport = async (req, res) => {
       ],
     });
 
+    const tipoPrejuizoMap = {
+      'ROUBO': 'Não Devolvido / Extraviado',
+      'CALOTE': 'Inadimplência',
+      'AVARIA': 'Perda Total',
+      'EXTRAVIO': 'Extravio',
+      'OUTRO': 'Outro'
+    };
+
     prejuizosDetalhados.forEach((p) => {
       extrato.push({
         id: `BO-${p.id}`,
         data: p.updatedAt,
-        descricao: `Prejuízo (${p.tipo}) - ${p.itemReserva?.Unidade?.Equipamento?.nome}`,
+        descricao: `Prejuízo (${tipoPrejuizoMap[p.tipo] || p.tipo}) - ${p.itemReserva?.Unidade?.Equipamento?.nome}`,
         valor: parseFloat(p.valor_prejuizo) * -1,
         tipo: "DESPESA",
       });

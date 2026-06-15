@@ -1424,7 +1424,7 @@ const skipReturnInspection = async (req, res) => {
 const finalizarComPendencia = async (req, res) => {
     try {
         const { id } = req.params;
-        const { damageFee, lateFee } = req.body;
+        const { damageFee, lateFee, valor_pago } = req.body;
         const order = await OrdemDeServico.findByPk(id);
 
         if (!order) {
@@ -1437,12 +1437,23 @@ const finalizarComPendencia = async (req, res) => {
 
         const taxaAvariaVal = Number(damageFee) || 0;
         const taxaAtrasoVal = Number(lateFee) || 0;
+        const valorPagoVal = Number(valor_pago) || 0;
 
         await order.update({
             status: 'PREJUIZO',
             taxa_avaria: taxaAvariaVal,
             taxa_atraso: taxaAtrasoVal
         });
+
+        if (valorPagoVal > 0) {
+            await Pagamento.create({
+                id_ordem_servico: order.id,
+                valor: valorPagoVal,
+                status_pagamento: 'aprovado',
+                id_transacao_externa: `manual_${req.user.id}_${Date.now()}`
+            });
+        }
+
         await notificarUsuario(
             order.id_usuario,
             '⚠️ Pendência Financeira',
@@ -1466,11 +1477,17 @@ const recoverDebt = async (req, res) => {
 
     try {
         const order = await OrdemDeServico.findByPk(id, {
-            include: [{
-                model: ItemReserva,
-                as: 'ItemReservas',
-                include: [{ model: Prejuizo, as: 'prejuizo' }]
-            }]
+            include: [
+                {
+                    model: ItemReserva,
+                    as: 'ItemReservas',
+                    include: [{ model: Prejuizo, as: 'prejuizo' }]
+                },
+                {
+                    model: Pagamento,
+                    as: 'Pagamentos'
+                }
+            ]
         });
 
         if (!order) {
@@ -1483,10 +1500,17 @@ const recoverDebt = async (req, res) => {
             return res.status(400).json({ error: 'Esta ordem não possui pendência de prejuízo ativa.' });
         }
 
-        const saldoAluguel = Number(order.valor_total) - Number(order.valor_sinal);
-        
-        // Tira o valor do aluguel. O que sobrar é o que o cliente pagou de fato pelo B.O.
-        let valorPagoPeloBO = Number(valor_recebido) - saldoAluguel;
+        // Calcula o total de pagamentos já aprovados para esta OS
+        const paymentsTotal = order.Pagamentos
+            ? order.Pagamentos.filter(p => p.status_pagamento === 'aprovado').reduce((acc, p) => acc + Number(p.valor), 0)
+            : 0;
+
+        // O saldo restante a ser pago pelo aluguel + taxas (sem os prejuízos) é a soma total menos o que já foi pago
+        const baseAndExtrasTotal = Number(order.valor_total) + Number(order.taxa_avaria || 0) + Number(order.taxa_atraso || 0);
+        const unpaidBaseAndExtras = Math.max(0, baseAndExtrasTotal - paymentsTotal);
+
+        // O que for pago além do saldo devedor do aluguel/taxas vai amortizar/quitar os prejuízos
+        let valorPagoPeloBO = Number(valor_recebido) - unpaidBaseAndExtras;
         if (valorPagoPeloBO < 0) valorPagoPeloBO = 0; 
 
         let totalPrejuizoOriginal = 0;
@@ -1658,10 +1682,15 @@ const generateReturnContract = async (req, res) => {
                 { model: Usuario, as: 'Usuario', attributes: ['nome', 'email', 'cpf', 'cnpj'] },
                 { 
                     model: ItemReserva, as: 'ItemReservas', 
-                    include: [{ 
-                        model: Unidade, as: 'Unidade', 
-                        include: [{ model: Equipamento, as: 'Equipamento' }] 
-                    }] 
+                    include: [
+                        { 
+                            model: Unidade, as: 'Unidade', 
+                            include: [{ model: Equipamento, as: 'Equipamento' }] 
+                        },
+                        {
+                            model: Prejuizo, as: 'prejuizo'
+                        }
+                    ] 
                 }
             ]
         });
@@ -1706,9 +1735,31 @@ const generateReturnContract = async (req, res) => {
         const dataDevolucao = new Date(order.data_assinatura_devolucao).toLocaleString('pt-BR');
         doc.font('Helvetica').text(`Data e Hora da Devolução: ${dataDevolucao}`);
         
-        if (order.status === 'PREJUIZO') {
-            doc.fillColor('red').text('Status: Devolvido COM AVARIAS ou PENDÊNCIAS.');
+        const hasOccurrence = order.status === 'PREJUIZO' || order.ItemReservas.some(item => item.prejuizo);
+
+        if (hasOccurrence) {
+            doc.fillColor('red').text('Status: Devolvido COM OCORRÊNCIAS/PENDÊNCIAS.');
             doc.fillColor('black');
+            doc.moveDown(0.5);
+            doc.font('Helvetica-Bold').text('Detalhamento das Ocorrências:');
+            
+            const tipoMap = {
+                'ROUBO': 'Não Devolvido / Extraviado',
+                'CALOTE': 'Inadimplência',
+                'AVARIA': 'Perda Total / Avaria',
+                'EXTRAVIO': 'Extravio',
+                'OUTRO': 'Outro'
+            };
+            
+            order.ItemReservas.forEach((item) => {
+                if (item.prejuizo) {
+                    const tipoPrejuizo = tipoMap[item.prejuizo.tipo] || item.prejuizo.tipo;
+                    doc.font('Helvetica').text(`- ${item.Unidade.Equipamento.nome} (Unidade ID: ${item.id_unidade}): ${tipoPrejuizo} - Valor do Prejuízo: R$ ${Number(item.prejuizo.valor_prejuizo).toFixed(2)}`);
+                    if (item.prejuizo.observacao) {
+                        doc.font('Helvetica-Oblique').text(`  Observação: ${item.prejuizo.observacao}`, { indent: 15 });
+                    }
+                }
+            });
         } else {
             doc.fillColor('green').text('Status: Devolvido em PERFEITO ESTADO.');
             doc.fillColor('black');

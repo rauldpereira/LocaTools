@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { Image as ImageIcon, CheckCircle, Trash2, Star, ChevronUp } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Star, ChevronUp } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 interface Category {
@@ -28,11 +28,11 @@ const EquipmentForm: React.FC = () => {
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
-  const handleDragStart = (e: React.DragEvent<HTMLLIElement>, position: number) => {
+  const handleDragStart = (_e: React.DragEvent<HTMLDivElement>, position: number) => {
     dragItem.current = position;
   };
 
-  const handleDragEnter = (e: React.DragEvent<HTMLLIElement>, position: number) => {
+  const handleDragEnter = (_e: React.DragEvent<HTMLDivElement>, position: number) => {
     dragOverItem.current = position;
   };
 

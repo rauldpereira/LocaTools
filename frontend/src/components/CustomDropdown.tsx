@@ -32,7 +32,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, options, onChang
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 

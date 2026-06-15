@@ -103,7 +103,7 @@ const prejuizoController = {
         }
       } else if (tipo === 'CALOTE') {
         if (item.Unidade) {
-          // O cara deu calote do dinheiro, mas devolveu a máquina inteira
+          // Inadimplência financeira registrada, mas o item foi devidamente devolvido
           await item.Unidade.update({ 
             status: 'disponivel'
           }, { transaction });

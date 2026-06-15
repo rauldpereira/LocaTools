@@ -600,10 +600,12 @@ const AdminReportsPage: React.FC = () => {
                       }), ["equipamento", "cliente", "tipo"]).map((bo) => (
                         <tr key={bo.id} style={{ ...tableRowStyle, backgroundColor: bo.resolvido ? "#f0fdf4" : "#fff1f2" }} className="table-row-hover">
                           <td style={tdStyle}>{new Date(bo.data).toLocaleDateString()}</td>
-                          <td style={{ ...tdStyle, fontWeight: "800", color: bo.tipo === "ROUBO" ? "#ef4444" : "#f59e0b" }}>{bo.tipo}</td>
+                          <td style={{ ...tdStyle, fontWeight: "800", color: bo.tipo === "ROUBO" ? "#ef4444" : "#f59e0b" }}>
+                            {bo.tipo === "ROUBO" ? "Não Devolvido / Extraviado" : bo.tipo === "CALOTE" ? "Inadimplência" : bo.tipo === "AVARIA" ? "Perda Total" : bo.tipo}
+                          </td>
                           <td style={tdStyle}>{bo.equipamento} <small style={{ color: "#94a3b8" }}>#{bo.unidadeId}</small></td>
                           <td style={tdStyle}>{bo.cliente}<br/><small style={{ color: "#64748b" }}>{bo.contato}</small></td>
-                          <td style={{ ...tdStyle, fontWeight: "700" }}>R$ {Number(bo.valor).toFixed(2)}</td>
+                          <td style={{ ...tdStyle, fontWeight: "700" }}>{Number(bo.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                           <td style={tdStyle}>{bo.resolvido ? <span style={{ color: "#10b981", display: "flex", alignItems: "center", gap: "4px" }}><CheckCircle size={14}/> Resolvido</span> : <span style={{ color: "#ef4444", display: "flex", alignItems: "center", gap: "4px" }}><Clock size={14}/> Pendente</span>}</td>
                           <td style={tdStyle}>
                             {bo.pedidoId ? <Link to={`/my-reservations/${bo.pedidoId}`} style={actionBtnStyle}><ChevronRight size={16} /></Link> : <span style={{ color: "#cbd5e1" }}>-</span>}
@@ -741,7 +743,7 @@ const KpiCard = ({ title, value, icon, color, isCurrency = true, highlight = fal
       <div style={{ padding: "8px", borderRadius: "10px", backgroundColor: `${color}15`, color: color }}>{icon}</div>
     </div>
     <div>
-      <div style={{ fontSize: "1.5rem", fontWeight: "800", color: "#1e293b" }}>{isCurrency ? `R$ ${Number(value).toFixed(2)}` : value}</div>
+      <div style={{ fontSize: "1.5rem", fontWeight: "800", color: "#1e293b" }}>{isCurrency ? Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : value}</div>
       {subText && <div style={{ fontSize: "0.75rem", color: "#94a3b8", fontWeight: "600" }}>{subText}</div>}
     </div>
   </div>

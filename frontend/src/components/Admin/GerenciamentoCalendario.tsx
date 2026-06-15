@@ -351,8 +351,6 @@ const GerenciamentoCalendario: React.FC = () => {
   );
 };
 
-const btnCancelStyle: React.CSSProperties = { flex: 1, padding: "12px", borderRadius: "10px", border: "none", backgroundColor: "#f1f5f9", color: "#475569", fontWeight: "bold", cursor: "pointer" };
-const btnConfirmStyle: React.CSSProperties = { flex: 1, padding: "12px", borderRadius: "10px", border: "none", backgroundColor: "#2563eb", color: "#fff", fontWeight: "bold", cursor: "pointer" };
 
 const manualStepStyle: React.CSSProperties = { display: "flex", gap: "15px", marginBottom: "20px", padding: "15px", borderRadius: "12px", backgroundColor: "#f8fafc", border: "1px solid #f1f5f9" };
 const stepNumberStyle: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "50%", backgroundColor: "#2563eb", color: "#fff", fontWeight: "bold", fontSize: "0.85rem", flexShrink: 0 };

@@ -57,6 +57,7 @@ const AdminTeamPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [sortBy, setSortBy] = useState<'nome' | 'tipo_usuario'>('nome');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'funcionario'>('all');
 
@@ -130,8 +131,10 @@ const AdminTeamPage: React.FC = () => {
       return matchesSearch && matchesRole;
     })
     .sort((a, b) => {
-      if (sortOrder === 'asc') return a.nome.localeCompare(b.nome);
-      return b.nome.localeCompare(a.nome);
+      const valA = sortBy === 'nome' ? a.nome : a.tipo_usuario;
+      const valB = sortBy === 'nome' ? b.nome : b.tipo_usuario;
+      if (sortOrder === 'asc') return valA.localeCompare(valB);
+      return valB.localeCompare(valA);
     });
 
   const showSuccess = (msg: string) => {
@@ -325,16 +328,39 @@ const AdminTeamPage: React.FC = () => {
             <tr style={{ backgroundColor: '#f8fafc', color: '#64748b' }}>
               <th 
                 style={{...thStyle, cursor: 'pointer'}}
-                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                onClick={() => {
+                  if (sortBy === 'nome') {
+                    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                  } else {
+                    setSortBy('nome');
+                    setSortOrder('asc');
+                  }
+                }}
                 title="Clique para ordenar por nome"
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <Users size={14}/> Nome
-                  <ArrowUpDown size={14} color="#94a3b8" />
+                  <ArrowUpDown size={14} color={sortBy === 'nome' ? '#2563eb' : '#94a3b8'} />
                 </div>
               </th>
               <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Mail size={14}/> Email / CPF</div></th>
-              <th style={thStyle}><div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Briefcase size={14}/> Cargo</div></th>
+              <th 
+                style={{...thStyle, cursor: 'pointer'}}
+                onClick={() => {
+                  if (sortBy === 'tipo_usuario') {
+                    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                  } else {
+                    setSortBy('tipo_usuario');
+                    setSortOrder('asc');
+                  }
+                }}
+                title="Clique para ordenar por cargo"
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Briefcase size={14}/> Cargo
+                  <ArrowUpDown size={14} color={sortBy === 'tipo_usuario' ? '#2563eb' : '#94a3b8'} />
+                </div>
+              </th>
               <th style={{ ...thStyle, textAlign: 'center' }}>Ações</th>
             </tr>
           </thead>

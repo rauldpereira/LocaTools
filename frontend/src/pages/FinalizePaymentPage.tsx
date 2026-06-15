@@ -89,6 +89,7 @@ const FinalizePaymentPage: React.FC = () => {
 
     const [multaAtraso, setMultaAtraso] = useState(0);
     const [diasAtraso, setDiasAtraso] = useState(0);
+    const [valorPagoHoje, setValorPagoHoje] = useState<number>(0);
     const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, action: string, msg: string}>({isOpen: false, action: "", msg: ""});
 
     const backendUrl = import.meta.env.VITE_API_URL;
@@ -203,10 +204,14 @@ const FinalizePaymentPage: React.FC = () => {
     };
 
     const handleFinishWithDebt = async () => {
+        const msg = valorPagoHoje > 0 
+            ? `ATENÇÃO: Você está encerrando o pedido com um pagamento parcial de R$ ${valorPagoHoje.toFixed(2)}.\n\nO valor restante de R$ ${(valorFinal - valorPagoHoje).toFixed(2)} ficará como pendência (Status PREJUÍZO). Deseja continuar?`
+            : `ATENÇÃO: Você está encerrando SEM confirmar o pagamento total.\n\nO pedido ficará com status 'PREJUÍZO' e o valor total de R$ ${valorFinal.toFixed(2)} ficará como pendência. Deseja continuar?`;
+
         setConfirmModal({
             isOpen: true,
             action: "debt",
-            msg: "ATENÇÃO: Você está encerrando SEM confirmar o pagamento total.\n\nO pedido ficará com status 'PREJUÍZO' e o valor ficará como pendência. Deseja continuar?"
+            msg
         });
     };
 
@@ -240,7 +245,8 @@ const FinalizePaymentPage: React.FC = () => {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 const body = { 
                     damageFee: (calculatedFee + outrosFee),
-                    lateFee: multaAtraso
+                    lateFee: multaAtraso,
+                    valor_pago: valorPagoHoje
                 };
                 await axios.put(`${backendUrl}/api/reservations/${orderId}/finish-with-debt`, body, config);
                 toast.error("Ordem encerrada com pendências financeiras.");
@@ -316,7 +322,7 @@ const FinalizePaymentPage: React.FC = () => {
                                 {item.prejuizo && (
                                     <div style={{ color: '#ef4444', fontSize: '0.9rem', marginTop: '5px', display: "flex", alignItems: "center", gap: "5px", fontWeight: "600" }}>
                                         <AlertTriangle size={14} />
-                                        <span>{item.prejuizo.tipo}: R$ {Number(item.prejuizo.valor_prejuizo).toFixed(2)}</span>
+                                        <span>{item.prejuizo.tipo === "ROUBO" ? "Não Devolvido / Extraviado" : item.prejuizo.tipo === "CALOTE" ? "Inadimplência" : item.prejuizo.tipo === "AVARIA" ? "Perda Total" : item.prejuizo.tipo === "EXTRAVIO" ? "Extravio" : item.prejuizo.tipo}: R$ {Number(item.prejuizo.valor_prejuizo).toFixed(2)}</span>
                                     </div>
                                 )}
                             </div>
@@ -432,7 +438,7 @@ const FinalizePaymentPage: React.FC = () => {
                     )}
                     {totalPrejuizos > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c', fontWeight: 'bold' }}>
-                            <span>Roubos / Extravios / Ocorrências:</span>
+                            <span>Perdas / Extravios / Ocorrências:</span>
                             <span>+ R$ {totalPrejuizos.toFixed(2)}</span>
                         </div>
                     )}
@@ -447,6 +453,32 @@ const FinalizePaymentPage: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.1rem', fontWeight: '900', color: '#10b981' }}>
                         <span>TOTAL A RECEBER:</span>
                         <span style={{ fontSize: '1.3rem' }}>R$ {valorFinal.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ border: '1px solid #cbd5e1', padding: '20px', borderRadius: '16px', marginTop: '20px', backgroundColor: '#f8fafc', boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+                <h4 style={{ margin: "0 0 10px 0", color: "#475569", display: "flex", alignItems: "center", gap: "6px", fontSize: "1rem", fontWeight: "800" }}>
+                    <DollarSign size={18} color="#10b981" /> Pagamento Parcial na Devolução
+                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#64748b', maxWidth: '500px', lineHeight: '1.4' }}>
+                        Se o cliente estiver pagando apenas uma parte do valor total hoje, informe o valor abaixo. O restante será gerado como pendência (dívida ativa / prejuízo).
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                        R$ 
+                        <input
+                            type="number"
+                            value={valorPagoHoje || ""}
+                            onChange={(e) => {
+                                const val = parseFloat(e.target.value) || 0;
+                                setValorPagoHoje(val);
+                            }}
+                            min="0"
+                            max={valorFinal}
+                            placeholder="0.00"
+                            style={{ marginLeft: '10px', padding: '8px 12px', width: '120px', textAlign: 'right', fontSize: '1rem', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none', fontWeight: 'bold', color: '#2563eb' }}
+                        />
                     </div>
                 </div>
             </div>
@@ -466,7 +498,12 @@ const FinalizePaymentPage: React.FC = () => {
                 >
                     <AlertTriangle size={32} />
                     Encerrar com Pendência
-                    <span style={{fontSize: '0.85rem', fontWeight: '600', color: "#f97316"}}>(Gerar Dívida / Não Pago)</span>
+                    <span style={{fontSize: '0.85rem', fontWeight: '600', color: "#f97316"}}>
+                        {valorPagoHoje > 0 
+                            ? `(Pagar R$ ${valorPagoHoje.toFixed(2)} e Gerar Dívida de R$ ${(valorFinal - valorPagoHoje).toFixed(2)})`
+                            : "(Gerar Dívida / Não Pago)"
+                        }
+                    </span>
                 </button>
 
                 <button 

@@ -151,7 +151,7 @@ const PaymentPage: React.FC = () => {
 
         if (isDivida) {
             orders.forEach(order => {
-                const saldoRent = Number(order.valor_total) - Number(order.valor_sinal);
+                let saldoRent = Number(order.valor_total) - Number(order.valor_sinal);
                 totalSaldoAluguel += saldoRent;
                 if (order.ItemReservas) {
                     order.ItemReservas.forEach(item => {
@@ -185,7 +185,9 @@ const PaymentPage: React.FC = () => {
     // Configuração do Mercado Pago
     const initialization = useMemo(() => {
         const user = orders[0]?.Usuario;
-        const email = (user?.email || '').trim().toLowerCase();
+        const key = import.meta.env.VITE_MP_PUBLIC_KEY || '';
+        const isSandbox = key.startsWith('TEST-');
+        const email = isSandbox ? '' : (user?.email || '').trim().toLowerCase();
         
         // Trata o nome para garantir primeiro e sobrenome
         const nomeCompleto = (user?.nome || 'Cliente').trim();
@@ -196,7 +198,7 @@ const PaymentPage: React.FC = () => {
 
         const docType = user?.tipo_pessoa === 'juridica' ? 'CNPJ' : 'CPF';
         // Limpa TUDO que não for número do documento
-        const docNumber = (user?.cnpj || user?.cpf || '').replace(/\D/g, '');
+        const docNumber = isSandbox ? '' : (user?.cnpj || user?.cpf || '').replace(/\D/g, '');
 
         const dataInit = {
             amount: Number(valorApresentado.toFixed(2)),
@@ -217,36 +219,29 @@ const PaymentPage: React.FC = () => {
 
     const customization = useMemo(() => ({
         visual: {
-            hidePayerInformation: true,
+            hidePayerInformation: false,
             hideFormTitle: true,
-            defaultPaymentMethod: 'bank_transfer' as const,
         },
         paymentMethods: {
             bankTransfer: "all" as const,
             creditCard: "all" as const,
             debitCard: "all" as const,
             maxInstallments: 12 // Limita em até 12x
-        },
-        payer: {
-            email: initialization.payer.email,
-            firstName: initialization.payer.firstName,
-            lastName: initialization.payer.lastName,
-            identification: {
-                type: initialization.payer.identification.type,
-                number: initialization.payer.identification.number,
-            },
         }
-    }), [initialization]);
+    }), []);
 
     const onSubmit = async ({ selectedPaymentMethod, formData }: any) => {
         
         const extendedFormData = {
             ...formData,
-            payer: formData.payer || {
-                email: initialization.payer.email,
-                firstName: initialization.payer.firstName,
-                lastName: initialization.payer.lastName,
-                identification: initialization.payer.identification,
+            payer: {
+                email: formData.payer?.email || initialization.payer.email,
+                firstName: formData.payer?.firstName || formData.payer?.first_name || initialization.payer.firstName,
+                lastName: formData.payer?.lastName || formData.payer?.last_name || initialization.payer.lastName,
+                identification: {
+                    type: formData.payer?.identification?.type || initialization.payer.identification.type,
+                    number: formData.payer?.identification?.number || initialization.payer.identification.number,
+                }
             }
         };
 
@@ -309,7 +304,7 @@ const PaymentPage: React.FC = () => {
     const onReady = () => setIsMpReady(true);
 
     const isAllDataReady = orders.length > 0 && lojaConfig !== null;
-    const isPageReady = isAllDataReady && isMpReady;
+    const isPageReady = isAllDataReady;
 
     if (loading) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Carregando...</div>;
     if (orders.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: '#000' }}>Pedidos não encontrados.</div>;
@@ -451,9 +446,15 @@ const PaymentPage: React.FC = () => {
                         </div>
                     )}
 
-                    {isMpLoaded && valorApresentado > 0 && initialization.payer.email && initialization.payer.identification.number && (
+                    {!isMpReady && (
+                        <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b', fontSize: '0.95rem' }}>
+                            Carregando formulário de pagamento seguro...
+                        </div>
+                    )}
+
+                    {isMpLoaded && valorApresentado > 0 && (
                         <Payment
-                            key={`${valorApresentado}-${initialization.payer.email}-${initialization.payer.identification.number}`}
+                            key={`${valorApresentado}-${initialization.payer.email}`}
                             initialization={initialization}
                             customization={customization}
                             onSubmit={onSubmit}

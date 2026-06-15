@@ -589,7 +589,7 @@ const VistoriaPage: React.FC = () => {
                     <p style={{ margin: 0, color: "#991b1b", fontSize: "0.9rem", fontWeight: "600" }}>
                       {details?.tipoPrejuizo === "CALOTE" 
                         ? "Atenção: Ao confirmar, o contrato deste item será encerrado como Inadimplência. A máquina constará como devolvida no estoque, mas a dívida será gerada e cobrada no pedido."
-                        : "Atenção: Ao confirmar, esta unidade será automaticamente baixada do estoque (Perda/Roubo) e o contrato deste item será encerrado como Ocorrência."}
+                        : "Atenção: Ao confirmar, esta unidade será automaticamente baixada do estoque (Perda/Extravio) e o contrato deste item será encerrado como Ocorrência."}
                     </p>
                 </div>
 
@@ -601,7 +601,7 @@ const VistoriaPage: React.FC = () => {
                     value={details?.tipoPrejuizo || "EXTRAVIO"}
                     onChange={(val) => handleDetailChange(unitId, "tipoPrejuizo", val as string)}
                     options={[
-                      { value: "EXTRAVIO", label: "Não Devolvido / Roubo (Baixa de Estoque)" },
+                      { value: "EXTRAVIO", label: "Não Devolvido / Extraviado (Baixa de Estoque)" },
                       { value: "AVARIA", label: "Avaria Total / Perda Total (Baixa de Estoque)" },
                       { value: "CALOTE", label: "Inadimplência (Devolveu, mas não pagou)" }
                     ]}

@@ -70,7 +70,7 @@ const PrejuizoModal: React.FC<PrejuizoModalProps> = ({ item, onClose, onSuccess 
                         </div>
                         <div>
                             <h2 style={{ color: '#1e293b', margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>Registrar Ocorrência</h2>
-                            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>Perda, Roubo ou Calote</p>
+                            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', fontWeight: 600 }}>Avarias, Extravios e Inadimplências</p>
                         </div>
                     </div>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s', borderRadius: '50%' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>

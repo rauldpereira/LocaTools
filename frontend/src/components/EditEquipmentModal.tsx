@@ -72,11 +72,11 @@ const EditEquipmentModal: React.FC<EditModalProps> = ({ equipmentId, isOpen, onC
     const dragItem = useRef<number | null>(null);
     const dragOverItem = useRef<number | null>(null);
 
-    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, position: number) => {
+    const handleDragStart = (_e: React.DragEvent<HTMLDivElement>, position: number) => {
         dragItem.current = position;
     };
 
-    const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, position: number) => {
+    const handleDragEnter = (_e: React.DragEvent<HTMLDivElement>, position: number) => {
         dragOverItem.current = position;
     };
 
